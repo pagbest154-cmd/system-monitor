@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Настройки — system-monitor</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>Настройки мониторинга</h1>
+    <nav>
+      <a href="/">Панель</a>
+      <a href="/settings" class="active">Настройки</a>
+    </nav>
+  </header>
+
+  <main class="settings-layout">
+    <section class="section">
+      <h2>Общие настройки</h2>
+      <div class="form-row">
+        <label>
+          Хранение истории (дней)
+          <input type="number" id="retention-days" min="1" value="31">
+        </label>
+        <label>
+          Интервал по умолчанию (с)
+          <input type="number" id="default-interval-sec" min="1" value="5">
+        </label>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Датчики</h2>
+      <p class="hint">Отображаются только датчики, доступные на текущей платформе.</p>
+      <div class="table-wrap">
+        <table id="sensors-table">
+          <thead>
+            <tr>
+              <th>Вкл.</th>
+              <th>ID</th>
+              <th>Название</th>
+              <th>Тип</th>
+              <th>Ед.</th>
+              <th>Интервал</th>
+              <th>Параметры (JSON)</th>
+              <th>Предупр.</th>
+              <th>Критич.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions-row">
+        <button id="add-sensor" class="btn btn-secondary">Добавить датчик</button>
+        <button id="save-sensors" class="btn">Сохранить датчики</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Панели графиков</h2>
+      <div class="form-row">
+        <label>
+          Заголовок панели
+          <input type="text" id="dashboard-title">
+        </label>
+        <label>
+          Обновление (с)
+          <input type="number" id="refresh-sec" min="1" value="3">
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table id="panels-table">
+          <thead>
+            <tr>
+              <th>Заголовок</th>
+              <th>Тип</th>
+              <th>Датчики</th>
+              <th>Период</th>
+              <th>Строка</th>
+              <th>Колонка</th>
+              <th>Ширина</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions-row">
+        <button id="add-panel" class="btn btn-secondary">Добавить панель</button>
+        <button id="save-dashboard" class="btn">Сохранить панель</button>
+      </div>
+      <div id="save-message" class="message"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initSettings } from "/static/js/settings.js";
+    initSettings().catch((err) => console.error(err));
+  </script>
+</body>
+</html>

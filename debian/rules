@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+
+%:
+	dh $@ --without python3
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf debian/system-monitor/opt
+
+override_dh_auto_build:
+
+override_dh_auto_install:
+	install -d debian/system-monitor/opt/system-monitor
+	python3 -m venv debian/system-monitor/opt/system-monitor/venv
+	debian/system-monitor/opt/system-monitor/venv/bin/pip install \
+		--no-cache-dir --upgrade pip wheel
+	debian/system-monitor/opt/system-monitor/venv/bin/pip install \
+		--no-cache-dir .
+	install -d debian/system-monitor/usr/share/system-monitor/web
+	cp -a web/. debian/system-monitor/usr/share/system-monitor/web/
+	install -d debian/system-monitor/etc/system-monitor
+	install -m 644 config/sensors.yaml debian/system-monitor/etc/system-monitor/
+	install -m 644 config/dashboard.yaml debian/system-monitor/etc/system-monitor/
+	install -d debian/system-monitor/usr/bin
+	install -m 755 packaging/usrbin-system-monitor debian/system-monitor/usr/bin/system-monitor
+	install -d debian/system-monitor/lib/systemd/system
+	install -m 644 debian/system-monitor.service debian/system-monitor/lib/systemd/system/system-monitor.service
+
+override_dh_auto_test:
+
+override_dh_strip:

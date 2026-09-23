@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|upgrade|failed-upgrade)
+        if command -v deb-systemd-invoke >/dev/null; then
+            deb-systemd-invoke stop system-monitor.service >/dev/null || true
+        fi
+        ;;
+esac
+
+exit 0

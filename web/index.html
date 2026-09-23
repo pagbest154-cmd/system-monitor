@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мониторинг системы — system-monitor</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/i18n/langRU.js"></script>
+</head>
+<body>
+  <header>
+    <h1 id="page-title">Мониторинг системы</h1>
+    <nav>
+      <a href="/" class="active">Панель</a>
+      <a href="/settings">Настройки</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="meta-bar">
+      <div id="connection-status">
+        <span class="status-dot"></span>
+        Подключение...
+      </div>
+      <div id="last-update">Обновлено: —</div>
+      <label class="period-control">
+        <span>Период графиков</span>
+        <select id="global-period" class="period-select"></select>
+      </label>
+    </div>
+    <div id="dashboard-grid" class="dashboard-grid"></div>
+    <section id="system-info" class="system-info"></section>
+    <div id="panel-backdrop" class="panel-backdrop" hidden></div>
+  </main>
+
+  <script type="module">
+    import { initDashboard } from "/static/js/dashboard.js";
+    initDashboard().catch((err) => console.error(err));
+  </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+dashboard:
+  title: Мониторинг системы
+  refresh_sec: 3
+
+panels:
+  - id: system_chart
+    title: Загрузка системы
+    type: line
+    sensors:
+      - cpu_percent
+      - ram_used
+    period: 1h
+    row: 1
+
+  - id: disk_bars
+    title: Занятость дисков
+    type: bar
+    sensors:
+      - auto_disks
+    row: 2
+
+  - id: net_chart
+    title: Сетевой трафик
+    type: line
+    sensors:
+      - net_rx
+      - net_tx
+    period: 1h
+    row: 3
+
+  - id: temp_chart
+    title: Температура
+    type: line
+    sensors:
+      - cpu_temp
+      - gpu_temp
+    period: 6h
+    row: 4
+
+  - id: cpu_gauge
+    title: Процессор
+    type: gauge
+    sensors:
+      - cpu_percent
+    row: 5
+
+  - id: ram_gauge
+    title: Память
+    type: gauge
+    sensors:
+      - ram_used
+    row: 6

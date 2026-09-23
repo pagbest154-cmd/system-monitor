@@ -1,0 +1,13 @@
+services:
+  system-monitor:
+    build: .
+    container_name: system-monitor
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./config:/app/config
+      - system-monitor-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  system-monitor-data:

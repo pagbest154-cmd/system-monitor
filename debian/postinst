@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        if ! getent passwd system-monitor >/dev/null; then
+            adduser --system --group --home /var/lib/system-monitor --no-create-home system-monitor
+        fi
+        mkdir -p /var/lib/system-monitor
+        chown system-monitor:system-monitor /var/lib/system-monitor
+        chmod 0750 /var/lib/system-monitor
+
+        if command -v deb-systemd-helper >/dev/null; then
+            deb-systemd-helper enable system-monitor.service >/dev/null || true
+            deb-systemd-helper try-restart system-monitor.service >/dev/null || \
+                deb-systemd-helper start system-monitor.service >/dev/null || true
+        fi
+        ;;
+esac
+
+exit 0

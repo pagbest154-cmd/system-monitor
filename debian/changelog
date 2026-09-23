@@ -1,0 +1,6 @@
+system-monitor (0.0.1-1) unstable; urgency=medium
+
+  * Initial release.
+  * Web monitoring dashboard, Debian package, GitHub Actions CI.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 01:20:00 +0700

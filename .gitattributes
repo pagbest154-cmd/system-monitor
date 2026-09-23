@@ -1,0 +1,4 @@
+debian/** text eol=lf
+packaging/** text eol=lf
+scripts/*.sh text eol=lf
+.github/workflows/** text eol=lf
