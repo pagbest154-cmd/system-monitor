@@ -180,6 +180,11 @@ jobs:
           name: windows-agent
           path: dist/windows
 
+      - name: Remove existing release (clean re-tag)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+
       - name: Prepare release notes
         env:
           VERSION: ${{ needs.detect-changes.outputs.version }}
@@ -217,10 +222,12 @@ jobs:
           generate_release_notes: false
           body_path: dist/RELEASE_NOTES.md
           fail_on_unmatched_files: false
+          # Не используйте dist/apt-repo/**/* — .deb в pool дублирует файл из dist/ и ломает re-upload.
           files: |
             dist/system-monitor-agent_*.deb
             dist/system-monitor-agent_*.changes
-            dist/apt-repo/**/*
+            dist/apt-repo/dists/**/*
+            dist/apt-repo/README.txt
             dist/windows/system-monitor-agent_*_setup.exe
 
   publish-apt-pages:
