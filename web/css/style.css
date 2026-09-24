@@ -240,6 +240,44 @@ header nav a.active .icon {
   text-transform: capitalize;
 }
 
+#agents-table th,
+#agents-table td {
+  vertical-align: middle;
+}
+
+#agents-table .token-col {
+  min-width: 18rem;
+}
+
+#agents-table .actions-col {
+  width: 1%;
+  white-space: nowrap;
+}
+
+#agents-table .token-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+#agents-table .agent-token {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
+#agents-table .agent-id,
+#agents-table .agent-name {
+  min-width: 8rem;
+}
+
+#agents-table .btn-icon {
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
 .status-dot {
   display: inline-block;
   width: 8px;

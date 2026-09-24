@@ -282,14 +282,14 @@ function renderAgentsTable() {
       <tr data-index="${index}">
         <td><input type="text" class="agent-id" value="${escapeHtml(agent.id)}"></td>
         <td><input type="text" class="agent-name" value="${escapeHtml(agent.name || "")}"></td>
-        <td>
+        <td class="token-col">
           <div class="token-cell">
             <input type="text" class="agent-token" value="${escapeHtml(agent.token || "")}" readonly>
-            <button type="button" class="btn btn-secondary btn-sm regen-token" title="${t.regenerateToken}"></button>
-            <button type="button" class="btn btn-secondary btn-sm copy-token" title="${t.copyToken}"></button>
+            <button type="button" class="btn-icon btn-secondary regen-token" title="${t.regenerateToken}"></button>
+            <button type="button" class="btn-icon btn-secondary copy-token" title="${t.copyToken}"></button>
           </div>
         </td>
-        <td><button type="button" class="btn btn-secondary btn-sm remove-agent">Удалить</button></td>
+        <td class="actions-col"><button type="button" class="btn btn-secondary btn-sm remove-agent">${t.delete}</button></td>
       </tr>
     `
     )
