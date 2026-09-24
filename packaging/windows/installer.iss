@@ -273,7 +273,7 @@ procedure LaunchTrayIcon;
 var
   ResultCode: Integer;
 begin
-  Exec(ExpandConstant('{app}\system-monitor-agent.exe'), '--tray', '', SW_SHOWMINNOACTIVE, ewNoWait, ResultCode);
+  Exec(ExpandConstant('{app}\system-monitor-agent.exe'), '--tray', '', SW_HIDE, ewNoWait, ResultCode);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

@@ -5,7 +5,6 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime
 from pathlib import Path
 
 import pystray
@@ -20,12 +19,6 @@ from .updates import check_for_updates, format_update_message, get_installed_ver
 
 def _make_icon(color_key: str) -> Image.Image:
     return render_icon(64, color_key)
-
-
-def _format_ts(ts: float | None) -> str:
-    if ts is None:
-        return "—"
-    return datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M:%S")
 
 
 def _status_icon_key(status: AgentStatus | None, service_state: str) -> str:
@@ -191,7 +184,8 @@ def _launch_settings_window(config_path: Path | None = None) -> None:
         args = [sys.executable, "-m", "system_monitor.agent", "--settings"]
     if config_path:
         args.extend(["--config", str(config_path)])
-    subprocess.Popen(args)
+    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    subprocess.Popen(args, creationflags=flags)
 
 
 def _tray_log_path() -> Path:

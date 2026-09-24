@@ -35,6 +35,7 @@ def current_platform() -> str:
 class SettingsConfig(BaseModel):
     retention_days: int = 7
     default_interval_sec: int = 5
+    auto_discover_disks: bool = True
 
 
 class SensorConfig(BaseModel):
@@ -269,6 +270,10 @@ def load_agent_sensors_config(path: Path | None = None) -> SensorsFile:
     if bundled.exists():
         return SensorsFile.model_validate(_load_yaml(bundled))
     return load_sensors_config(SENSORS_CONFIG)
+
+
+def save_agent_sensors_config(config: SensorsFile, path: Path | None = None) -> None:
+    save_sensors_config(config, path or AGENT_SENSORS_CONFIG)
 
 
 def merge_agent_config(base: SensorsFile, overrides: list[SensorOverrideConfig]) -> SensorsFile:

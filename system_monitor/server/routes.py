@@ -26,7 +26,7 @@ from ..config_loader import (
     save_hub_config,
     save_sensors_config,
 )
-from ..protocol.models import AgentConfigResponse, AgentReport, prefixed_sensor_id
+from ..protocol.models import AgentConfigResponse, AgentReport, prefixed_sensor_id, strip_agent_prefix
 from ..storage import MetricStore
 from ..system_info import get_system_info
 from ..fleet.service import build_agent_config_response, ingest_agent_report, verify_agent_token
@@ -416,7 +416,10 @@ async def live_ws(websocket: WebSocket, agent: str | None = Query(default=None))
     await state.hub.connect(websocket)
     try:
         if agent:
-            snapshot = state.fleet.get_agent_snapshot(agent)
+            raw = state.fleet.get_agent_snapshot(agent)
+            snapshot = {
+                strip_agent_prefix(agent, key): value for key, value in raw.items()
+            }
         elif state.collector is not None:
             snapshot = state.collector.get_latest_snapshot()
         elif state.mode == "hub":

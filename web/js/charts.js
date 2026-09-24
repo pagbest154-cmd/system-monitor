@@ -25,7 +25,8 @@ function layoutMode(width) {
 
 export function createGaugeChart(dom, reading) {
   const chart = echarts.init(dom, null, { locale: "RU" });
-  const value = reading?.value ?? 0;
+  const hasValue = reading != null && reading.value != null && !Number.isNaN(reading.value);
+  const value = hasValue ? reading.value : 0;
   const unit = reading?.unit || "%";
   const status = reading?.status || "unknown";
   const mode = layoutMode(chartWidth(dom));
@@ -48,7 +49,7 @@ export function createGaugeChart(dom, reading) {
         title: { show: false },
         detail: {
           valueAnimation: true,
-          formatter: `{value} ${unit}`,
+          formatter: hasValue ? `{value} ${unit}` : i18n.noData,
           fontSize: detailSize,
           fontWeight: 600,
           color: "#e8edf4",

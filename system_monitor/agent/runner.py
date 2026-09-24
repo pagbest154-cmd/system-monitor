@@ -14,7 +14,7 @@ from ..config_loader import (
     load_agent_token,
     merge_agent_config,
 )
-from ..paths import AGENT_CONFIG
+from ..paths import AGENT_CONFIG, AGENT_SENSORS_CONFIG
 from ..protocol.models import AgentReport, MetricPoint, SensorMeta
 from ..fleet.service import default_agent_id
 from ..system_info import get_system_info
@@ -35,6 +35,7 @@ class AgentRunner:
         self.transport = transport
         self.agent_id = default_agent_id(config.agent_id)
         self._config_mtime = 0.0
+        self._sensors_mtime = 0.0
         self._config_version = 0
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -104,6 +105,20 @@ class AgentRunner:
         except Exception as exc:
             print(f"system-monitor-agent: ошибка проверки обновлений: {exc}")
 
+    def _maybe_reload_sensors(self) -> None:
+        path = AGENT_SENSORS_CONFIG
+        if not path.exists():
+            return
+        mtime = path.stat().st_mtime
+        if mtime == self._sensors_mtime:
+            return
+        self._sensors_mtime = mtime
+        try:
+            self.reload_collector()
+            print("system-monitor-agent: agent_sensors.yaml reloaded")
+        except Exception as exc:
+            print(f"system-monitor-agent: ошибка перезагрузки датчиков: {exc}")
+
     def reload_collector(self) -> None:
         base = load_agent_sensors_config()
         remote = self.transport.sync_config(self.agent_id, self._config_version)
@@ -156,6 +171,7 @@ class AgentRunner:
         while not self._stop.is_set():
             now = time.time()
             self._maybe_reload_config()
+            self._maybe_reload_sensors()
             self._maybe_check_updates(now)
             if now - last_config_sync > 60:
                 try:
@@ -210,4 +226,6 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     runner = AgentRunner(config, transport, config_path=path)
     if path.exists():
         runner._config_mtime = path.stat().st_mtime
+    if AGENT_SENSORS_CONFIG.exists():
+        runner._sensors_mtime = AGENT_SENSORS_CONFIG.stat().st_mtime
     return runner

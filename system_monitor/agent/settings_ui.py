@@ -8,9 +8,13 @@ from tkinter import messagebox, ttk
 
 from ..config_loader import (
     AgentFileConfig,
+    SensorConfig,
+    SensorsFile,
     load_agent_config,
+    load_agent_sensors_config,
     load_agent_token,
     save_agent_config,
+    save_agent_sensors_config,
     save_agent_token,
 )
 from ..paths import AGENT_TOKEN_FILE
@@ -25,16 +29,31 @@ class SettingsApp:
         self.config_path = config_path
         self.config = load_agent_config(config_path)
         self.token = load_agent_token(self.config)
+        self.sensors_config = load_agent_sensors_config()
+        self._sensor_vars: dict[str, tk.BooleanVar] = {}
 
         self.root = tk.Tk()
         self.root.title("system-monitor agent — настройки")
-        self.root.resizable(False, False)
-        self.root.minsize(420, 320)
+        self.root.resizable(True, False)
+        self.root.minsize(460, 420)
         apply_tk_window_icon(self.root)
 
-        frame = ttk.Frame(self.root, padding=16)
-        frame.grid(row=0, column=0, sticky="nsew")
+        notebook = ttk.Notebook(self.root)
+        notebook.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
 
+        connection_tab = ttk.Frame(notebook, padding=12)
+        sensors_tab = ttk.Frame(notebook, padding=12)
+        notebook.add(connection_tab, text="Подключение")
+        notebook.add(sensors_tab, text="Датчики")
+
+        self._build_connection_tab(connection_tab)
+        self._build_sensors_tab(sensors_tab)
+        self._build_footer()
+
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+
+    def _build_connection_tab(self, frame: ttk.Frame) -> None:
         self._hub_url = tk.StringVar(value=self.config.hub_url)
         self._agent_id = tk.StringVar(value=self.config.agent_id or socket.gethostname())
         self._token = tk.StringVar(value=self.token)
@@ -60,13 +79,52 @@ class SettingsApp:
         self._update_button.grid(row=0, column=1, sticky="e", padx=(12, 0))
         version_frame.columnconfigure(1, weight=1)
 
-        buttons = ttk.Frame(frame)
-        buttons.grid(row=6, column=0, columnspan=2, sticky="e", pady=(16, 0))
+    def _build_sensors_tab(self, frame: ttk.Frame) -> None:
+        ttk.Label(
+            frame,
+            text="Выберите, какие метрики отправлять на hub.",
+            wraplength=400,
+        ).grid(row=0, column=0, sticky="w")
+
+        sensors_frame = ttk.Frame(frame)
+        sensors_frame.grid(row=1, column=0, sticky="ew", pady=(12, 0))
+
+        row = 0
+        for sensor in self._visible_sensors(self.sensors_config.sensors):
+            var = tk.BooleanVar(value=sensor.enabled)
+            self._sensor_vars[sensor.id] = var
+            unit = f" ({sensor.unit})" if sensor.unit else ""
+            ttk.Checkbutton(
+                sensors_frame,
+                text=f"{sensor.name}{unit}",
+                variable=var,
+            ).grid(row=row, column=0, sticky="w", pady=2)
+            row += 1
+
+        self._auto_disks = tk.BooleanVar(value=self.sensors_config.settings.auto_discover_disks)
+        ttk.Separator(frame).grid(row=2, column=0, sticky="ew", pady=(12, 8))
+        ttk.Checkbutton(
+            frame,
+            text="Автообнаружение дисков (C:, D:, …)",
+            variable=self._auto_disks,
+        ).grid(row=3, column=0, sticky="w")
+
+        ttk.Label(
+            frame,
+            text="Изменения датчиков применяются службой в течение нескольких секунд.",
+            foreground="#64748b",
+            wraplength=400,
+        ).grid(row=4, column=0, sticky="w", pady=(12, 0))
+
+    def _build_footer(self) -> None:
+        buttons = ttk.Frame(self.root, padding=(8, 0, 8, 8))
+        buttons.grid(row=1, column=0, sticky="e")
         ttk.Button(buttons, text="Отмена", command=self.root.destroy).grid(row=0, column=0, padx=(0, 8))
         ttk.Button(buttons, text="Сохранить", command=self._save).grid(row=0, column=1)
 
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+    @staticmethod
+    def _visible_sensors(sensors: list[SensorConfig]) -> list[SensorConfig]:
+        return [sensor for sensor in sensors if sensor.is_supported_on_platform()]
 
     def _add_field(self, parent: ttk.Frame, row: int, label: str, variable: tk.StringVar, show: str | None = None) -> None:
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=4)
@@ -95,6 +153,19 @@ class SettingsApp:
 
         threading.Thread(target=_run, daemon=True).start()
 
+    def _apply_sensor_settings(self) -> SensorsFile:
+        updated_sensors: list[SensorConfig] = []
+        for sensor in self.sensors_config.sensors:
+            data = sensor.model_dump(mode="json")
+            if sensor.id in self._sensor_vars:
+                data["enabled"] = self._sensor_vars[sensor.id].get()
+            updated_sensors.append(SensorConfig.model_validate(data))
+
+        settings = self.sensors_config.settings.model_copy(
+            update={"auto_discover_disks": self._auto_disks.get()}
+        )
+        return SensorsFile(settings=settings, sensors=updated_sensors)
+
     def _save(self) -> None:
         hub_url = self._hub_url.get().strip()
         agent_id = self._agent_id.get().strip()
@@ -122,9 +193,11 @@ class SettingsApp:
             interval_sec=interval_sec,
             transport=self.config.transport or "http",
         )
+        sensors_updated = self._apply_sensor_settings()
         try:
             save_agent_config(updated, self.config_path)
             save_agent_token(token, token_file)
+            save_agent_sensors_config(sensors_updated)
         except OSError as exc:
             messagebox.showerror(
                 "Ошибка",

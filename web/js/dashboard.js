@@ -33,6 +33,18 @@ let expandedPanelId = null;
 let appMode = "standalone";
 let selectedAgent = "";
 
+function normalizeSnapshot(data, agentId) {
+  if (!data) return {};
+  if (!agentId) return data;
+  const prefix = `${agentId}:`;
+  const normalized = {};
+  for (const [key, value] of Object.entries(data)) {
+    const id = key.startsWith(prefix) ? key.slice(prefix.length) : key;
+    normalized[id] = value;
+  }
+  return normalized;
+}
+
 function agentQuery(extra = "") {
   if (!selectedAgent) return extra;
   const sep = extra.includes("?") ? "&" : extra ? "?" : "?";
@@ -629,7 +641,13 @@ function connectLive() {
   liveSocket.onmessage = async (event) => {
     const message = JSON.parse(event.data);
     if (message.type === "snapshot" || message.type === "update") {
-      const latest = message.data || {};
+      if (selectedAgent && message.agent_id && message.agent_id !== selectedAgent) {
+        return;
+      }
+      const agentKey = selectedAgent || message.agent_id || "";
+      const incoming = normalizeSnapshot(message.data || {}, agentKey);
+      const latest =
+        message.type === "update" ? { ...latestSnapshot, ...incoming } : incoming;
       latestSnapshot = latest;
       const maxTs = Object.values(latest).reduce(
         (acc, item) => Math.max(acc, item.ts || 0),

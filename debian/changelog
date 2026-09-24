@@ -1,3 +1,15 @@
+system-monitor-agent (0.0.9-1) unstable; urgency=medium
+
+  * Windows settings: sensor toggles tab; hub WS gauge fix; improved installer icon.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:15:00 +0700
+
+system-monitor-agent (0.0.8-1) unstable; urgency=medium
+
+  * Windows tray/settings: no console window (GUI subsystem exe).
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:05:00 +0700
+
 system-monitor-agent (0.0.7-1) unstable; urgency=medium
 
   * Fix Windows tray pystray callbacks and tooltip length limit.

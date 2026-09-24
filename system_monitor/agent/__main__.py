@@ -21,6 +21,18 @@ def _configure_stdio() -> None:
                 pass
 
 
+def _attach_parent_console() -> None:
+    """Allow --check-update to print when the frozen exe has no console."""
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return
+    import ctypes
+
+    if ctypes.windll.kernel32.AttachConsole(-1):  # ATTACH_PARENT_PROCESS
+        sys.stdout = open("CONOUT$", "w", encoding="utf-8", errors="replace")  # noqa: SIM115
+        sys.stderr = open("CONOUT$", "w", encoding="utf-8", errors="replace")  # noqa: SIM115
+        _configure_stdio()
+
+
 def main() -> None:
     _configure_stdio()
     parser = argparse.ArgumentParser(description="system-monitor-agent")
@@ -33,6 +45,7 @@ def main() -> None:
     if args.check_update:
         from .updates import check_for_updates, format_update_message
 
+        _attach_parent_console()
         result = check_for_updates(force=True)
         print(format_update_message(result))
         if result.error:

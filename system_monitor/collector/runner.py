@@ -53,14 +53,15 @@ class Collector:
             except ValueError:
                 continue
 
-        for item in discover_disk_sensors():
-            mount = item.params.get("path")
-            if mount in configured_paths:
-                continue
-            try:
-                sensors[item.id] = create_sensor(item)
-            except ValueError:
-                continue
+        if self._config.settings.auto_discover_disks:
+            for item in discover_disk_sensors():
+                mount = item.params.get("path")
+                if mount in configured_paths:
+                    continue
+                try:
+                    sensors[item.id] = create_sensor(item)
+                except ValueError:
+                    continue
 
         with self._lock:
             self._sensors = sensors

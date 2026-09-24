@@ -1,5 +1,6 @@
 settings:
   default_interval_sec: 5
+  auto_discover_disks: true
 
 sensors:
   - id: cpu_percent
