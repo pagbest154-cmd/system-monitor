@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw
 from ..paths import AGENT_CONFIG, CONFIG_DIR
 from .service_control import get_service_state, restart_service
 from .status import AgentStatus, read_agent_status
+from .updates import check_for_updates, format_update_message, get_installed_version, open_update_page
 
 ICON_COLORS = {
     "ok": "#22c55e",
@@ -70,6 +71,8 @@ def _status_tooltip(status: AgentStatus | None, service_state: str) -> str:
         lines.append(f"Последняя отправка: {_format_ts(status.last_success_ts)}")
     if status.last_error:
         lines.append(f"Ошибка: {status.last_error}")
+    if status.update_available and status.latest_version:
+        lines.append(f"Доступно обновление: {status.latest_version}")
     return "\n".join(lines)
 
 
@@ -77,6 +80,8 @@ class TrayApp:
     def __init__(self, config_path: Path | None = None) -> None:
         self.config_path = config_path
         self._stop = threading.Event()
+        self._update_available = False
+        self._latest_version = ""
         self._icon = pystray.Icon(
             "system-monitor-agent",
             _make_icon("idle"),
@@ -92,6 +97,14 @@ class TrayApp:
             pystray.MenuItem("Перезапустить службу", self._restart_service),
             pystray.MenuItem("Открыть лог", self._open_log),
             pystray.MenuItem("Открыть папку конфигурации", self._open_config_dir),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(lambda icon, item: self._menu_version_text(), None, enabled=False),
+            pystray.MenuItem("Проверить обновления", self._check_updates),
+            pystray.MenuItem(
+                lambda icon, item: self._menu_update_text(),
+                self._open_update,
+                visible=lambda item: self._update_available,
+            ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Выход", self._quit),
         )
@@ -129,6 +142,29 @@ class TrayApp:
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         os.startfile(CONFIG_DIR)  # type: ignore[attr-defined]
 
+    def _menu_version_text(self) -> str:
+        return f"Версия: {get_installed_version()}"
+
+    def _menu_update_text(self) -> str:
+        if self._latest_version:
+            return f"Скачать {self._latest_version}"
+        return "Скачать обновление"
+
+    def _check_updates(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        def _run() -> None:
+            result = check_for_updates(force=True)
+            self._update_available = result.update_available
+            self._latest_version = result.latest_version
+            icon.title = format_update_message(result)
+            icon.update_menu()
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _open_update(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        result = check_for_updates(force=True)
+        if result.update_available:
+            open_update_page(result)
+
     def _quit(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         self._stop.set()
         icon.stop()
@@ -138,6 +174,9 @@ class TrayApp:
             status = read_agent_status()
             service_state = get_service_state()
             color_key = _status_icon_key(status, service_state)
+            if status is not None:
+                self._update_available = status.update_available
+                self._latest_version = status.latest_version or ""
             self._icon.icon = _make_icon(color_key)
             self._icon.title = _status_tooltip(status, service_state)
             self._icon.update_menu()

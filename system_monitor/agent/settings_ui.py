@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -14,6 +15,7 @@ from ..config_loader import (
 )
 from ..paths import AGENT_TOKEN_FILE
 from .service_control import get_service_state, restart_service
+from .updates import check_for_updates, format_update_message, get_installed_version, open_update_page
 
 
 class SettingsApp:
@@ -48,8 +50,15 @@ class SettingsApp:
         }.get(status, "Статус службы неизвестен")
         ttk.Label(frame, text=status_text).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 0))
 
+        version_frame = ttk.Frame(frame)
+        version_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+        ttk.Label(version_frame, text=f"Версия: {get_installed_version()}").grid(row=0, column=0, sticky="w")
+        self._update_button = ttk.Button(version_frame, text="Проверить обновления", command=self._check_updates)
+        self._update_button.grid(row=0, column=1, sticky="e", padx=(12, 0))
+        version_frame.columnconfigure(1, weight=1)
+
         buttons = ttk.Frame(frame)
-        buttons.grid(row=5, column=0, columnspan=2, sticky="e", pady=(16, 0))
+        buttons.grid(row=6, column=0, columnspan=2, sticky="e", pady=(16, 0))
         ttk.Button(buttons, text="Отмена", command=self.root.destroy).grid(row=0, column=0, padx=(0, 8))
         ttk.Button(buttons, text="Сохранить", command=self._save).grid(row=0, column=1)
 
@@ -61,6 +70,26 @@ class SettingsApp:
         entry = ttk.Entry(parent, textvariable=variable, width=42, show=show)
         entry.grid(row=row, column=1, sticky="ew", pady=4)
         parent.columnconfigure(1, weight=1)
+
+    def _check_updates(self) -> None:
+        self._update_button.configure(state="disabled")
+
+        def _run() -> None:
+            result = check_for_updates(force=True)
+            self.root.after(0, lambda: self._update_button.configure(state="normal"))
+            if result.update_available:
+                if messagebox.askyesno(
+                    "Доступно обновление",
+                    format_update_message(result) + "\n\nОткрыть страницу загрузки?",
+                    parent=self.root,
+                ):
+                    open_update_page(result)
+            elif result.error:
+                messagebox.showerror("Обновления", format_update_message(result), parent=self.root)
+            else:
+                messagebox.showinfo("Обновления", format_update_message(result), parent=self.root)
+
+        threading.Thread(target=_run, daemon=True).start()
 
     def _save(self) -> None:
         hub_url = self._hub_url.get().strip()

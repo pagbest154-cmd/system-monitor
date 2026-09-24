@@ -61,6 +61,7 @@ AGENT_CONFIG = CONFIG_DIR / "agent.yaml"
 AGENT_SENSORS_CONFIG = CONFIG_DIR / "agent_sensors.yaml"
 AGENT_TOKEN_FILE = CONFIG_DIR / "agent.token"
 AGENT_STATUS_FILE = CONFIG_DIR / "agent.status.json"
+AGENT_UPDATE_CACHE = CONFIG_DIR / "agent.update.json"
 HUB_CONFIG = CONFIG_DIR / "hub.yaml"
 DB_PATH = DATA_DIR / "metrics.db"
 

@@ -19,6 +19,7 @@ from ..fleet.service import default_agent_id
 from ..system_info import get_system_info
 from .status import AgentStatus, write_agent_status
 from .transport import AgentTransport, create_transport
+from .updates import UPDATE_CHECK_INTERVAL_SEC, check_for_updates
 
 
 class AgentRunner:
@@ -35,11 +36,34 @@ class AgentRunner:
             hub_url=config.hub_url,
             hostname=socket.gethostname(),
         )
+        self._last_update_check = 0.0
 
     def _write_status(self, **updates: object) -> None:
         for key, value in updates.items():
             setattr(self._last_status, key, value)
         write_agent_status(self._last_status)
+
+    def _maybe_check_updates(self, now: float) -> None:
+        if now - self._last_update_check < UPDATE_CHECK_INTERVAL_SEC:
+            return
+        self._last_update_check = now
+        try:
+            result = check_for_updates()
+            if result.update_available:
+                print(
+                    "system-monitor-agent: доступно обновление "
+                    f"{result.latest_version} (установлена {result.current_version})"
+                )
+            elif result.error:
+                print(f"system-monitor-agent: проверка обновлений: {result.error}")
+            self._write_status(
+                update_available=result.update_available,
+                latest_version=result.latest_version,
+                release_url=result.release_url,
+                update_checked_at=result.checked_at,
+            )
+        except Exception as exc:
+            print(f"system-monitor-agent: ошибка проверки обновлений: {exc}")
 
     def reload_collector(self) -> None:
         base = load_agent_sensors_config()
@@ -89,8 +113,10 @@ class AgentRunner:
         self._ensure_collector()
         self._write_status(connected=False)
         last_config_sync = 0.0
+        self._maybe_check_updates(time.time())
         while not self._stop.is_set():
             now = time.time()
+            self._maybe_check_updates(now)
             if now - last_config_sync > 60:
                 try:
                     self.reload_collector()

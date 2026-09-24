@@ -14,7 +14,19 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=AGENT_CONFIG, help="Путь к agent.yaml")
     parser.add_argument("--tray", action="store_true", help="Иконка в системном трее (Windows)")
     parser.add_argument("--settings", action="store_true", help="Окно настроек (Windows)")
+    parser.add_argument("--check-update", action="store_true", help="Проверить наличие обновлений")
     args = parser.parse_args()
+
+    if args.check_update:
+        from .updates import check_for_updates, format_update_message
+
+        result = check_for_updates(force=True)
+        print(format_update_message(result))
+        if result.error:
+            sys.exit(1)
+        if result.update_available:
+            sys.exit(2)
+        sys.exit(0)
 
     if args.tray or args.settings:
         if sys.platform != "win32":

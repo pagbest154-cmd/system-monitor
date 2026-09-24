@@ -21,6 +21,7 @@ a = Analysis(
         "system_monitor.agent.settings_ui",
         "system_monitor.agent.status",
         "system_monitor.agent.service_control",
+        "system_monitor.agent.updates",
         "system_monitor.agent.transport",
         "system_monitor.collector",
         "system_monitor.collector.runner",

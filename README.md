@@ -127,6 +127,7 @@ sudo apt install system-monitor-agent
 1. Скачайте `system-monitor-agent_*_setup.exe` из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
 2. Запустите установщик — укажите **Hub URL**, **Agent ID** и **token** (как debconf на Linux).
 3. Агент регистрируется как служба Windows `system-monitor-agent` и стартует автоматически.
+4. После установки появляется **иконка в трее** (зелёная — подключён, красная — ошибка).
 
 | Компонент | Способ | Путь конфигурации |
 |-----------|--------|-------------------|
@@ -134,7 +135,32 @@ sudo apt install system-monitor-agent
 | Agent (Linux) | apt | `/etc/system-monitor/agent.yaml` |
 | Agent (Windows) | setup.exe | `%ProgramData%\system-monitor\agent.yaml` |
 
-Логи службы: `%ProgramData%\system-monitor\agent.log`
+**Windows — трей и настройки:**
+
+| Действие | Как |
+|----------|-----|
+| Иконка в трее | Пуск → **system-monitor agent** или `system-monitor-agent --tray` |
+| Настройки | Пуск → **Настройки агента** или `system-monitor-agent --settings` |
+| Логи службы | `%ProgramData%\system-monitor\agent.log` |
+| Статус службы | `%ProgramData%\system-monitor\agent.status.json` |
+
+В меню трея: статус подключения, настройки, перезапуск службы, проверка обновлений.
+
+**Проверка обновлений (Windows и Linux):**
+
+```bash
+system-monitor-agent --check-update
+```
+
+- код `0` — версия актуальна  
+- код `2` — доступно обновление (подсказка по установке в выводе)  
+- код `1` — ошибка проверки  
+
+Служба агента проверяет обновления автоматически раз в сутки. На Linux через APT:
+
+```bash
+sudo apt update && sudo apt install --only-upgrade system-monitor-agent
+```
 
 ### Из исходников (Python)
 
@@ -158,9 +184,19 @@ python -m system_monitor --mode hub --host 0.0.0.0 --port 8080
 
 ```bash
 pip install -r requirements-agent.txt
+pip install ".[windows]"   # трей и WMI на Windows
 pip install .
 system-monitor-agent --config config/agent.yaml
 ```
+
+**Флаги агента:**
+
+| Флаг | Описание |
+|------|----------|
+| `--config PATH` | Путь к `agent.yaml` |
+| `--tray` | Иконка в трее (Windows) |
+| `--settings` | Окно настроек (Windows) |
+| `--check-update` | Проверить обновления |
 
 **Опционально:**
 

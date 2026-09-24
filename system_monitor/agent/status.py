@@ -18,6 +18,10 @@ class AgentStatus:
     last_error: str | None = None
     last_error_ts: float | None = None
     metrics_count: int = 0
+    update_available: bool = False
+    latest_version: str | None = None
+    release_url: str | None = None
+    update_checked_at: float | None = None
 
     def status_label(self) -> str:
         if self.connected:
@@ -47,6 +51,8 @@ def read_agent_status(path: Path | None = None) -> AgentStatus | None:
         return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        return AgentStatus(**data)
+        known = set(AgentStatus.__dataclass_fields__)
+        filtered = {key: value for key, value in data.items() if key in known}
+        return AgentStatus(**filtered)
     except (json.JSONDecodeError, TypeError, ValueError):
         return None
