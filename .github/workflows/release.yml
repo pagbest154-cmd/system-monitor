@@ -12,17 +12,34 @@ permissions:
   id-token: write
 
 jobs:
-  build-docker:
+  detect-changes:
     runs-on: ubuntu-24.04
     outputs:
+      hub: ${{ steps.detect.outputs.hub }}
       version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Extract version
         id: meta
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect hub changes since previous tag
+        id: detect
+        run: |
+          chmod +x scripts/detect-hub-changes.sh
+          ./scripts/detect-hub-changes.sh
+
+  build-docker:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.hub == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -40,7 +57,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/pagbest154-cmd/system-monitor:${{ steps.meta.outputs.version }}
+            ghcr.io/pagbest154-cmd/system-monitor:${{ needs.detect-changes.outputs.version }}
             ghcr.io/pagbest154-cmd/system-monitor:latest
 
   build-windows:
@@ -140,7 +157,12 @@ jobs:
           path: dist/
 
   release:
-    needs: [build-docker, build-deb, build-windows]
+    needs: [detect-changes, build-docker, build-deb, build-windows]
+    if: >-
+      always() && !cancelled() &&
+      needs.build-deb.result == 'success' &&
+      needs.build-windows.result == 'success' &&
+      (needs.build-docker.result == 'success' || needs.build-docker.result == 'skipped')
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -159,17 +181,25 @@ jobs:
           path: dist/windows
 
       - name: Prepare release notes
+        env:
+          VERSION: ${{ needs.detect-changes.outputs.version }}
+          HUB_BUILT: ${{ needs.build-docker.result == 'success' }}
         run: |
-          version="${{ needs.build-deb.outputs.version }}"
           chmod +x scripts/extract-release-notes.sh
-          ./scripts/extract-release-notes.sh "$version" dist/RELEASE_NOTES.md
+          ./scripts/extract-release-notes.sh "$VERSION" dist/RELEASE_NOTES.md
           {
             echo
-            echo "### Docker (hub)"
-            echo '```bash'
-            echo "docker pull ghcr.io/pagbest154-cmd/system-monitor:${version}"
-            echo "docker compose up -d"
-            echo '```'
+            if [ "$HUB_BUILT" = "true" ]; then
+              echo "### Docker (hub)"
+              echo '```bash'
+              echo "docker pull ghcr.io/pagbest154-cmd/system-monitor:${VERSION}"
+              echo "docker compose up -d"
+              echo '```'
+            else
+              echo "### Docker (hub)"
+              echo "Образ hub не пересобирался — в этом релизе изменений hub-кода нет."
+              echo "Используйте предыдущую версию из ghcr.io или \`docker compose pull\` при необходимости."
+            fi
             echo
             echo "### Agent (.deb, Linux)"
             echo '```bash'
@@ -177,7 +207,7 @@ jobs:
             echo '```'
             echo
             echo "### Agent (Windows)"
-            echo "Скачайте \`system-monitor-agent_${version}_setup.exe\`, запустите установщик."
+            echo "Скачайте \`system-monitor-agent_${VERSION}_setup.exe\`, запустите установщик."
             echo "При установке укажите Hub URL, Agent ID и token. Конфиг: \`%ProgramData%\\system-monitor\\agent.yaml\`"
           } >> dist/RELEASE_NOTES.md
 
