@@ -1,5 +1,6 @@
 import { fetchJson } from "./api.js";
 import { i18n, formatTime } from "./i18n.js";
+import { icon, statusBadge } from "./icons.js";
 
 const HOST_STORAGE_KEY = "system-monitor:selected-agent";
 
@@ -43,12 +44,13 @@ export async function initHostsPage() {
     .map((agent) => {
       const cpu = agentMetric(agent, "cpu");
       const ram = agentMetric(agent, "ram");
-      const statusClass = agent.status === "online" ? "ok" : "error";
+      const status = agent.status === "online" ? "online" : "offline";
+      const statusLabel = agent.status === "online" ? i18n.live : i18n.offline;
       return `
         <tr>
           <td><a href="/?agent=${encodeURIComponent(agent.id)}">${agent.name || agent.id}</a></td>
           <td>${agent.hostname || "—"}</td>
-          <td><span class="status-dot ${statusClass}"></span>${agent.status}</td>
+          <td>${statusBadge(status, statusLabel)}</td>
           <td>${cpu != null ? `${cpu}%` : "—"}</td>
           <td>${ram != null ? `${ram}%` : "—"}</td>
           <td>${agent.last_seen ? formatTime(agent.last_seen) : "—"}</td>
@@ -61,12 +63,12 @@ export async function initHostsPage() {
     <table class="hosts-table">
       <thead>
         <tr>
-          <th>${i18n.hosts.name}</th>
-          <th>${i18n.hosts.hostname}</th>
-          <th>${i18n.hosts.status}</th>
-          <th>CPU</th>
-          <th>RAM</th>
-          <th>${i18n.hosts.lastSeen}</th>
+          <th><span class="th-icon">${icon("users", "icon-xs")}${i18n.hosts.name}</span></th>
+          <th><span class="th-icon">${icon("monitor", "icon-xs")}${i18n.hosts.hostname}</span></th>
+          <th><span class="th-icon">${icon("wifi", "icon-xs")}${i18n.hosts.status}</span></th>
+          <th><span class="th-icon">${icon("cpu", "icon-xs")}CPU</span></th>
+          <th><span class="th-icon">${icon("memoryStick", "icon-xs")}RAM</span></th>
+          <th><span class="th-icon">${icon("clock", "icon-xs")}${i18n.hosts.lastSeen}</span></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>

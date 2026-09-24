@@ -51,6 +51,9 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 Ensure-Nssm
 
+Write-Host "Generating app-icon.ico..."
+python (Join-Path $PackagingDir "generate_icon.py")
+
 Push-Location $Root
 python -m PyInstaller `
     --noconfirm `

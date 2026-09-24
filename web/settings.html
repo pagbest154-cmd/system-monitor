@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Настройки — system-monitor</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -18,7 +19,7 @@
 
   <main class="settings-layout">
     <section class="section">
-      <h2>Общие настройки</h2>
+      <h2><span data-icon="sliders"></span>Общие настройки</h2>
       <div class="form-row">
         <label>
           Хранение истории (дней)
@@ -32,7 +33,7 @@
     </section>
 
     <section class="section">
-      <h2>Датчики</h2>
+      <h2><span data-icon="activity"></span>Датчики</h2>
       <p class="hint">Отображаются только датчики, доступные на текущей платформе.</p>
       <div class="table-wrap">
         <table id="sensors-table">
@@ -54,13 +55,13 @@
         </table>
       </div>
       <div class="actions-row">
-        <button id="add-sensor" class="btn btn-secondary">Добавить датчик</button>
-        <button id="save-sensors" class="btn">Сохранить датчики</button>
+        <button id="add-sensor" class="btn btn-secondary"><span data-icon="plus"></span>Добавить датчик</button>
+        <button id="save-sensors" class="btn"><span data-icon="checkCircle"></span>Сохранить датчики</button>
       </div>
     </section>
 
     <section class="section" id="hub-domain-section" hidden>
-      <h2>Домен hub</h2>
+      <h2><span data-icon="globe"></span>Домен hub</h2>
       <p class="hint">Укажите домен для доступа к hub. Агентам указывайте «Публичный URL» как hub-url.</p>
       <div class="form-row">
         <label>
@@ -76,14 +77,16 @@
           HTTPS
         </label>
       </div>
-      <p class="hint">URL для агентов: <code id="hub-url-preview">—</code></p>
+      <p class="hint">URL для агентов: <code id="hub-url-preview">—</code>
+        <button type="button" id="copy-hub-url" class="btn btn-secondary btn-sm" title="Копировать URL" hidden>Копировать</button>
+      </p>
       <div class="actions-row">
-        <button id="save-hub-domain" class="btn">Сохранить домен</button>
+        <button id="save-hub-domain" class="btn"><span data-icon="checkCircle"></span>Сохранить домен</button>
       </div>
     </section>
 
     <section class="section" id="agents-section" hidden>
-      <h2>Агенты</h2>
+      <h2><span data-icon="users"></span>Агенты</h2>
       <p class="hint">Токены генерируются автоматически. Скопируйте token в конфиг агента после сохранения.</p>
       <div class="table-wrap">
         <table id="agents-table">
@@ -99,12 +102,13 @@
         </table>
       </div>
       <div class="actions-row">
-        <button id="add-agent" class="btn btn-secondary">Добавить агента</button>
-        <button id="save-agents" class="btn">Сохранить агентов</button>
+        <button id="add-agent" class="btn btn-secondary"><span data-icon="plus"></span>Добавить агента</button>
+        <button id="save-agents" class="btn"><span data-icon="checkCircle"></span>Сохранить агентов</button>
       </div>
     </section>
 
     <section class="section" id="panels-section">
+      <h2><span data-icon="chartLine"></span>Панели графиков</h2>
       <div class="form-row">
         <label>
           Заголовок панели
@@ -133,15 +137,19 @@
         </table>
       </div>
       <div class="actions-row">
-        <button id="add-panel" class="btn btn-secondary">Добавить панель</button>
-        <button id="save-dashboard" class="btn">Сохранить панель</button>
+        <button id="add-panel" class="btn btn-secondary"><span data-icon="plus"></span>Добавить панель</button>
+        <button id="save-dashboard" class="btn"><span data-icon="checkCircle"></span>Сохранить панель</button>
       </div>
       <div id="save-message" class="message"></div>
     </section>
   </main>
 
   <script type="module">
+    import { initNavIcons, initFavicon, initDataIcons } from "/static/js/icons.js";
     import { initSettings } from "/static/js/settings.js";
+    initFavicon();
+    initNavIcons();
+    initDataIcons();
     initSettings().catch((err) => console.error(err));
   </script>
 </body>

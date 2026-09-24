@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Хосты — system-monitor</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -21,7 +22,10 @@
   </main>
 
   <script type="module">
+    import { initNavIcons, initFavicon } from "/static/js/icons.js";
     import { initHostsPage } from "/static/js/hosts.js";
+    initFavicon();
+    initNavIcons();
     initHostsPage().catch((err) => console.error(err));
   </script>
 </body>

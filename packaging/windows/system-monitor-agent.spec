@@ -1,8 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
+import subprocess
+import sys
 from pathlib import Path
 
 SPEC_DIR = Path(SPECPATH)
 ROOT = SPEC_DIR.parent.parent
+ICON_FILE = SPEC_DIR / "app-icon.ico"
+
+if not ICON_FILE.is_file():
+    subprocess.run([sys.executable, str(SPEC_DIR / "generate_icon.py")], check=True)
 
 block_cipher = None
 
@@ -12,6 +18,7 @@ a = Analysis(
     binaries=[],
     datas=[
         (str(ROOT / "config" / "agent_sensors.yaml"), "config"),
+        (str(ICON_FILE), "assets"),
     ],
     hiddenimports=[
         "system_monitor",
@@ -82,6 +89,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
+    icon=str(ICON_FILE),
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,

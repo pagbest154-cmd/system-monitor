@@ -1,5 +1,6 @@
 import { fetchJson } from "./api.js";
 import { i18n } from "./i18n.js";
+import { icon, sensorIcon, panelIcon, setIcon } from "./icons.js";
 
 const t = i18n.settingsPage;
 
@@ -92,7 +93,10 @@ function renderSensorsTable() {
       <td><input type="text" data-field="id" value="${escapeHtml(sensor.id)}" ${sensor._existing ? "readonly" : ""}></td>
       <td><input type="text" data-field="name" value="${escapeHtml(sensor.name)}"></td>
       <td>
-        <select data-field="type">${typeOptions(sensor.type)}</select>
+        <div class="type-cell">
+          <span class="sensor-type-icon" data-type="${escapeHtml(sensor.type)}"></span>
+          <select data-field="type">${typeOptions(sensor.type)}</select>
+        </div>
       </td>
       <td><input type="text" data-field="unit" value="${escapeHtml(sensor.unit || "")}"></td>
       <td><input type="number" data-field="interval_sec" min="1" value="${sensor.interval_sec || 5}"></td>
@@ -101,12 +105,24 @@ function renderSensorsTable() {
       </td>
       <td><input type="number" data-field="warn_above" step="0.1" value="${sensor.warn_above ?? ""}"></td>
       <td><input type="number" data-field="critical_above" step="0.1" value="${sensor.critical_above ?? ""}"></td>
-      <td><button type="button" class="btn-icon btn-danger" data-action="delete" title="${t.delete}">✕</button></td>
+      <td><button type="button" class="btn-icon btn-danger" data-action="delete" title="${t.delete}"></button></td>
     `;
     tbody.appendChild(row);
   });
 
+  tbody.querySelectorAll(".sensor-type-icon").forEach((el) => {
+    setIcon(el, sensorIcon(el.dataset.type));
+  });
+
+  tbody.querySelectorAll("select[data-field='type']").forEach((select) => {
+    select.addEventListener("change", () => {
+      const iconEl = select.closest(".type-cell")?.querySelector(".sensor-type-icon");
+      if (iconEl) setIcon(iconEl, sensorIcon(select.value));
+    });
+  });
+
   tbody.querySelectorAll('[data-action="delete"]').forEach((btn) => {
+    setIcon(btn, "trash2");
     btn.addEventListener("click", () => {
       const row = btn.closest("tr");
       const id = row.dataset.id;
@@ -126,12 +142,15 @@ function renderPanelsTable() {
     row.innerHTML = `
       <td><input type="text" data-field="title" value="${escapeHtml(panel.title || "")}"></td>
       <td>
-        <select data-field="type">
-          <option value="gauge" ${panel.type === "gauge" ? "selected" : ""}>Индикатор</option>
-          <option value="line" ${panel.type === "line" ? "selected" : ""}>График</option>
-          <option value="bar" ${panel.type === "bar" ? "selected" : ""}>Столбцы</option>
-          <option value="status" ${panel.type === "status" ? "selected" : ""}>Статус</option>
-        </select>
+        <div class="type-cell">
+          <span class="panel-type-icon" data-type="${escapeHtml(panel.type)}"></span>
+          <select data-field="type">
+            <option value="gauge" ${panel.type === "gauge" ? "selected" : ""}>Индикатор</option>
+            <option value="line" ${panel.type === "line" ? "selected" : ""}>График</option>
+            <option value="bar" ${panel.type === "bar" ? "selected" : ""}>Столбцы</option>
+            <option value="status" ${panel.type === "status" ? "selected" : ""}>Статус</option>
+          </select>
+        </div>
       </td>
       <td>
         <div class="sensor-checks" data-field="sensors">
@@ -160,12 +179,24 @@ function renderPanelsTable() {
             .join("")}
         </select>
       </td>
-      <td><button type="button" class="btn-icon btn-danger" data-action="delete-panel" title="${t.delete}">✕</button></td>
+      <td><button type="button" class="btn-icon btn-danger" data-action="delete-panel" title="${t.delete}"></button></td>
     `;
     tbody.appendChild(row);
   });
 
+  tbody.querySelectorAll(".panel-type-icon").forEach((el) => {
+    setIcon(el, panelIcon(el.dataset.type));
+  });
+
+  tbody.querySelectorAll("select[data-field='type']").forEach((select) => {
+    select.addEventListener("change", () => {
+      const iconEl = select.closest(".type-cell")?.querySelector(".panel-type-icon, .sensor-type-icon");
+      if (iconEl) setIcon(iconEl, select.closest("#panels-table") ? panelIcon(select.value) : sensorIcon(select.value));
+    });
+  });
+
   tbody.querySelectorAll('[data-action="delete-panel"]').forEach((btn) => {
+    setIcon(btn, "trash2");
     btn.addEventListener("click", () => {
       const row = btn.closest("tr");
       const index = Number(row.dataset.index);
@@ -254,8 +285,8 @@ function renderAgentsTable() {
         <td>
           <div class="token-cell">
             <input type="text" class="agent-token" value="${escapeHtml(agent.token || "")}" readonly>
-            <button type="button" class="btn btn-secondary btn-sm regen-token" title="${t.regenerateToken}">↻</button>
-            <button type="button" class="btn btn-secondary btn-sm copy-token" title="${t.copyToken}">⎘</button>
+            <button type="button" class="btn btn-secondary btn-sm regen-token" title="${t.regenerateToken}"></button>
+            <button type="button" class="btn btn-secondary btn-sm copy-token" title="${t.copyToken}"></button>
           </div>
         </td>
         <td><button type="button" class="btn btn-secondary btn-sm remove-agent">Удалить</button></td>
@@ -273,6 +304,7 @@ function renderAgentsTable() {
   });
 
   tbody.querySelectorAll(".regen-token").forEach((btn) => {
+    setIcon(btn, "refreshCw");
     btn.addEventListener("click", () => {
       const row = btn.closest("tr");
       const input = row?.querySelector(".agent-token");
@@ -281,6 +313,7 @@ function renderAgentsTable() {
   });
 
   tbody.querySelectorAll(".copy-token").forEach((btn) => {
+    setIcon(btn, "copy");
     btn.addEventListener("click", async () => {
       const row = btn.closest("tr");
       const token = row?.querySelector(".agent-token")?.value || "";
@@ -320,12 +353,16 @@ function resolveHubPublicUrl(domain, publicUrl, useHttps) {
 
 function updateHubUrlPreview() {
   const preview = document.getElementById("hub-url-preview");
+  const copyBtn = document.getElementById("copy-hub-url");
   if (!preview) return;
   const domain = document.getElementById("hub-domain")?.value || "";
   const publicUrl = document.getElementById("hub-public-url")?.value || "";
   const useHttps = document.getElementById("hub-use-https")?.checked ?? true;
   const resolved = resolveHubPublicUrl(domain, publicUrl, useHttps);
   preview.textContent = resolved || "—";
+  if (copyBtn) {
+    copyBtn.hidden = !resolved;
+  }
 }
 
 function initHubDomainSection() {
@@ -337,6 +374,21 @@ function initHubDomainSection() {
     document.getElementById(id)?.addEventListener("input", updateHubUrlPreview);
     document.getElementById(id)?.addEventListener("change", updateHubUrlPreview);
   });
+
+  const copyHubBtn = document.getElementById("copy-hub-url");
+  if (copyHubBtn) {
+    copyHubBtn.innerHTML = `${icon("copy", "icon-sm")} ${t.copyHubUrl}`;
+    copyHubBtn.addEventListener("click", async () => {
+      const url = document.getElementById("hub-url-preview")?.textContent || "";
+      if (!url || url === "—") return;
+      try {
+        await navigator.clipboard.writeText(url);
+        showMessage(t.hubUrlCopied);
+      } catch {
+        showMessage("Не удалось скопировать", true);
+      }
+    });
+  }
 
   document.getElementById("save-hub-domain")?.addEventListener("click", async () => {
     try {

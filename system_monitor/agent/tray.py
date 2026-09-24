@@ -9,26 +9,17 @@ from datetime import datetime
 from pathlib import Path
 
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from ..paths import AGENT_CONFIG, CONFIG_DIR
+from .branding import render_icon
 from .service_control import get_service_state, restart_service
 from .status import AgentStatus, read_agent_status
 from .updates import check_for_updates, format_update_message, get_installed_version, open_update_page
 
-ICON_COLORS = {
-    "ok": "#22c55e",
-    "error": "#ef4444",
-    "idle": "#94a3b8",
-}
-
 
 def _make_icon(color_key: str) -> Image.Image:
-    size = 64
-    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.ellipse((10, 10, size - 10, size - 10), fill=ICON_COLORS.get(color_key, ICON_COLORS["idle"]))
-    return image
+    return render_icon(64, color_key)
 
 
 def _format_ts(ts: float | None) -> str:

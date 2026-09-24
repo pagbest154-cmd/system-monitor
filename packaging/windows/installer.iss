@@ -38,6 +38,7 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
+SetupIconFile={#RepoRoot}\packaging\windows\app-icon.ico
 UninstallDisplayIcon={app}\system-monitor-agent.exe
 SetupLogging=yes
 

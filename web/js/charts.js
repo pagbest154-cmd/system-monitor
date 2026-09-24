@@ -1,4 +1,5 @@
 import { i18n, formatValue } from "./i18n.js";
+import { statusBadge } from "./icons.js";
 
 const STATUS_COLORS = {
   ok: "#22c55e",
@@ -211,8 +212,7 @@ export function createStatusCard(dom, reading) {
       ${formatValue(reading?.value, reading?.unit)}
     </div>
     <div>
-      <span class="status-dot ${status}"></span>
-      ${i18n.status[status] || status}
+      ${statusBadge(status, i18n.status[status] || status)}
     </div>
   `;
 }

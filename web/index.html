@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Мониторинг системы — system-monitor</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
   <link rel="stylesheet" href="/static/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/i18n/langRU.js"></script>
@@ -20,17 +21,14 @@
 
   <main>
     <div class="meta-bar">
-      <label class="host-control" id="host-control" hidden>
-        <span>Хост</span>
+      <label class="host-control meta-item" id="host-control" hidden>
+        <span class="meta-item"><span data-icon="server"></span>Хост</span>
         <select id="host-select" class="period-select"></select>
       </label>
-      <div id="connection-status">
-        <span class="status-dot"></span>
-        Подключение...
-      </div>
-      <div id="last-update">Обновлено: —</div>
+      <div id="connection-status" class="meta-item">Подключение...</div>
+      <div id="last-update" class="meta-item">Обновлено: —</div>
       <label class="period-control">
-        <span>Период графиков</span>
+        <span class="meta-item"><span data-icon="calendar"></span>Период графиков</span>
         <select id="global-period" class="period-select"></select>
       </label>
     </div>
@@ -40,7 +38,10 @@
   </main>
 
   <script type="module">
+    import { initNavIcons, initFavicon } from "/static/js/icons.js";
     import { initDashboard } from "/static/js/dashboard.js";
+    initFavicon();
+    initNavIcons();
     initDashboard().catch((err) => console.error(err));
   </script>
 </body>

@@ -42,9 +42,17 @@ header {
 }
 
 header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
   font-size: 1.35rem;
   font-weight: 600;
+}
+
+header h1 .icon {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 header nav a {
@@ -52,9 +60,184 @@ header nav a {
   color: var(--muted);
 }
 
+header nav a.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none;
+}
+
 header nav a.active,
 header nav a:hover {
   color: var(--text);
+}
+
+header nav a.active .icon {
+  color: var(--accent);
+}
+
+/* ── Icons ── */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
+.icon-xs {
+  width: 0.8em;
+  height: 0.8em;
+}
+
+.icon-sm {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+.icon-md {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.icon-lg {
+  width: 1.35em;
+  height: 1.35em;
+}
+
+.btn-icon,
+.panel-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon .icon,
+.panel-expand .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.btn-sm .icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.sys-label,
+.sys-section > .sys-label,
+.section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sys-label .icon,
+.section h2 .icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.panel-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.panel-header h2 .icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.meta-item .icon {
+  color: var(--muted);
+}
+
+.sys-badge {
+  gap: 0.25rem;
+}
+
+.sys-badge .icon-xs {
+  margin-right: 0.1rem;
+}
+
+.sys-badge-hdd {
+  background: rgba(139, 156, 179, 0.15);
+  color: #b8c5d9;
+}
+
+.sys-badge-ssd {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.sys-badge-nvme {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c4b5fd;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.status-badge .icon {
+  flex-shrink: 0;
+}
+
+.status-badge.status-ok,
+.status-badge.status-online {
+  color: var(--ok);
+}
+
+.status-badge.status-warning {
+  color: var(--warn);
+}
+
+.status-badge.status-critical,
+.status-badge.status-error,
+.status-badge.status-offline {
+  color: var(--critical);
+}
+
+.status-badge.status-unknown {
+  color: var(--muted);
+}
+
+.type-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.type-cell .icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.th-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.hosts-table .status-badge {
+  text-transform: capitalize;
 }
 
 .status-dot {
@@ -237,9 +420,16 @@ main {
 }
 
 .system-info-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   margin: 0 0 0.75rem;
   font-size: 1rem;
   font-weight: 600;
+}
+
+.system-info-title .icon {
+  color: var(--muted);
 }
 
 .system-info-grid {
@@ -364,6 +554,9 @@ main {
 }
 
 .sys-item-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   font-weight: 600;
   font-size: 0.9rem;
 }
@@ -636,6 +829,9 @@ input[type="checkbox"] {
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   background: var(--accent);
   color: white;
   border: none;
@@ -704,9 +900,12 @@ input[type="checkbox"] {
   border-radius: 12px;
   background: linear-gradient(135deg, var(--accent), #2563eb);
   color: #fff;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+}
+
+.login-logo .icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: #fff;
 }
 
 .login-card h1 {
@@ -762,11 +961,20 @@ input[type="checkbox"] {
 }
 
 .login-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   width: 100%;
   margin-top: 0.25rem;
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-weight: 600;
+}
+
+.login-submit .icon {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .login-error {

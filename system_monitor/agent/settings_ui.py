@@ -14,6 +14,7 @@ from ..config_loader import (
     save_agent_token,
 )
 from ..paths import AGENT_TOKEN_FILE
+from .branding import apply_tk_window_icon
 from .service_control import get_service_state, restart_service
 from .updates import check_for_updates, format_update_message, get_installed_version, open_update_page
 
@@ -28,6 +29,7 @@ class SettingsApp:
         self.root.title("system-monitor agent — настройки")
         self.root.resizable(False, False)
         self.root.minsize(420, 320)
+        apply_tk_window_icon(self.root)
 
         frame = ttk.Frame(self.root, padding=16)
         frame.grid(row=0, column=0, sticky="nsew")

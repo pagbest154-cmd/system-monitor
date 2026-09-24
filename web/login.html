@@ -4,13 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Вход — system-monitor</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="login-page">
   <main class="login-shell">
     <section class="login-card">
       <div class="login-brand">
-        <span class="login-logo" aria-hidden="true">SM</span>
+        <span class="login-logo" aria-hidden="true" id="login-logo"></span>
         <h1>system-monitor</h1>
         <p class="login-subtitle">Вход в хаб <strong id="hub-name-label">—</strong></p>
       </div>
@@ -23,13 +24,17 @@
           Ключ
           <input type="password" id="hub-key" name="key" autocomplete="current-password" required>
         </label>
-        <button type="submit" class="btn login-submit">Войти</button>
+        <button type="submit" class="btn login-submit"><span data-icon="logIn"></span>Войти</button>
         <div id="login-error" class="message error login-error" hidden></div>
       </form>
     </section>
   </main>
   <script type="module">
+    import { icon, initFavicon, initDataIcons, setIcon } from "/static/js/icons.js";
     import { initLoginPage } from "/static/js/login.js";
+    initFavicon();
+    setIcon(document.getElementById("login-logo"), "monitor");
+    initDataIcons();
     initLoginPage().catch((err) => console.error(err));
   </script>
 </body>

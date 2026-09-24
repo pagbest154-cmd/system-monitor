@@ -7,6 +7,17 @@ import {
   createBarChart,
   createStatusCard,
 } from "./charts.js";
+import {
+  icon,
+  badge,
+  labelWithIcon,
+  panelIcon,
+  mediaIcon,
+  statusBadge,
+  setIcon,
+  initDataIcons,
+  SECTION_ICONS,
+} from "./icons.js";
 
 const charts = new Map();
 let sensorMeta = {};
@@ -51,15 +62,15 @@ function savePeriod(period) {
 function setConnectionStatus(online) {
   const el = document.getElementById("connection-status");
   if (!el) return;
-  el.innerHTML = `
-    <span class="status-dot ${online ? "ok" : "error"}"></span>
-    ${online ? i18n.live : i18n.offline}
-  `;
+  const status = online ? "online" : "offline";
+  el.innerHTML = statusBadge(status, online ? i18n.live : i18n.offline);
 }
 
 function setLastUpdate(ts) {
   const el = document.getElementById("last-update");
-  if (el) el.textContent = `${i18n.lastUpdate}: ${formatTime(ts)}`;
+  if (el) {
+    el.innerHTML = `${icon("clock", "icon-sm")}<span>${i18n.lastUpdate}: ${formatTime(ts)}</span>`;
+  }
 }
 
 function initGlobalPeriodSelector(onChange) {
@@ -167,7 +178,7 @@ function collapsePanel() {
     panelEl.classList.remove("expanded");
     const btn = panelEl.querySelector(".panel-expand");
     if (btn) {
-      btn.textContent = "⛶";
+      setIcon(btn, "maximize2");
       btn.title = i18n.expand;
     }
   }
@@ -192,7 +203,7 @@ function togglePanelExpand(panelId) {
   panelEl.classList.add("expanded");
   const btn = panelEl.querySelector(".panel-expand");
   if (btn) {
-    btn.textContent = "✕";
+    setIcon(btn, "x");
     btn.title = i18n.collapse;
   }
   if (backdrop) backdrop.hidden = false;
@@ -203,6 +214,13 @@ function togglePanelExpand(panelId) {
 function mediaTypeLabel(type) {
   if (!type) return "";
   return i18n.mediaTypes[type] || type;
+}
+
+function mediaBadge(type) {
+  const label = mediaTypeLabel(type);
+  if (!label) return "";
+  const variant = type && type !== "unknown" ? type : "";
+  return badge(label, mediaIcon(type), variant);
 }
 
 function renderProgressBar(percent, extraClass = "") {
@@ -246,10 +264,10 @@ function renderPhysicalDrives(drives) {
         <div class="sys-item">
           <div class="sys-item-header">
             <div>
-              <div class="sys-item-title">${drive.name || drive.model || "Диск"}</div>
+              <div class="sys-item-title">${icon("hardDrive", "icon-xs")} ${drive.name || drive.model || "Диск"}</div>
               <div class="sys-item-sub">${drive.model || ""}</div>
             </div>
-            <span class="sys-badge">${mediaTypeLabel(drive.media_type)}</span>
+            ${mediaBadge(drive.media_type)}
           </div>
           <div class="sys-item-meta">
             ${drive.size_gb != null ? `<span>${drive.size_gb} ГБ</span>` : ""}
@@ -276,7 +294,7 @@ function renderPartitions(partitions) {
           <div class="sys-disk-header">
             <div>
               <span class="sys-disk-name">${part.mountpoint}</span>
-              ${part.media_type ? `<span class="sys-badge sys-badge-sm">${mediaTypeLabel(part.media_type)}</span>` : ""}
+              ${part.media_type ? mediaBadge(part.media_type).replace("sys-badge", "sys-badge sys-badge-sm") : ""}
             </div>
             <span class="sys-disk-meta">${part.fstype || ""}</span>
           </div>
@@ -327,7 +345,7 @@ function renderGpus(gpus) {
         <div class="sys-item">
           <div class="sys-item-header">
             <div>
-              <div class="sys-item-title">${gpu.name}</div>
+              <div class="sys-item-title">${icon("circuitBoard", "icon-xs")} ${gpu.name}</div>
               ${gpu.video_processor ? `<div class="sys-item-sub">${gpu.video_processor}</div>` : ""}
             </div>
           </div>
@@ -350,18 +368,21 @@ function renderNetwork(interfaces) {
     .map((iface) => {
       const addresses = [...(iface.ipv4 || []), ...(iface.ipv6 || [])];
       const traffic = [
-        iface.bytes_recv_gb != null ? `↓ ${iface.bytes_recv_gb} ГБ` : "",
-        iface.bytes_sent_gb != null ? `↑ ${iface.bytes_sent_gb} ГБ` : "",
+        iface.bytes_recv_gb != null
+          ? `${icon("arrowDown", "icon-xs")} ${iface.bytes_recv_gb} ГБ`
+          : "",
+        iface.bytes_sent_gb != null
+          ? `${icon("arrowUp", "icon-xs")} ${iface.bytes_sent_gb} ГБ`
+          : "",
       ].filter(Boolean);
 
       return `
         <div class="sys-item">
           <div class="sys-item-header">
             <div class="sys-item-title">
-              <span class="status-dot ${iface.is_up ? "ok" : "error"}"></span>
-              ${iface.name}
+              ${statusBadge(iface.is_up ? "online" : "offline", iface.name)}
             </div>
-            ${iface.speed_mbps ? `<span class="sys-badge sys-badge-sm">${iface.speed_mbps} Мбит/с</span>` : ""}
+            ${iface.speed_mbps ? badge(`${iface.speed_mbps} Мбит/с`, "network").replace("sys-badge", "sys-badge sys-badge-sm") : ""}
           </div>
           <div class="sys-item-meta">
             ${addresses.length ? `<span>${addresses.join(", ")}</span>` : ""}
@@ -385,9 +406,10 @@ function renderBattery(battery) {
       ? "—"
       : "—";
 
+  const batteryIcon = battery.plugged ? "batteryCharging" : "battery";
   return `
     <div class="sys-card">
-      <div class="sys-label">${t.battery}</div>
+      ${labelWithIcon(batteryIcon, t.battery)}
       <div class="sys-value">${battery.percent}%</div>
       ${renderProgressBar(battery.percent, "sys-progress-sm")}
       <div class="sys-sub">${status}${battery.secsleft > 0 ? ` · ~${timeLeft}` : ""}</div>
@@ -409,15 +431,15 @@ function renderSystemInfo(info) {
       : "";
 
   container.innerHTML = `
-    <h2 class="system-info-title">${t.title}</h2>
+    <h2 class="system-info-title">${icon(SECTION_ICONS.system, "icon-md")}<span>${t.title}</span></h2>
     <div class="system-info-grid">
       <div class="sys-card">
-        <div class="sys-label">${t.hostname}</div>
+        ${labelWithIcon(SECTION_ICONS.hostname, t.hostname)}
         <div class="sys-value">${info.hostname || "—"}</div>
         <div class="sys-sub">${info.os || "—"} · ${info.architecture || ""}</div>
       </div>
       <div class="sys-card sys-card-wide">
-        <div class="sys-label">${t.cpu}</div>
+        ${labelWithIcon(SECTION_ICONS.cpu, t.cpu)}
         <div class="sys-value sys-value-sm">${cpu.name || "—"}</div>
         <div class="sys-sub">${cores}${cpuFreq}${freqRange}</div>
         <div class="sys-inline-stat">${t.usage}: <strong>${cpu.percent ?? 0}%</strong></div>
@@ -426,19 +448,19 @@ function renderSystemInfo(info) {
         ${renderPerCoreBars(cpu.per_core_percent, cpu.per_core_freq_mhz)}
       </div>
       <div class="sys-card">
-        <div class="sys-label">${t.memory}</div>
+        ${labelWithIcon(SECTION_ICONS.memory, t.memory)}
         <div class="sys-value">${info.memory?.used_gb} / ${info.memory?.total_gb} ГБ</div>
         ${renderProgressBar(info.memory?.percent, "sys-progress-sm")}
         <div class="sys-sub">${info.memory?.percent}% · ${t.free} ${info.memory?.available_gb} ГБ</div>
       </div>
       <div class="sys-card">
-        <div class="sys-label">${t.swap}</div>
+        ${labelWithIcon(SECTION_ICONS.swap, t.swap)}
         <div class="sys-value">${info.swap?.used_gb} / ${info.swap?.total_gb} ГБ</div>
         ${renderProgressBar(info.swap?.percent, "sys-progress-sm")}
         <div class="sys-sub">${info.swap?.percent}%</div>
       </div>
       <div class="sys-card">
-        <div class="sys-label">${t.uptime}</div>
+        ${labelWithIcon(SECTION_ICONS.uptime, t.uptime)}
         <div class="sys-value">${formatUptime(info.uptime_sec)}</div>
         <div class="sys-sub">Python ${info.python_version || ""}</div>
       </div>
@@ -446,22 +468,22 @@ function renderSystemInfo(info) {
     </div>
 
     <div class="sys-section">
-      <div class="sys-label">${t.physicalDrives}</div>
+      ${labelWithIcon(SECTION_ICONS.drives, t.physicalDrives)}
       <div class="sys-list">${renderPhysicalDrives(info.physical_drives)}</div>
     </div>
 
     <div class="sys-section">
-      <div class="sys-label">${t.partitions}</div>
+      ${labelWithIcon(SECTION_ICONS.partitions, t.partitions)}
       <div class="sys-disks">${renderPartitions(info.partitions || info.disks)}</div>
     </div>
 
     <div class="sys-section">
-      <div class="sys-label">${t.gpus}</div>
+      ${labelWithIcon(SECTION_ICONS.gpus, t.gpus)}
       <div class="sys-list">${renderGpus(info.gpus)}</div>
     </div>
 
     <div class="sys-section">
-      <div class="sys-label">${t.network}</div>
+      ${labelWithIcon(SECTION_ICONS.network, t.network)}
       <div class="sys-list">${renderNetwork(info.network)}</div>
     </div>
   `;
@@ -534,8 +556,16 @@ async function setGlobalPeriod(period, latest = latestSnapshot) {
 async function renderDashboard(latest = {}) {
   latestSnapshot = latest;
   const dashboard = await fetchJson("/api/dashboard");
-  document.getElementById("page-title").textContent =
-    dashboard.dashboard?.title || i18n.appTitle;
+  const pageTitle = document.getElementById("page-title");
+  if (pageTitle) {
+    const titleText = dashboard.dashboard?.title || i18n.appTitle;
+    const titleSpan = pageTitle.querySelector("span");
+    if (titleSpan) {
+      titleSpan.textContent = titleText;
+    } else {
+      pageTitle.textContent = titleText;
+    }
+  }
 
   dashboardPanels = sortPanelsForDisplay(dashboard.panels || []);
   const grid = document.getElementById("dashboard-grid");
@@ -554,7 +584,7 @@ async function renderDashboard(latest = {}) {
     const header = document.createElement("div");
     header.className = "panel-header";
     const title = document.createElement("h2");
-    title.textContent = panel.title;
+    title.innerHTML = `${icon(panelIcon(panel.type), "icon-sm")}<span>${panel.title}</span>`;
     header.appendChild(title);
 
     const actions = document.createElement("div");
@@ -562,7 +592,7 @@ async function renderDashboard(latest = {}) {
     const expandBtn = document.createElement("button");
     expandBtn.type = "button";
     expandBtn.className = "panel-expand";
-    expandBtn.textContent = "⛶";
+    setIcon(expandBtn, "maximize2");
     expandBtn.title = i18n.expand;
     expandBtn.addEventListener("click", () => togglePanelExpand(panel.id));
     actions.appendChild(expandBtn);
@@ -699,6 +729,7 @@ async function initHostSelector() {
 }
 
 export async function initDashboard() {
+  initDataIcons();
   globalPeriod = getSavedPeriod("1h");
 
   const modeData = await fetchJson("/api/mode");
