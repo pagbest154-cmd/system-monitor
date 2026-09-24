@@ -101,17 +101,43 @@ function buildLineSeries(seriesData, sensorMeta) {
   }));
 }
 
+function seriesUnit(seriesData, sensorMeta, seriesIndex) {
+  const sensorId = seriesData[seriesIndex]?.sensorId;
+  return sensorMeta[sensorId]?.unit || "";
+}
+
+function commonSeriesUnit(seriesData, sensorMeta) {
+  const units = seriesData.map((item) => sensorMeta[item.sensorId]?.unit || "").filter(Boolean);
+  if (!units.length || !units.every((u) => u === units[0])) return "";
+  return units[0];
+}
+
+function buildLineTooltip(seriesData, sensorMeta) {
+  return {
+    trigger: "axis",
+    formatter(params) {
+      const items = Array.isArray(params) ? params : [params];
+      if (!items.length) return "";
+      const lines = [items[0].axisValueLabel];
+      items.forEach((p) => {
+        const unit = seriesUnit(seriesData, sensorMeta, p.seriesIndex);
+        const raw = Array.isArray(p.value) ? p.value[1] : p.value;
+        lines.push(`${p.marker}${p.seriesName}: ${formatValue(raw, unit)}`);
+      });
+      return lines.join("<br/>");
+    },
+  };
+}
+
 function buildLineOptions(dom, seriesData, sensorMeta) {
   const width = chartWidth(dom);
   const mode = layoutMode(width);
   const series = buildLineSeries(seriesData, sensorMeta);
+  const yUnit = commonSeriesUnit(seriesData, sensorMeta);
 
   return {
     ...CHART_TRANSITION,
-    tooltip: {
-      trigger: "axis",
-      valueFormatter: (value) => (value == null ? i18n.noData : value),
-    },
+    tooltip: buildLineTooltip(seriesData, sensorMeta),
     legend: {
       type: "scroll",
       top: mode === "compact" ? undefined : 0,
@@ -139,6 +165,7 @@ function buildLineOptions(dom, seriesData, sensorMeta) {
       axisLabel: {
         color: "#8b9cb3",
         fontSize: mode === "compact" ? 9 : 11,
+        formatter: yUnit ? (value) => formatValue(value, yUnit) : undefined,
       },
       splitLine: { lineStyle: { color: "#2d3a4f" } },
     },

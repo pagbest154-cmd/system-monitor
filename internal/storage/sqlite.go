@@ -12,7 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AgentOfflineSec = 90
+const AgentOfflineSec = 180
 
 var PeriodSeconds = map[string]int{
 	"1h":  60 * 60,

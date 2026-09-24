@@ -51,6 +51,9 @@ let liveRefreshTimer = null;
 let liveRefreshQueued = null;
 
 const LIVE_PANEL_REFRESH_MS = 1500;
+const CONNECTION_OFFLINE_MS = 180_000;
+let lastLiveAt = 0;
+let connectionStatusTimer = null;
 
 function normalizeSnapshot(data, agentId) {
   if (!data) return {};
@@ -90,11 +93,47 @@ function savePeriod(period) {
   }
 }
 
-function setConnectionStatus(online) {
+function markLiveActivity() {
+  lastLiveAt = Date.now();
+  refreshConnectionStatus();
+}
+
+function scheduleConnectionStatusCheck() {
+  if (connectionStatusTimer) {
+    clearTimeout(connectionStatusTimer);
+  }
+  connectionStatusTimer = setTimeout(() => {
+    connectionStatusTimer = null;
+    refreshConnectionStatus();
+    if (isConnectionOnline()) {
+      scheduleConnectionStatusCheck();
+    }
+  }, 1000);
+}
+
+function isConnectionOnline() {
+  if (!lastLiveAt) return false;
+  return Date.now() - lastLiveAt < CONNECTION_OFFLINE_MS;
+}
+
+function refreshConnectionStatus() {
   const el = document.getElementById("connection-status");
   if (!el) return;
+  if (!lastLiveAt) {
+    el.innerHTML = `${icon("wifi", "icon-sm")}<span>Подключение...</span>`;
+    return;
+  }
+  const online = isConnectionOnline();
   const status = online ? "online" : "offline";
   el.innerHTML = statusBadge(status, online ? i18n.live : i18n.offline);
+}
+
+function setConnectionStatus(online) {
+  if (online) {
+    markLiveActivity();
+    return;
+  }
+  scheduleConnectionStatusCheck();
 }
 
 function setLastUpdate(ts) {
@@ -847,9 +886,12 @@ function connectLive() {
   const agentPart = selectedAgent ? `?agent=${encodeURIComponent(selectedAgent)}` : "";
   liveSocket = new WebSocket(`${protocol}://${location.host}/ws/live${agentPart}`);
 
-  liveSocket.onopen = () => setConnectionStatus(true);
+  liveSocket.onopen = () => {
+    markLiveActivity();
+    scheduleConnectionStatusCheck();
+  };
   liveSocket.onclose = (event) => {
-    setConnectionStatus(false);
+    scheduleConnectionStatusCheck();
     if (event.code === 1008) {
       window.location.href = "/login";
       return;
@@ -858,6 +900,7 @@ function connectLive() {
   };
 
   liveSocket.onmessage = async (event) => {
+    markLiveActivity();
     const message = JSON.parse(event.data);
     if (message.type === "snapshot" || message.type === "update") {
       if (selectedAgent && message.agent_id && message.agent_id !== selectedAgent) {
