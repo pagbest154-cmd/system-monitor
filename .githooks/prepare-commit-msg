@@ -1,0 +1,14 @@
+#!/bin/sh
+# Удаляет автоматический trailer Cursor из сообщения коммита.
+case "$2" in
+  message|template|merge|squash) ;;
+  *) exit 0 ;;
+esac
+
+if [ ! -f "$1" ]; then
+  exit 0
+fi
+
+tmp="${1}.tmp"
+grep -v '^Co-authored-by: Cursor <cursoragent@cursor.com>$' "$1" > "$tmp" || true
+mv "$tmp" "$1"
