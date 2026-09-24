@@ -31,20 +31,6 @@ function Ensure-Nssm {
     Remove-Item (Join-Path $ThirdPartyDir "nssm-src") -Recurse -Force
 }
 
-function Ensure-Rcedit {
-    $rcedit = Join-Path $ThirdPartyDir "rcedit-x64.exe"
-    if (Test-Path $rcedit) {
-        return $rcedit
-    }
-
-    New-Item -ItemType Directory -Force -Path $ThirdPartyDir | Out-Null
-    Write-Host "Downloading rcedit..."
-    Invoke-WebRequest `
-        -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" `
-        -OutFile $rcedit
-    return $rcedit
-}
-
 function Ensure-InnoSetup {
     $iscc = @(
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -92,10 +78,15 @@ if (-not (Test-Path $agentExe)) {
     throw "PyInstaller output not found: $agentExe"
 }
 
-Write-Host "Embedding application icon with rcedit..."
-$rcedit = Ensure-Rcedit
-& $rcedit $agentExe --set-icon $iconFile
+# Icon is embedded by PyInstaller (system-monitor-agent.spec). Do not run rcedit on the
+# bootloader — it corrupts the exe and breaks startup with "Could not load PKG archive".
 Copy-Item $iconFile (Join-Path $agentDist "app-icon.ico") -Force
+
+Write-Host "Smoke test: system-monitor-agent.exe --version"
+$smoke = Start-Process -FilePath $agentExe -ArgumentList "--version" -Wait -PassThru -NoNewWindow
+if ($smoke.ExitCode -ne 0) {
+    throw "Agent exe failed smoke test (exit $($smoke.ExitCode))"
+}
 
 $iscc = Ensure-InnoSetup
 & $iscc `

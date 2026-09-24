@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+## [0.0.17] — 2026-09-24
+
+### Исправлено
+
+- Windows: убран post-build rcedit — он ломал exe (ошибка PyInstaller PKG archive при запуске)
+- Иконка по-прежнему вшивается через PyInstaller; ярлыки используют app-icon.ico
+
 ## [0.0.16] — 2026-09-24
 
 ### Исправлено

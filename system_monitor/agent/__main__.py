@@ -40,7 +40,14 @@ def main() -> None:
     parser.add_argument("--tray", action="store_true", help="Иконка в системном трее (Windows)")
     parser.add_argument("--settings", action="store_true", help="Окно настроек (Windows)")
     parser.add_argument("--check-update", action="store_true", help="Проверить наличие обновлений")
+    parser.add_argument("--version", action="store_true", help="Показать версию и выйти")
     args = parser.parse_args()
+
+    if args.version:
+        from .. import __version__
+
+        print(f"system-monitor-agent {__version__}")
+        return
 
     if args.check_update:
         from .updates import check_for_updates, format_update_message
