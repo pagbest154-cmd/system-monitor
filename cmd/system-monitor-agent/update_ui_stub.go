@@ -18,3 +18,7 @@ func formatUpdateDialog(result release.ReleaseCheckResult) string {
 func showUpdateResult(result release.ReleaseCheckResult, msg string) {}
 
 func checkUpdatesFromTray() {}
+
+func showInfo(title, message string) {}
+
+func showError(title, message string) {}
