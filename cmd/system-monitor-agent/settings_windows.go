@@ -33,6 +33,10 @@ func runSettingsDialog(configPath string) error {
 		cfg.IntervalSec = 5
 	}
 
+	if exe, err := os.Executable(); err == nil {
+		_ = os.Chdir(filepath.Dir(exe))
+	}
+
 	window := MainWindow{
 		Title:   "Настройки агента system-monitor",
 		MinSize: Size{Width: 520, Height: 280},
@@ -76,9 +80,6 @@ func runSettingsDialog(configPath string) error {
 			},
 		},
 	}
-	if icon := settingsIconPath(); icon != "" {
-		window.Icon = icon
-	}
 
 	_, err = window.Run()
 	if err != nil {
@@ -98,15 +99,4 @@ func logSettingsError(msg string) {
 	}
 	_, _ = f.WriteString(line)
 	_ = f.Close()
-}
-
-func settingsIconPath() string {
-	exe, err := os.Executable()
-	if err == nil {
-		iconPath := filepath.Join(filepath.Dir(exe), "app-icon.ico")
-		if _, err := os.Stat(iconPath); err == nil {
-			return iconPath
-		}
-	}
-	return ""
 }
