@@ -94,7 +94,10 @@ func readGPUTemperature() *float64 {
 
 func readCPUTemperatureUncached() *float64 {
 	if runtime.GOOS == "linux" {
-		return readLinuxThermal()
+		if v := readLinuxThermal(); v != nil {
+			return v
+		}
+		return readLinuxHwmon()
 	}
 	if runtime.GOOS == "windows" {
 		if v := readWindowsACPI(); v != nil {

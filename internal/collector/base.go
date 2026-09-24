@@ -14,8 +14,10 @@ type SensorReading struct {
 func (r SensorReading) ToMap() map[string]interface{} {
 	m := map[string]interface{}{
 		"sensor_id": r.SensorID,
-		"value":     r.Value,
 		"status":    r.Status,
+	}
+	if r.Value != nil {
+		m["value"] = *r.Value
 	}
 	if r.Error != "" {
 		m["error"] = r.Error

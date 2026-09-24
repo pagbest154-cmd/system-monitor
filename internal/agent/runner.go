@@ -260,10 +260,7 @@ func (r *Runner) pushOnce() (int, error) {
 	}
 	metrics := make([]protocol.MetricPoint, 0, len(snapshot))
 	for sensorID, item := range snapshot {
-		var value *float64
-		if v, ok := item["value"].(float64); ok {
-			value = &v
-		}
+		value := metricValue(item)
 		ts := float64(time.Now().Unix())
 		if v, ok := item["ts"].(float64); ok {
 			ts = v
@@ -366,5 +363,25 @@ func addDiskSnapshot(snapshot map[string]map[string]interface{}, part map[string
 	sensorID := diskdiscovery.MountToSensorID(mount)
 	snapshot[sensorID] = map[string]interface{}{
 		"sensor_id": sensorID, "value": percent, "status": "ok", "ts": now, "unit": "%",
+	}
+}
+
+func metricValue(item map[string]interface{}) *float64 {
+	if item == nil {
+		return nil
+	}
+	switch v := item["value"].(type) {
+	case float64:
+		return &v
+	case *float64:
+		return v
+	case int:
+		f := float64(v)
+		return &f
+	case int64:
+		f := float64(v)
+		return &f
+	default:
+		return nil
 	}
 }
