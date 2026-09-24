@@ -9,7 +9,20 @@ from ..paths import AGENT_CONFIG
 from .runner import build_runner
 
 
+def _configure_stdio() -> None:
+    if sys.platform != "win32":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main() -> None:
+    _configure_stdio()
     parser = argparse.ArgumentParser(description="system-monitor-agent")
     parser.add_argument("--config", type=Path, default=AGENT_CONFIG, help="Путь к agent.yaml")
     parser.add_argument("--tray", action="store_true", help="Иконка в системном трее (Windows)")
@@ -46,7 +59,7 @@ def main() -> None:
         return
 
     runner = build_runner(args.config)
-    print(f"system-monitor-agent запущен: {runner.agent_id} → {runner.config.hub_url}")
+    print(f"system-monitor-agent запущен: {runner.agent_id} -> {runner.config.hub_url}")
 
     def _stop(_signum: int, _frame: object) -> None:
         runner.stop()

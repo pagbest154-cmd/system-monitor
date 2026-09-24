@@ -7,6 +7,9 @@
 
 ### Исправлено
 
+- Windows: `UnicodeEncodeError` при старте службы (cp1251) — UTF-8 для stdout/stderr, `->` вместо `→`
+
+
 - Windows: PyInstaller entry point (`agent_entry.py`) — исправлен `ImportError: attempted relative import with no known parent package`
 - Agent transport: исправлен импорт `protocol.models` в `transport/base.py` (`...protocol` вместо `..protocol`)
 - Windows: запуск службы агента через NSSM (`AppNoConsole`, проверка статуса после старта)
