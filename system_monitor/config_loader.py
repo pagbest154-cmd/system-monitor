@@ -17,6 +17,7 @@ from .paths import (
     DASHBOARD_CONFIG,
     HUB_CONFIG,
     SENSORS_CONFIG,
+    _PKG_CONFIG_DIR,
 )
 
 
@@ -217,9 +218,22 @@ def hub_trusted_hosts(settings: HubSettings) -> list[str]:
     return hosts or ["*"]
 
 
+def _normalize_token_file(token_file: str) -> str:
+    value = token_file.strip()
+    if not value:
+        return str(AGENT_TOKEN_FILE)
+    candidate = Path(value)
+    if candidate.exists():
+        return str(candidate)
+    if AGENT_TOKEN_FILE.exists():
+        return str(AGENT_TOKEN_FILE)
+    return value
+
+
 def load_agent_config(path: Path | None = None) -> AgentFileConfig:
     path = path or AGENT_CONFIG
-    return AgentFileConfig.model_validate(_load_yaml(path))
+    config = AgentFileConfig.model_validate(_load_yaml(path))
+    return config.model_copy(update={"token_file": _normalize_token_file(config.token_file)})
 
 
 def save_agent_config(config: AgentFileConfig, path: Path | None = None) -> None:
@@ -245,9 +259,12 @@ def save_agent_token(token: str, path: str | Path | None = None) -> None:
 
 def load_agent_sensors_config(path: Path | None = None) -> SensorsFile:
     path = path or AGENT_SENSORS_CONFIG
-    if not path.exists():
-        return load_sensors_config(SENSORS_CONFIG)
-    return SensorsFile.model_validate(_load_yaml(path))
+    if path.exists():
+        return SensorsFile.model_validate(_load_yaml(path))
+    bundled = _PKG_CONFIG_DIR / "agent_sensors.yaml"
+    if bundled.exists():
+        return SensorsFile.model_validate(_load_yaml(bundled))
+    return load_sensors_config(SENSORS_CONFIG)
 
 
 def merge_agent_config(base: SensorsFile, overrides: list[SensorOverrideConfig]) -> SensorsFile:

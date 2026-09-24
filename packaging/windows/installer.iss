@@ -154,7 +154,7 @@ begin
   SetArrayLength(Lines, 5);
   Lines[0] := 'hub_url: "' + EscapeYaml(HubUrl) + '"';
   Lines[1] := 'agent_id: "' + EscapeYaml(AgentId) + '"';
-  Lines[2] := 'token_file: ' + TokenFile;
+  Lines[2] := 'token_file: "' + EscapeYaml(TokenFile) + '"';
   Lines[3] := 'interval_sec: 5';
   Lines[4] := 'transport: http';
 
@@ -213,10 +213,28 @@ begin
   Exec(Nssm, 'set {#MyServiceName} AppStderr "' + LogDir + '\agent.err.log"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Exec(Nssm, 'set {#MyServiceName} AppRotateFiles 1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Exec(Nssm, 'set {#MyServiceName} AppRotateBytes 1048576', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec(Nssm, 'set {#MyServiceName} AppNoConsole 1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec(Nssm, 'set {#MyServiceName} AppExit Default Restart', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec(Nssm, 'set {#MyServiceName} AppRestartDelay 5000', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
-  if not Exec(Nssm, 'start {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+  if not Exec(Nssm, 'start {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
-    MsgBox('Служба установлена, но не запустилась (код ' + IntToStr(ResultCode) + '). Проверьте agent.yaml и логи.', mbInformation, MB_OK);
+    MsgBox(
+      'Служба установлена, но не удалось отправить команду запуска (код ' + IntToStr(ResultCode) + ').'#13#10 +
+      'Проверьте %ProgramData%\system-monitor\agent.err.log',
+      mbInformation, MB_OK);
+  end
+  else
+  begin
+    Sleep(3000);
+    if (not Exec(Nssm, 'status {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)) or (ResultCode <> 0) then
+    begin
+      MsgBox(
+        'Служба установлена, но не запустилась.'#13#10 +
+        'Проверьте agent.yaml, token и лог:'#13#10 +
+        '%ProgramData%\system-monitor\agent.err.log',
+        mbInformation, MB_OK);
+    end;
   end;
 
   Result := True;

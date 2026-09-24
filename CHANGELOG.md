@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Исправлено
+
+- Windows: запуск службы агента через NSSM (`AppNoConsole`, проверка статуса после старта)
+- Windows: `token_file` в `agent.yaml` записывается в кавычках (корректный путь)
+- Агент: fallback на встроенный `agent_sensors.yaml`, если файл в ProgramData отсутствует
+
 ### Изменено
 
 - Release workflow: Docker-образ hub пересобирается только при изменениях hub-кода (не при релизах только агента)
