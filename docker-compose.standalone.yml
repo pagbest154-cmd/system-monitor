@@ -1,0 +1,26 @@
+services:
+  monitor:
+    build: .
+    image: ghcr.io/pagbest154-cmd/system-monitor:${VERSION:-latest}
+    container_name: system-monitor
+    command:
+      [
+        "python",
+        "-m",
+        "system_monitor",
+        "--mode",
+        "standalone",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+      ]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+      - monitor-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  monitor-data:

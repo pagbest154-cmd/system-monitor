@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Настройки — system-monitor</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>Настройки мониторинга</h1>
+    <nav>
+      <a href="/">Панель</a>
+      <a href="/hosts">Хосты</a>
+      <a href="/settings" class="active">Настройки</a>
+    </nav>
+  </header>
+
+  <main class="settings-layout">
+    <section class="section">
+      <h2><span data-icon="sliders"></span>Общие настройки</h2>
+      <div class="form-row">
+        <label>
+          Хранение истории (дней)
+          <input type="number" id="retention-days" min="1" value="31">
+        </label>
+        <label>
+          Интервал по умолчанию (с)
+          <input type="number" id="default-interval-sec" min="1" value="5">
+        </label>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2><span data-icon="activity"></span>Датчики</h2>
+      <p class="hint">Отображаются только датчики, доступные на текущей платформе.</p>
+      <div class="table-wrap">
+        <table id="sensors-table">
+          <thead>
+            <tr>
+              <th>Вкл.</th>
+              <th>ID</th>
+              <th>Название</th>
+              <th>Тип</th>
+              <th>Ед.</th>
+              <th>Интервал</th>
+              <th>Параметры (JSON)</th>
+              <th>Предупр.</th>
+              <th>Критич.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions-row">
+        <button id="add-sensor" class="btn btn-secondary"><span data-icon="plus"></span>Добавить датчик</button>
+        <button id="save-sensors" class="btn"><span data-icon="checkCircle"></span>Сохранить датчики</button>
+      </div>
+    </section>
+
+    <section class="section" id="hub-domain-section" hidden>
+      <h2><span data-icon="globe"></span>Домен hub</h2>
+      <p class="hint">Укажите домен для доступа к hub. Агентам указывайте «Публичный URL» как hub-url.</p>
+      <div class="form-row">
+        <label>
+          Домен
+          <input type="text" id="hub-domain" placeholder="monitor.example.com">
+        </label>
+        <label>
+          Публичный URL (опционально)
+          <input type="text" id="hub-public-url" placeholder="https://monitor.example.com">
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="hub-use-https" checked>
+          HTTPS
+        </label>
+      </div>
+      <p class="hint">URL для агентов: <code id="hub-url-preview">—</code>
+        <button type="button" id="copy-hub-url" class="btn btn-secondary btn-sm" title="Копировать URL" hidden>Копировать</button>
+      </p>
+      <div class="actions-row">
+        <button id="save-hub-domain" class="btn"><span data-icon="checkCircle"></span>Сохранить домен</button>
+      </div>
+    </section>
+
+    <section class="section" id="agents-section" hidden>
+      <h2><span data-icon="users"></span>Агенты</h2>
+      <p class="hint">Токены генерируются автоматически. Скопируйте token в конфиг агента после сохранения.</p>
+      <div class="table-wrap">
+        <table id="agents-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Имя</th>
+              <th>Token</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions-row">
+        <button id="add-agent" class="btn btn-secondary"><span data-icon="plus"></span>Добавить агента</button>
+        <button id="save-agents" class="btn"><span data-icon="checkCircle"></span>Сохранить агентов</button>
+      </div>
+    </section>
+
+    <section class="section" id="panels-section">
+      <h2><span data-icon="chartLine"></span>Панели графиков</h2>
+      <div class="form-row">
+        <label>
+          Заголовок панели
+          <input type="text" id="dashboard-title">
+        </label>
+        <label>
+          Обновление (с)
+          <input type="number" id="refresh-sec" min="1" value="3">
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table id="panels-table">
+          <thead>
+            <tr>
+              <th>Заголовок</th>
+              <th>Тип</th>
+              <th>Датчики</th>
+              <th>Период</th>
+              <th>Строка</th>
+              <th>Колонка</th>
+              <th>Ширина</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions-row">
+        <button id="add-panel" class="btn btn-secondary"><span data-icon="plus"></span>Добавить панель</button>
+        <button id="save-dashboard" class="btn"><span data-icon="checkCircle"></span>Сохранить панель</button>
+      </div>
+      <div id="save-message" class="message"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initNavIcons, initFavicon, initDataIcons } from "/static/js/icons.js";
+    import { initFooter } from "/static/js/footer.js";
+    import { initSettings } from "/static/js/settings.js";
+    initFavicon();
+    initNavIcons();
+    initDataIcons();
+    initFooter();
+    initSettings().catch((err) => console.error(err));
+  </script>
+</body>
+</html>

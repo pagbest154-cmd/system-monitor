@@ -1,0 +1,12 @@
+.venv
+__pycache__
+*.pyc
+.git
+.gitignore
+data
+*.db
+*.db-*
+.cursor
+agent-transcripts
+assets
+.env

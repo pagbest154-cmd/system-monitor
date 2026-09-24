@@ -1,0 +1,64 @@
+settings:
+  default_interval_sec: 5
+  auto_discover_disks: true
+
+sensors:
+  - id: cpu_percent
+    name: Загрузка процессора
+    type: system.cpu_percent
+    enabled: true
+    interval_sec: 5
+    unit: "%"
+    warn_above: 80
+    critical_above: 95
+
+  - id: ram_used
+    name: Использование памяти
+    type: system.memory_percent
+    enabled: true
+    interval_sec: 5
+    unit: "%"
+    warn_above: 85
+    critical_above: 95
+
+  - id: net_rx
+    name: Сеть — входящий трафик
+    type: system.network_bytes
+    enabled: true
+    params:
+      direction: recv
+    interval_sec: 5
+    unit: "МБ/с"
+
+  - id: net_tx
+    name: Сеть — исходящий трафик
+    type: system.network_bytes
+    enabled: true
+    params:
+      direction: sent
+    interval_sec: 5
+    unit: "МБ/с"
+
+  - id: cpu_temp
+    name: Температура CPU
+    type: system.temperature
+    enabled: true
+    platforms:
+      - windows
+      - linux
+    interval_sec: 10
+    unit: "°C"
+    warn_above: 70
+    critical_above: 85
+
+  - id: gpu_temp
+    name: Температура GPU
+    type: system.gpu_temperature
+    enabled: true
+    platforms:
+      - windows
+      - linux
+    interval_sec: 10
+    unit: "°C"
+    warn_above: 75
+    critical_above: 90

@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge)
+        if [ -f /usr/share/debconf/confmodule ]; then
+            . /usr/share/debconf/confmodule
+            db_purge system-monitor-agent/hub-url || true
+            db_purge system-monitor-agent/agent-id || true
+            db_purge system-monitor-agent/token || true
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

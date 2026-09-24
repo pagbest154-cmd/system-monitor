@@ -1,0 +1,20 @@
+[Unit]
+Description=system-monitor agent
+Documentation=https://github.com/pagbest154-cmd/system-monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=system-monitor-agent
+Group=system-monitor-agent
+Environment=SYSTEM_MONITOR_CONFIG_DIR=/etc/system-monitor
+Environment=SYSTEM_MONITOR_DATA_DIR=/var/lib/system-monitor-agent
+ExecStart=/usr/bin/system-monitor-agent --config /etc/system-monitor/agent.yaml
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

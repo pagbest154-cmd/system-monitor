@@ -1,0 +1,6 @@
+hub:
+  domain: ""
+  public_url: ""
+  use_https: true
+  trusted_hosts:
+    - "*"

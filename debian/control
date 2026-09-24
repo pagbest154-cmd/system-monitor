@@ -1,0 +1,21 @@
+Source: system-monitor-agent
+Section: utils
+Priority: optional
+Maintainer: pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               build-essential,
+               golang-go (>= 1.23)
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://github.com/pagbest154-cmd/system-monitor
+
+Package: system-monitor-agent
+Architecture: amd64 arm64
+Depends: ${misc:Depends},
+         adduser,
+         systemd | systemd-standalone,
+         debconf (>= 0.5) | debconf-2.0
+Description: system-monitor agent — slim metrics collector
+ Lightweight Go agent for system-monitor fleet deployments.
+ Collects CPU, RAM, disk, network and temperature metrics and pushes
+ them to a central hub (Docker). Configured via debconf on install.

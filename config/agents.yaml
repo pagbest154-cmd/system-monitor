@@ -1,0 +1,5 @@
+agents:
+  - id: local-agent
+    name: Локальный агент
+    token: "change-me"
+    overrides: []

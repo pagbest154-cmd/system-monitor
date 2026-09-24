@@ -1,0 +1,252 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+  pages: write
+  id-token: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      hub: ${{ steps.detect.outputs.hub }}
+      windows: ${{ steps.detect.outputs.windows }}
+      deb: ${{ steps.detect.outputs.deb }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: meta
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect release changes since previous tag
+        id: detect
+        run: |
+          chmod +x scripts/detect-release-changes.sh
+          ./scripts/detect-release-changes.sh
+
+  build-docker:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.hub == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/pagbest154-cmd/system-monitor:${{ needs.detect-changes.outputs.version }}
+            ghcr.io/pagbest154-cmd/system-monitor:latest
+
+  build-windows:
+    needs: detect-changes
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: ./packaging/windows/build-windows-agent.ps1 -Version ${{ needs.detect-changes.outputs.version }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-agent
+          path: packaging/windows/output/*.exe
+
+  build-deb:
+    needs: detect-changes
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper-compat build-essential devscripts golang-go apt-utils gzip
+
+      - name: Prepare debian files
+        run: find debian packaging scripts -type f -exec sed -i 's/\r$//' {} +
+
+      - name: Sync deb version from tag
+        run: |
+          chmod +x scripts/sync-deb-version.sh scripts/publish-apt-repo.sh scripts/extract-release-notes.sh
+          ./scripts/sync-deb-version.sh "${{ needs.detect-changes.outputs.version }}"
+
+      - name: Build deb package
+        run: |
+          set -euxo pipefail
+          chmod +x debian/rules
+          chmod +x debian/system-monitor-agent.postinst debian/system-monitor-agent.prerm debian/system-monitor-agent.postrm
+          chmod +x debian/system-monitor-agent.config
+          dpkg-buildpackage -us -uc -b
+          mkdir -p dist
+          shopt -s nullglob
+          deb=(../system-monitor-agent_*_amd64.deb)
+          if [ ${#deb[@]} -eq 0 ]; then deb=(../system-monitor-agent_*.deb); fi
+          mv "${deb[@]}" dist/
+          mv ../system-monitor-agent_*.changes dist/ 2>/dev/null || true
+          mv ../system-monitor-agent_*.buildinfo dist/ 2>/dev/null || true
+
+      - name: Build APT repository
+        run: ./scripts/publish-apt-repo.sh dist/system-monitor-agent_*.deb dist/apt-repo
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: dist/
+
+  release:
+    needs: [detect-changes, build-docker, build-deb, build-windows]
+    if: >-
+      always() && !cancelled() &&
+      (needs.build-docker.result == 'success' || needs.build-docker.result == 'skipped') &&
+      (needs.build-deb.result == 'success' || needs.build-deb.result == 'skipped') &&
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download deb artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: release-assets
+          path: dist
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v7
+        with:
+          name: windows-agent
+          path: dist/windows
+
+      - name: Remove existing release (clean re-tag)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+
+      - name: Prepare release notes
+        env:
+          VERSION: ${{ needs.detect-changes.outputs.version }}
+          HUB_BUILT: ${{ needs.detect-changes.outputs.hub == 'true' && needs.build-docker.result == 'success' }}
+          DEB_BUILT: ${{ needs.build-deb.result == 'success' }}
+          WINDOWS_BUILT: ${{ needs.build-windows.result == 'success' }}
+        run: |
+          chmod +x scripts/extract-release-notes.sh
+          ./scripts/extract-release-notes.sh "$VERSION" dist/RELEASE_NOTES.md
+          {
+            echo
+            echo "### Сборка релиза"
+            if [ "$HUB_BUILT" = "true" ]; then
+              echo "- **Hub (Docker)** — пересобран"
+            else
+              echo "- **Hub (Docker)** — без изменений, образ не пересобирался"
+            fi
+            if [ "$DEB_BUILT" = "true" ]; then
+              echo "- **Agent (.deb)** — собран"
+            else
+              echo "- **Agent (.deb)** — ошибка сборки"
+            fi
+            if [ "$WINDOWS_BUILT" = "true" ]; then
+              echo "- **Agent (Windows)** — собран"
+            else
+              echo "- **Agent (Windows)** — ошибка сборки"
+            fi
+            echo
+            if [ "$HUB_BUILT" = "true" ]; then
+              echo "### Docker (hub)"
+              echo '```bash'
+              echo "docker pull ghcr.io/pagbest154-cmd/system-monitor:${VERSION}"
+              echo "docker compose up -d"
+              echo '```'
+            fi
+            if [ "$DEB_BUILT" = "true" ]; then
+              echo
+              echo "### Agent (.deb, Linux)"
+              echo '```bash'
+              echo "sudo apt install ./system-monitor-agent_${VERSION}-1_amd64.deb"
+              echo '```'
+            fi
+            if [ "$WINDOWS_BUILT" = "true" ]; then
+              echo
+              echo "### Agent (Windows)"
+              echo "Скачайте \`system-monitor-agent_${VERSION}_setup.exe\`, запустите установщик."
+              echo "Конфиг: \`%ProgramData%\\system-monitor\\agent.yaml\`"
+            fi
+          } >> dist/RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          generate_release_notes: false
+          body_path: dist/RELEASE_NOTES.md
+          fail_on_unmatched_files: false
+          files: |
+            dist/system-monitor-agent_*.deb
+            dist/system-monitor-agent_*.changes
+            dist/apt-repo/dists/**/*
+            dist/apt-repo/README.txt
+            dist/windows/system-monitor-agent_*_setup.exe
+
+  publish-apt-pages:
+    needs: [release, build-deb]
+    if: needs.build-deb.result == 'success'
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: release-assets
+          path: dist
+
+      - name: Prepare apt repo for Pages
+        run: |
+          mkdir -p _site/apt
+          cp -a dist/apt-repo/. _site/apt/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

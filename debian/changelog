@@ -1,0 +1,132 @@
+system-monitor-agent (1.0.0-1) unstable; urgency=medium
+
+  * Full rewrite in Go: hub, agent, packaging (no Python runtime).
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 20:30:00 +0700
+
+system-monitor-agent (0.0.25-1) unstable; urgency=medium
+
+  * Ship standalone PyInstaller binary; no Python runtime dependencies.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 19:15:00 +0700
+
+system-monitor-agent (0.0.24-1) unstable; urgency=medium
+
+  * Build agent venv in postinst on target system (fix pydantic_core ABI).
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 19:05:00 +0700
+
+system-monitor-agent (0.0.23-1) unstable; urgency=medium
+
+  * Run agent with system python3; fix broken venv paths on install.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 18:55:00 +0700
+
+system-monitor-agent (0.0.22-1) unstable; urgency=medium
+
+  * Fix debconf prompts and systemd service start on install.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 18:45:00 +0700
+
+system-monitor-agent (0.0.21-1) unstable; urgency=medium
+
+  * Agent (.deb): fix duplicate systemd unit path breaking dpkg install.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 18:35:00 +0700
+
+system-monitor-agent (0.0.17-1) unstable; urgency=medium
+
+  * Windows: fix broken agent exe after rcedit post-processing.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:55:00 +0700
+
+system-monitor-agent (0.0.15-1) unstable; urgency=medium
+
+  * Hub: fix metrics enrichment from system disks; restore agent sensor list.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:45:00 +0700
+
+system-monitor-agent (0.0.14-1) unstable; urgency=medium
+
+  * Windows: embed custom icon in exe and Start menu shortcuts.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:40:00 +0700
+
+system-monitor-agent (0.0.13-1) unstable; urgency=medium
+
+  * Hub: synthesize CPU/RAM/disk metrics from system info when collector is empty.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:35:00 +0700
+
+system-monitor-agent (0.0.12-1) unstable; urgency=medium
+
+  * Hub: fix empty agent dashboard charts and DB fallback for sensor values.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:30:00 +0700
+
+system-monitor-agent (0.0.11-1) unstable; urgency=medium
+
+  * Windows: manual update check always fetches latest release from GitHub.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:25:00 +0700
+
+system-monitor-agent (0.0.10-1) unstable; urgency=medium
+
+  * Windows installer: stop service/tray before upgrade; smoother hub charts.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:20:00 +0700
+
+system-monitor-agent (0.0.9-1) unstable; urgency=medium
+
+  * Windows settings: sensor toggles tab; hub WS gauge fix; improved installer icon.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:15:00 +0700
+
+system-monitor-agent (0.0.8-1) unstable; urgency=medium
+
+  * Windows tray/settings: no console window (GUI subsystem exe).
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:05:00 +0700
+
+system-monitor-agent (0.0.7-1) unstable; urgency=medium
+
+  * Fix Windows tray pystray callbacks and tooltip length limit.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 16:55:00 +0700
+
+system-monitor-agent (0.0.6-1) unstable; urgency=medium
+
+  * Windows settings save, clipboard paste, update check without API rate limits.
+  * Hot-reload agent.yaml without service restart.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 16:45:00 +0700
+
+system-monitor-agent (0.0.5-1) unstable; urgency=medium
+
+  * Stable Windows agent service startup and installer fixes.
+  * App icons for agent tray and web dashboard UI refresh.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 16:35:00 +0700
+
+system-monitor-agent (0.0.4-1) unstable; urgency=medium
+
+  * Windows tray icon and settings UI.
+  * Agent update checks (--check-update) for Windows and Linux.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 15:45:00 +0700
+
+system-monitor-agent (0.0.3-1) unstable; urgency=medium
+
+  * Windows agent installer (Inno Setup + NSSM service).
+  * Release workflow builds system-monitor-agent_*_setup.exe.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 14:55:00 +0700
+
+system-monitor-agent (0.0.2-1) unstable; urgency=medium
+
+  * Fleet hub + agents architecture.
+  * Hub web authorization (HUB_NAME / HUB_KEY).
+  * Slim agent package with debconf and systemd unit.
+  * Fix CI deb build: remove duplicate debian/compat.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 14:30:00 +0700

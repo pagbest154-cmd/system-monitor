@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+export GOOS=linux
+export GOARCH=amd64
+export CGO_ENABLED=0
+
+%:
+	dh $@ --without python3
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf debian/system-monitor-agent/usr/bin/system-monitor-agent
+
+override_dh_auto_build:
+	mkdir -p packaging/linux
+	go build -ldflags="-s -w" -o packaging/linux/system-monitor-agent ./cmd/system-monitor-agent
+
+override_dh_auto_install:
+	install -d debian/system-monitor-agent/usr/bin
+	install -m 755 packaging/linux/system-monitor-agent debian/system-monitor-agent/usr/bin/system-monitor-agent
+	install -d debian/system-monitor-agent/etc/system-monitor
+	install -m 644 config/agent.yaml debian/system-monitor-agent/etc/system-monitor/
+	install -m 644 config/agent_sensors.yaml debian/system-monitor-agent/etc/system-monitor/
+
+override_dh_installsystemd:
+	dh_installsystemd --name=system-monitor-agent
+
+override_dh_auto_test:
+
+override_dh_strip:

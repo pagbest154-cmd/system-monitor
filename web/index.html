@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мониторинг системы — system-monitor</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/i18n/langRU.js"></script>
+</head>
+<body>
+  <header>
+    <h1 id="page-title">Мониторинг системы</h1>
+    <nav>
+      <a href="/" class="active">Панель</a>
+      <a href="/hosts">Хосты</a>
+      <a href="/settings">Настройки</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="meta-bar">
+      <label class="host-control meta-item" id="host-control" hidden>
+        <span class="meta-item"><span data-icon="server"></span>Хост</span>
+        <select id="host-select" class="period-select"></select>
+      </label>
+      <div id="connection-status" class="meta-item">Подключение...</div>
+      <div id="last-update" class="meta-item">Обновлено: —</div>
+      <label class="period-control">
+        <span class="meta-item"><span data-icon="calendar"></span>Период графиков</span>
+        <select id="global-period" class="period-select"></select>
+      </label>
+    </div>
+    <div id="dashboard-grid" class="dashboard-grid"></div>
+    <section id="system-info" class="system-info"></section>
+    <div id="panel-backdrop" class="panel-backdrop" hidden></div>
+  </main>
+
+  <script type="module">
+    import { initNavIcons, initFavicon } from "/static/js/icons.js";
+    import { initFooter } from "/static/js/footer.js";
+    import { initDashboard } from "/static/js/dashboard.js";
+    initFavicon();
+    initNavIcons();
+    initFooter();
+    initDashboard().catch((err) => console.error(err));
+  </script>
+</body>
+</html>
