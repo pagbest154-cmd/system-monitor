@@ -21,10 +21,10 @@ EOF
 
 case "$1" in
     configure)
-        if ! getent passwd system-monitor-agent >/dev/null; then
-            adduser --system --group --home /var/lib/system-monitor-agent --no-create-home system-monitor-agent
-        fi
         mkdir -p /etc/system-monitor /var/lib/system-monitor-agent
+        if ! getent passwd system-monitor-agent >/dev/null; then
+            adduser --system --group --home /var/lib/system-monitor-agent system-monitor-agent
+        fi
         chown system-monitor-agent:system-monitor-agent /var/lib/system-monitor-agent
         chmod 0750 /var/lib/system-monitor-agent
 
@@ -71,5 +71,15 @@ case "$1" in
 esac
 
 #DEBHELPER#
+
+if [ "$1" = "configure" ]; then
+    if [ -s "$TOKEN_FILE" ] && command -v deb-systemd-invoke >/dev/null; then
+        deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
+    elif [ ! -s "$TOKEN_FILE" ]; then
+        echo "system-monitor-agent: служба включена, но не запущена (нет token)." >&2
+        echo "  sudo dpkg-reconfigure system-monitor-agent" >&2
+        echo "  sudo systemctl start system-monitor-agent" >&2
+    fi
+fi
 
 exit 0

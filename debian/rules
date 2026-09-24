@@ -24,7 +24,7 @@ override_dh_auto_install:
 	install -m 644 config/agent_sensors.yaml debian/system-monitor-agent/etc/system-monitor/
 
 override_dh_installsystemd:
-	dh_installsystemd --name=system-monitor-agent
+	dh_installsystemd --name=system-monitor-agent --no-start
 
 override_dh_auto_test:
 
