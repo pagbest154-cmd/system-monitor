@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [0.0.22] — 2026-09-24
+
+### Исправлено
+
+- Linux deb: debconf снова задаёт Hub URL, Agent ID и token при установке
+- Linux deb: служба запускается через `dh_installsystemd` (#DEBHELPER#)
+- postinst: переменные `HUB_URL`, `AGENT_ID`, `AGENT_TOKEN` для non-interactive установки
+
 ## [0.0.21] — 2026-09-24
 
 ### Исправлено

@@ -102,6 +102,35 @@ Caddy получит сертификат Let's Encrypt и проксирует 
 
 **Standalone (одна машина):** `docker compose -f docker-compose.standalone.yml up -d`
 
+**Обновление hub:**
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Конкретная версия: `VERSION=0.0.20 docker compose pull && docker compose up -d`  
+В футере веб-интерфейса — установленная версия и статус обновления с GitHub.
+
+> Не каждый релиз пересобирает Docker-образ: hub, `.deb` и `.exe` собираются **независимо**, только если менялся соответствующий код. Смотрите блок «Сборка релиза» в [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
+
+### Подключение агентов к hub
+
+1. В [`config/agents.yaml`](config/agents.yaml) добавьте агента (id, name, token):
+
+```yaml
+agents:
+  - id: homepc
+    name: Домашний ПК
+    token: "длинный-секретный-токен"
+```
+
+2. Установите агент на машине с **тем же** Hub URL, Agent ID и token.
+3. На панели hub в выпадающем списке **Хост** выберите агента — без этого графики и блок «Система» пустые (режим «Все хосты» только для списка, не для графиков).
+4. Агентов можно добавлять и в **Настройки → Агенты** в веб-интерфейсе hub.
+
+Конфиг hub монтируется с хоста: `./config/` (в т.ч. `agents.yaml`, `dashboard.yaml`).
+
 ### Agent — slim-пакет на машинах
 
 **Linux (.deb):**
@@ -110,8 +139,26 @@ Caddy получит сертификат Let's Encrypt и проксирует 
 sudo apt install ./system-monitor-agent_*_amd64.deb
 ```
 
-При установке debconf спросит **Hub URL**, **Agent ID** и **token**.  
+При установке debconf спросит **Hub URL**, **Agent ID** и **token** (по одному вопросу).  
 На hub добавьте агента в [`config/agents.yaml`](config/agents.yaml) с тем же token.
+
+Если вопросы не появились (узкий терминал, повторная установка):
+
+```bash
+sudo dpkg-reconfigure system-monitor-agent
+```
+
+Без интерактива:
+
+```bash
+sudo DEBIAN_FRONTEND=noninteractive \
+  HUB_URL=https://monitor.example.com \
+  AGENT_ID=my-laptop \
+  AGENT_TOKEN=your-secret-token \
+  apt install ./system-monitor-agent_*_amd64.deb
+```
+
+После установки: `sudo systemctl status system-monitor-agent` · логи: `journalctl -u system-monitor-agent -f`
 
 APT-репозиторий (GitHub Pages при релизе):
 
@@ -146,7 +193,21 @@ sudo apt install system-monitor-agent
 
 В меню трея: статус подключения, настройки, перезапуск службы, проверка обновлений.
 
-**Проверка обновлений (Windows и Linux):**
+**Переустановка Windows-агента:** перед обновлением остановите службу и трей, иначе установщик не сможет заменить exe:
+
+```powershell
+Stop-Service system-monitor-agent -ErrorAction SilentlyContinue
+taskkill /IM system-monitor-agent.exe /F
+```
+
+Затем запустите новый `system-monitor-agent_*_setup.exe` из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
+
+**Проверка версии и обновлений (Windows и Linux):**
+
+```bash
+system-monitor-agent --version
+system-monitor-agent --check-update
+```
 
 ```bash
 system-monitor-agent --check-update
@@ -197,6 +258,7 @@ system-monitor-agent --config config/agent.yaml
 | `--tray` | Иконка в трее (Windows) |
 | `--settings` | Окно настроек (Windows) |
 | `--check-update` | Проверить обновления |
+| `--version` | Показать версию и выйти |
 
 **Опционально:**
 
@@ -208,6 +270,29 @@ pip install paho-mqtt                # MQTT-датчики
 Откройте в браузере: **http://127.0.0.1:8080**
 
 Standalone без fleet: `python -m system_monitor --mode standalone --host 0.0.0.0 --port 8080`
+
+---
+
+## Диагностика
+
+| Симптом | Что проверить |
+|---------|----------------|
+| Графики и gauge пустые, внизу «Система» есть данные | Выбран ли **конкретный хост** в шапке (не «Все хосты») |
+| То же после обновления hub | `docker compose pull && up -d`, затем **Ctrl+F5** в браузере |
+| `Нет данных` на gauge при онлайн-агенте | Обновите hub до **0.0.20+** (исправлен пустой `sensors` в `dashboard.yaml`) |
+| Агент онлайн, API пустой | `GET /api/sensors?agent=<id>` — есть ли `current` с `value` |
+| История пустая | `GET /api/metrics/cpu_percent?agent=<id>&period=1h` — копятся ли `points` |
+| Windows: ошибка PyInstaller PKG archive | Установите агент **0.0.17+** (сломанные сборки 0.0.14–0.0.16) |
+| Служба не стартует после обновления | Логи: `%ProgramData%\system-monitor\agent.log` |
+
+**Быстрая проверка API** (с cookie сессии или Basic Auth `HUB_NAME:HUB_KEY`):
+
+```bash
+curl -u "$HUB_NAME:$HUB_KEY" "https://your-hub/api/sensors?agent=homepc"
+curl -u "$HUB_NAME:$HUB_KEY" "https://your-hub/api/metrics/cpu_percent?agent=homepc&period=1h"
+```
+
+Статус агента на машине: `%ProgramData%\system-monitor\agent.status.json` (поле `metrics_count` > 0).
 
 ---
 
@@ -280,6 +365,7 @@ panels:
 | GET | `/api/config/hub` | Конфиг домена |
 | PUT | `/api/config/hub` | Сохранить домен |
 | GET | `/api/mode` | Режим: `standalone` / `hub` |
+| GET | `/api/version` | Версия hub и проверка обновления на GitHub |
 | GET | `/api/agents` | Список агентов (hub) |
 | GET | `/api/agents/{id}/system` | Snapshot железа агента |
 | POST | `/api/agents/{id}/metrics` | Ingest метрик (agent, Bearer token) |
