@@ -7,7 +7,7 @@ ROOT = SPEC_DIR.parent.parent
 block_cipher = None
 
 a = Analysis(
-    [str(ROOT / "system_monitor" / "agent" / "__main__.py")],
+    [str(SPEC_DIR / "agent_entry.py")],
     pathex=[str(ROOT)],
     binaries=[],
     datas=[
@@ -16,6 +16,7 @@ a = Analysis(
     hiddenimports=[
         "system_monitor",
         "system_monitor.agent",
+        "system_monitor.agent.__main__",
         "system_monitor.agent.runner",
         "system_monitor.agent.tray",
         "system_monitor.agent.settings_ui",
