@@ -26,3 +26,5 @@ dist/
 packaging/windows/build/
 packaging/windows/third_party/
 packaging/windows/output/
+packaging/linux/build/
+packaging/linux/dist/

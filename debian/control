@@ -17,9 +17,6 @@ Homepage: https://github.com/pagbest154-cmd/system-monitor
 Package: system-monitor-agent
 Architecture: amd64 arm64
 Depends: ${misc:Depends},
-         python3 (>= 3.11),
-         python3-venv,
-         python3-pip,
          adduser,
          systemd | systemd-standalone,
          debconf (>= 0.5) | debconf-2.0

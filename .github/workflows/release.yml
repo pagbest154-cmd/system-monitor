@@ -126,7 +126,7 @@ jobs:
       - name: Build deb package
         run: |
           set -euxo pipefail
-          chmod +x debian/rules packaging/usrbin-system-monitor-agent
+          chmod +x debian/rules packaging/usrbin-system-monitor-agent packaging/linux/build-linux-agent.sh
           chmod +x debian/system-monitor-agent.postinst debian/system-monitor-agent.prerm debian/system-monitor-agent.postrm
           chmod +x debian/system-monitor-agent.config
           dpkg-buildpackage -us -uc -b

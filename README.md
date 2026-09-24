@@ -139,6 +139,7 @@ agents:
 sudo apt install ./system-monitor-agent_*_amd64.deb
 ```
 
+Автономный бинарник — **Python на машине не нужен**.  
 При установке debconf спросит **Hub URL**, **Agent ID** и **token** (по одному вопросу).  
 На hub добавьте агента в [`config/agents.yaml`](config/agents.yaml) с тем же token.
 
@@ -151,15 +152,12 @@ sudo dpkg-reconfigure system-monitor-agent
 Без интерактива:
 
 ```bash
-sudo apt install python3-venv python3-pip
 sudo DEBIAN_FRONTEND=noninteractive \
   HUB_URL=https://monitor.example.com \
   AGENT_ID=my-laptop \
   AGENT_TOKEN=your-secret-token \
   apt install ./system-monitor-agent_*_amd64.deb
 ```
-
-При первой установке нужен **интернет** — `postinst` создаёт venv и ставит зависимости под ваш Python.
 
 После установки: `sudo systemctl status system-monitor-agent` · логи: `journalctl -u system-monitor-agent -f`
 
@@ -286,8 +284,8 @@ Standalone без fleet: `python -m system_monitor --mode standalone --host 0.0.
 | Агент онлайн, API пустой | `GET /api/sensors?agent=<id>` — есть ли `current` с `value` |
 | История пустая | `GET /api/metrics/cpu_percent?agent=<id>&period=1h` — копятся ли `points` |
 | Windows: ошибка PyInstaller PKG archive | Установите агент **0.0.17+** (сломанные сборки 0.0.14–0.0.16) |
-| Linux: `venv/bin/system-monitor-agent: not found` (status 127) | Обновите deb до **0.0.24+** |
-| Linux: `pydantic_core._pydantic_core` missing (status 1) | **0.0.24+** или `sudo dpkg-reconfigure system-monitor-agent` с интернетом |
+| Linux: `pydantic_core._pydantic_core` missing (status 1) | Обновите deb до **0.0.25+** (автономный бинарник) |
+| Linux: служба не стартует после обновления | `journalctl -u system-monitor-agent -f` |
 | Служба не стартует после обновления | Логи: `%ProgramData%\system-monitor\agent.log` |
 
 **Быстрая проверка API** (с cookie сессии или Basic Auth `HUB_NAME:HUB_KEY`):

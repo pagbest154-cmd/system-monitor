@@ -2,21 +2,24 @@
 
 export DH_VERBOSE=1
 
-AGENT_SRC=debian/system-monitor-agent/usr/share/system-monitor-agent/src
-
 %:
 	dh $@ --without python3
 
 override_dh_auto_clean:
 	dh_auto_clean
+	rm -rf packaging/linux/build packaging/linux/dist
 	rm -rf debian/system-monitor-agent/opt debian/system-monitor-agent/usr/share
 
 override_dh_auto_build:
+	python3 -m pip install --upgrade pip wheel
+	python3 -m pip install ".[agent]" pyinstaller
+	chmod +x packaging/linux/build-linux-agent.sh
+	./packaging/linux/build-linux-agent.sh
 
 override_dh_auto_install:
-	install -d $(AGENT_SRC)
-	cp -r system_monitor $(AGENT_SRC)/
-	cp pyproject.toml README.md requirements-agent.txt $(AGENT_SRC)/
+	install -d debian/system-monitor-agent/opt/system-monitor-agent
+	cp -a packaging/linux/dist/system-monitor-agent/. debian/system-monitor-agent/opt/system-monitor-agent/
+	chmod -R a+rX debian/system-monitor-agent/opt/system-monitor-agent
 	install -d debian/system-monitor-agent/etc/system-monitor
 	install -m 644 config/agent.yaml debian/system-monitor-agent/etc/system-monitor/
 	install -m 644 config/agent_sensors.yaml debian/system-monitor-agent/etc/system-monitor/
