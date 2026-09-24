@@ -420,6 +420,23 @@ main {
   border-color: var(--muted);
 }
 
+.panel-expand:focus {
+  outline: none;
+}
+
+.panel-expand:focus-visible {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 2px;
+}
+
+.panel-placeholder {
+  visibility: hidden;
+  border: none;
+  background: transparent;
+  padding: 0;
+  pointer-events: none;
+}
+
 .panel.expanded {
   position: fixed;
   inset: 1rem;
@@ -473,13 +490,14 @@ main {
 }
 
 .period-control {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   margin-left: auto;
   color: var(--muted);
   font-size: 0.9rem;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .period-control span {

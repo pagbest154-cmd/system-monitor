@@ -43,6 +43,7 @@ const DEFAULT_PANEL_SENSORS = {
 };
 
 let expandedPanelId = null;
+let expandedPlaceholder = null;
 let appMode = "standalone";
 let selectedAgent = "";
 let lastDisplayedUpdateTs = 0;
@@ -292,6 +293,48 @@ function applyGridLayout() {
   grid.style.setProperty("--grid-cols", String(cols));
 }
 
+function removeExpandedPlaceholder() {
+  expandedPlaceholder?.remove();
+  expandedPlaceholder = null;
+}
+
+function scheduleChartRelayout() {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      relayoutCharts();
+    });
+  });
+  setTimeout(() => relayoutCharts(), 200);
+}
+
+async function relayoutCharts() {
+  for (const panel of dashboardPanels) {
+    const chart = charts.get(panel.id);
+    const container = document.getElementById(`panel-${panel.id}`);
+    const chartDom = container?.querySelector(".panel-chart");
+    if (!chart || !chartDom) continue;
+
+    chart.resize();
+
+    if (panel.type === "line") {
+      const sensorIds = resolvePanelSensors(panel);
+      const history = await loadHistory(sensorIds, globalPeriod, latestSnapshot);
+      updateLineChart(chart, chartDom, history, sensorMeta);
+    } else if (panel.type === "bar") {
+      const sensorIds = resolvePanelSensors(panel);
+      const readings = sensorIds.map((id) => ({
+        sensorId: id,
+        value: latestSnapshot[id]?.value,
+        status: latestSnapshot[id]?.status,
+      }));
+      updateBarChart(chart, chartDom, readings, sensorMeta);
+    } else if (panel.type === "gauge") {
+      const sensorId = resolvePanelSensors(panel)[0];
+      updateGaugeChart(chart, chartDom, latestSnapshot[sensorId], sensorMeta[sensorId]);
+    }
+  }
+}
+
 function collapsePanel() {
   if (!expandedPanelId) return;
   const panelEl = document.getElementById(`panel-${expandedPanelId}`);
@@ -302,12 +345,14 @@ function collapsePanel() {
     if (btn) {
       setIcon(btn, "maximize2");
       btn.title = i18n.expand;
+      btn.blur();
     }
   }
+  removeExpandedPlaceholder();
   if (backdrop) backdrop.hidden = true;
   expandedPanelId = null;
   document.body.style.overflow = "";
-  requestAnimationFrame(resizeCharts);
+  scheduleChartRelayout();
 }
 
 function togglePanelExpand(panelId) {
@@ -321,6 +366,13 @@ function togglePanelExpand(panelId) {
   }
 
   collapsePanel();
+
+  expandedPlaceholder = document.createElement("div");
+  expandedPlaceholder.className = "panel panel-placeholder";
+  expandedPlaceholder.setAttribute("aria-hidden", "true");
+  expandedPlaceholder.style.minHeight = `${panelEl.offsetHeight}px`;
+  panelEl.parentNode.insertBefore(expandedPlaceholder, panelEl);
+
   expandedPanelId = panelId;
   panelEl.classList.add("expanded");
   const btn = panelEl.querySelector(".panel-expand");
@@ -330,7 +382,7 @@ function togglePanelExpand(panelId) {
   }
   if (backdrop) backdrop.hidden = false;
   document.body.style.overflow = "hidden";
-  requestAnimationFrame(resizeCharts);
+  scheduleChartRelayout();
 }
 
 function mediaTypeLabel(type) {
@@ -681,8 +733,7 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
   }
 
   if (panel.type === "line") {
-    const period = panel.period || globalPeriod;
-    const history = await loadHistory(sensorIds, period, latest);
+    const history = await loadHistory(sensorIds, globalPeriod, latest);
     if (chart && !recreate) {
       updateLineChart(chart, chartDom, history, sensorMeta);
     } else {
@@ -749,6 +800,8 @@ async function renderDashboard(latest = {}) {
   resizeObservers.clear();
   charts.forEach((chart) => chart.dispose());
   charts.clear();
+  removeExpandedPlaceholder();
+  expandedPanelId = null;
   grid.innerHTML = "";
   applyGridLayout();
 
@@ -838,10 +891,6 @@ function observePanelChart(panel, chartDom) {
   resizeObservers.set(panel.id, observer);
 }
 
-function resizeCharts() {
-  charts.forEach((chart) => chart.resize());
-}
-
 async function refreshSystemInfo() {
   try {
     if (appMode === "hub" && !selectedAgent) {
@@ -923,7 +972,7 @@ export async function initDashboard() {
 
   window.addEventListener("resize", () => {
     applyGridLayout();
-    resizeCharts();
+    scheduleChartRelayout();
   });
 
   document.getElementById("panel-backdrop")?.addEventListener("click", collapsePanel);
