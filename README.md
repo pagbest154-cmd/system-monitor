@@ -102,7 +102,9 @@ Caddy получит сертификат Let's Encrypt и проксирует 
 
 **Standalone (одна машина):** `docker compose -f docker-compose.standalone.yml up -d`
 
-### Agent (.deb) — slim-пакет на машинах
+### Agent — slim-пакет на машинах
+
+**Linux (.deb):**
 
 ```bash
 sudo apt install ./system-monitor-agent_*_amd64.deb
@@ -120,10 +122,19 @@ sudo apt update
 sudo apt install system-monitor-agent
 ```
 
+**Windows (установщик):**
+
+1. Скачайте `system-monitor-agent_*_setup.exe` из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
+2. Запустите установщик — укажите **Hub URL**, **Agent ID** и **token** (как debconf на Linux).
+3. Агент регистрируется как служба Windows `system-monitor-agent` и стартует автоматически.
+
 | Компонент | Способ | Путь конфигурации |
 |-----------|--------|-------------------|
 | Hub | Docker | `./config/` + volume `hub-data` |
-| Agent | apt | `/etc/system-monitor/agent.yaml` |
+| Agent (Linux) | apt | `/etc/system-monitor/agent.yaml` |
+| Agent (Windows) | setup.exe | `%ProgramData%\system-monitor\agent.yaml` |
+
+Логи службы: `%ProgramData%\system-monitor\agent.log`
 
 ### Из исходников (Python)
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "system-monitor"
-version = "0.0.2"
+version = "0.0.3"
 description = "Лёгкая система мониторинга с веб-панелью"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,7 +25,7 @@ grpc = [
 ]
 pi = ["gpiozero>=2.0.0", "smbus2>=0.4.0"]
 mqtt = ["paho-mqtt>=2.0.0"]
-windows = ["wmi>=1.5.1"]
+windows = ["wmi>=1.5.1", "pywin32>=306"]
 agent = []
 all = ["system-monitor[hub,grpc,mqtt,pi,windows]"]
 

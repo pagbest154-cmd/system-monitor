@@ -23,3 +23,6 @@ debian/system-monitor-agent/
 debian/*.substvars
 debian/*.debhelper
 dist/
+packaging/windows/build/
+packaging/windows/third_party/
+packaging/windows/output/

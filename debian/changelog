@@ -1,3 +1,10 @@
+system-monitor-agent (0.0.3-1) unstable; urgency=medium
+
+  * Windows agent installer (Inno Setup + NSSM service).
+  * Release workflow builds system-monitor-agent_*_setup.exe.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 14:55:00 +0700
+
 system-monitor-agent (0.0.2-1) unstable; urgency=medium
 
   * Fleet hub + agents architecture.

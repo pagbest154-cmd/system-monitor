@@ -43,6 +43,42 @@ jobs:
             ghcr.io/pagbest154-cmd/system-monitor:${{ steps.meta.outputs.version }}
             ghcr.io/pagbest154-cmd/system-monitor:latest
 
+  build-windows:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Extract version
+        id: meta
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[windows]" pyinstaller
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: ./packaging/windows/build-windows-agent.ps1 -Version ${{ steps.meta.outputs.version }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-agent
+          path: packaging/windows/output/*.exe
+
   build-deb:
     runs-on: ubuntu-24.04
     outputs:
@@ -104,7 +140,7 @@ jobs:
           path: dist/
 
   release:
-    needs: [build-docker, build-deb]
+    needs: [build-docker, build-deb, build-windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -115,6 +151,12 @@ jobs:
         with:
           name: release-assets
           path: dist
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v7
+        with:
+          name: windows-agent
+          path: dist/windows
 
       - name: Prepare release notes
         run: |
@@ -129,10 +171,14 @@ jobs:
             echo "docker compose up -d"
             echo '```'
             echo
-            echo "### Agent (.deb)"
+            echo "### Agent (.deb, Linux)"
             echo '```bash'
             echo "sudo apt install ./system-monitor-agent_*_amd64.deb"
             echo '```'
+            echo
+            echo "### Agent (Windows)"
+            echo "Скачайте \`system-monitor-agent_${version}_setup.exe\`, запустите установщик."
+            echo "При установке укажите Hub URL, Agent ID и token. Конфиг: \`%ProgramData%\\system-monitor\\agent.yaml\`"
           } >> dist/RELEASE_NOTES.md
 
       - name: Create GitHub Release
@@ -145,6 +191,7 @@ jobs:
             dist/system-monitor-agent_*.deb
             dist/system-monitor-agent_*.changes
             dist/apt-repo/**/*
+            dist/windows/system-monitor-agent_*_setup.exe
 
   publish-apt-pages:
     needs: release

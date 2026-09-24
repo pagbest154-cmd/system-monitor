@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+## [0.0.3] — 2026-09-24
+
+### Добавлено
+
+- Windows-установщик агента (`system-monitor-agent_*_setup.exe`): мастер Hub URL / Agent ID / token, служба через NSSM
+- Сборка Windows-агента в Release workflow (PyInstaller + Inno Setup)
+
 ## [0.0.2] — 2026-09-24
 
 Fleet hub + agents и авторизация веб-интерфейса hub.
