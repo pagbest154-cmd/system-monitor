@@ -283,6 +283,7 @@ Standalone без fleet: `python -m system_monitor --mode standalone --host 0.0.
 | Агент онлайн, API пустой | `GET /api/sensors?agent=<id>` — есть ли `current` с `value` |
 | История пустая | `GET /api/metrics/cpu_percent?agent=<id>&period=1h` — копятся ли `points` |
 | Windows: ошибка PyInstaller PKG archive | Установите агент **0.0.17+** (сломанные сборки 0.0.14–0.0.16) |
+| Linux: `venv/bin/system-monitor-agent: not found` (status 127) | Обновите deb до **0.0.23+** |
 | Служба не стартует после обновления | Логи: `%ProgramData%\system-monitor\agent.log` |
 
 **Быстрая проверка API** (с cookie сессии или Basic Auth `HUB_NAME:HUB_KEY`):

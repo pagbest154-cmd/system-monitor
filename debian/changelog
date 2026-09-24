@@ -1,3 +1,9 @@
+system-monitor-agent (0.0.23-1) unstable; urgency=medium
+
+  * Run agent with system python3; fix broken venv paths on install.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 18:55:00 +0700
+
 system-monitor-agent (0.0.22-1) unstable; urgency=medium
 
   * Fix debconf prompts and systemd service start on install.

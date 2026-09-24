@@ -1,2 +1,4 @@
 #!/bin/sh
-exec /opt/system-monitor-agent/venv/bin/system-monitor-agent "$@"
+SITE_PACKAGES="/opt/system-monitor-agent/lib/python3/site-packages"
+export PYTHONPATH="${SITE_PACKAGES}${PYTHONPATH:+:${PYTHONPATH}}"
+exec /usr/bin/python3 -m system_monitor.agent "$@"

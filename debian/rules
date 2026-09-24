@@ -2,6 +2,8 @@
 
 export DH_VERBOSE=1
 
+SITE_PACKAGES=debian/system-monitor-agent/opt/system-monitor-agent/lib/python3/site-packages
+
 %:
 	dh $@ --without python3
 
@@ -12,12 +14,13 @@ override_dh_auto_clean:
 override_dh_auto_build:
 
 override_dh_auto_install:
-	install -d debian/system-monitor-agent/opt/system-monitor-agent
-	python3 -m venv debian/system-monitor-agent/opt/system-monitor-agent/venv
-	debian/system-monitor-agent/opt/system-monitor-agent/venv/bin/pip install \
-		--no-cache-dir --upgrade pip wheel
-	debian/system-monitor-agent/opt/system-monitor-agent/venv/bin/pip install \
-		--no-cache-dir .
+	install -d $(SITE_PACKAGES)
+	python3 -m pip install \
+		--target=$(SITE_PACKAGES) \
+		--no-cache-dir \
+		--no-compile \
+		--upgrade \
+		.
 	install -d debian/system-monitor-agent/etc/system-monitor
 	install -m 644 config/agent.yaml debian/system-monitor-agent/etc/system-monitor/
 	install -m 644 config/agent_sensors.yaml debian/system-monitor-agent/etc/system-monitor/
