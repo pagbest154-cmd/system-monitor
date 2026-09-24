@@ -18,7 +18,6 @@ RELEASES_LATEST_PAGE = f"https://github.com/{GITHUB_REPO}/releases/latest"
 RELEASES_PAGE_URL = RELEASES_LATEST_PAGE
 APT_SOURCE_FILE = Path("/etc/apt/sources.list.d/system-monitor.list")
 UPDATE_CHECK_INTERVAL_SEC = 24 * 60 * 60
-MANUAL_CHECK_COOLDOWN_SEC = 15 * 60
 
 
 @dataclass
@@ -132,6 +131,16 @@ def _write_cache(result: UpdateCheckResult) -> None:
     )
 
 
+def _parse_release_tag(final_url: str, body: str) -> str | None:
+    match = re.search(r"/releases/tag/(v?[^/?#]+)", final_url)
+    if match:
+        return match.group(1)
+    match = re.search(r'href="[^"]*/releases/tag/(v?[^"/?#]+)"', body)
+    if match:
+        return match.group(1)
+    return None
+
+
 def _fetch_latest_release() -> tuple[str, str, str]:
     headers = {"User-Agent": "system-monitor-agent"}
     with httpx.Client(timeout=15.0, follow_redirects=True) as client:
@@ -139,10 +148,9 @@ def _fetch_latest_release() -> tuple[str, str, str]:
         response.raise_for_status()
 
     final_url = str(response.url)
-    match = re.search(r"/releases/tag/(v?[^/?#]+)", final_url)
-    if not match:
+    tag = _parse_release_tag(final_url, response.text)
+    if not tag:
         raise ValueError("Не удалось определить версию из GitHub Releases")
-    tag = match.group(1)
     latest_version = normalize_version(tag)
     if not latest_version:
         raise ValueError("В релизе не указана версия")
@@ -156,12 +164,12 @@ def check_for_updates(force: bool = False) -> UpdateCheckResult:
     now = time.time()
     cached = _read_cache()
 
-    cooldown = MANUAL_CHECK_COOLDOWN_SEC if force else UPDATE_CHECK_INTERVAL_SEC
-    if cached is not None and (now - cached.checked_at) < cooldown:
-        cached.current_version = current_version
-        cached.update_available = is_newer_version(cached.latest_version, current_version)
-        cached.error = None
-        return cached
+    if not force:
+        if cached is not None and (now - cached.checked_at) < UPDATE_CHECK_INTERVAL_SEC:
+            cached.current_version = current_version
+            cached.update_available = is_newer_version(cached.latest_version, current_version)
+            cached.error = None
+            return cached
 
     try:
         latest_version, release_url, download_url = _fetch_latest_release()
@@ -180,6 +188,7 @@ def check_for_updates(force: bool = False) -> UpdateCheckResult:
         if cached is not None and not force:
             cached.current_version = current_version
             cached.update_available = is_newer_version(cached.latest_version, current_version)
+            cached.error = None
             return cached
         return UpdateCheckResult(
             current_version=current_version,
