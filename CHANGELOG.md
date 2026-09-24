@@ -5,20 +5,25 @@
 
 ## [Unreleased]
 
+## [0.0.5] — 2026-09-24
+
+Стабильный Windows-агент и обновлённый UI.
+
+### Добавлено
+
+- Иконки и обновлённый UI веб-панели (favicon, иконография в дашборде, хостах, настройках)
+- Иконка Windows-агента в трее и установщике
+
 ### Исправлено
 
-- Windows: `UnicodeEncodeError` при старте службы (cp1251) — UTF-8 для stdout/stderr, `->` вместо `→`
-
-
-- Windows: PyInstaller entry point (`agent_entry.py`) — исправлен `ImportError: attempted relative import with no known parent package`
-- Agent transport: исправлен импорт `protocol.models` в `transport/base.py` (`...protocol` вместо `..protocol`)
-- Windows: запуск службы агента через NSSM (`AppNoConsole`, проверка статуса после старта)
-- Windows: `token_file` в `agent.yaml` записывается в кавычках (корректный путь)
+- Windows-агент: запуск службы после установки (PyInstaller entry point, импорт `protocol`, UTF-8 для логов)
+- Windows: `token_file` в `agent.yaml` в кавычках; NSSM `AppNoConsole` и проверка статуса службы
 - Агент: fallback на встроенный `agent_sensors.yaml`, если файл в ProgramData отсутствует
+- Release workflow: корректный re-tag (без дублирования `.deb` в assets)
 
 ### Изменено
 
-- Release workflow: Docker-образ hub пересобирается только при изменениях hub-кода (не при релизах только агента)
+- Docker-образ hub пересобирается только при изменениях hub-кода
 
 ## [0.0.4] — 2026-09-24
 
