@@ -5,9 +5,14 @@
 
 ## [Unreleased]
 
+## [0.0.2] — 2026-09-24
+
+Fleet hub + agents и авторизация веб-интерфейса hub.
+
 ### Добавлено
 
 - Fleet-модель: **hub** (Docker) + **agents** (deb `system-monitor-agent`)
+- Авторизация hub: `HUB_NAME` и `HUB_KEY` в `.env`, страница `/login`
 - HTTP ingest: `POST /api/agents/{id}/metrics`, SyncConfig, Bearer token
 - Страница «Хосты», селектор агента на дашборде
 - debconf при установке agent: hub-url, agent-id, token
@@ -18,6 +23,10 @@
 
 - Hub/дашборд — только Docker (не .deb)
 - APT repo — только `system-monitor-agent`
+
+### Исправлено
+
+- CI: сборка `.deb` — удалён дублирующий `debian/compat`
 
 ## [0.0.1] — 2026-09-24
 

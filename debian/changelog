@@ -1,7 +1,8 @@
 system-monitor-agent (0.0.2-1) unstable; urgency=medium
 
-  * Slim agent package for fleet deployments.
-  * debconf: hub-url, agent-id, token on install.
-  * systemd unit system-monitor-agent.service.
+  * Fleet hub + agents architecture.
+  * Hub web authorization (HUB_NAME / HUB_KEY).
+  * Slim agent package with debconf and systemd unit.
+  * Fix CI deb build: remove duplicate debian/compat.
 
- -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 11:30:00 +0700
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 14:30:00 +0700

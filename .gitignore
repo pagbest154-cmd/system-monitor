@@ -19,6 +19,7 @@ debian/.debhelper/
 debian/debhelper-build-stamp
 debian/files
 debian/system-monitor/
+debian/system-monitor-agent/
 debian/*.substvars
 debian/*.debhelper
 dist/
