@@ -251,7 +251,8 @@ func (r *Runner) ensureCollector() {
 func (r *Runner) pushOnce() (int, error) {
 	r.ensureCollector()
 	snapshot := r.collector.GetLatestSnapshot()
-	systemSnapshot := r.snapshotFromSystem()
+	systemInfo := sysinfo.GetSystemInfo()
+	systemSnapshot := r.snapshotFromSystem(systemInfo)
 	if !snapshotHasValues(snapshot) {
 		snapshot = systemSnapshot
 	} else {
@@ -289,7 +290,7 @@ func (r *Runner) pushOnce() (int, error) {
 	hostname, _ := os.Hostname()
 	report := &protocol.AgentReport{
 		AgentID: r.AgentID, Hostname: hostname, Metrics: metrics,
-		System: sysinfo.GetSystemInfo(), ConfigVersion: r.configVersion, Sensors: sensors,
+		System: systemInfo, ConfigVersion: r.configVersion, Sensors: sensors,
 	}
 	if err := r.Transport.PushReport(report); err != nil {
 		return 0, err
@@ -320,8 +321,7 @@ func mergeSnapshot(primary, fallback map[string]map[string]interface{}) map[stri
 	return merged
 }
 
-func (r *Runner) snapshotFromSystem() map[string]map[string]interface{} {
-	info := sysinfo.GetSystemInfo()
+func (r *Runner) snapshotFromSystem(info map[string]interface{}) map[string]map[string]interface{} {
 	now := float64(time.Now().Unix())
 	snapshot := map[string]map[string]interface{}{}
 	cpu, _ := info["cpu"].(map[string]interface{})

@@ -202,6 +202,3 @@ func getPhysicalDrives() []map[string]interface{} {
 	return []map[string]interface{}{}
 }
 
-func getGPUs() []map[string]interface{} {
-	return getNvidiaGPUs()
-}

@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+## [1.0.8] — 2026-09-24
+
+### Исправлено
+
+- Windows: `CREATE_NO_WINDOW` для скрытых подпроцессов (PowerShell/nvidia-smi/sc)
+- Windows tray: статус службы по `agent.status.json` вместо `sc query` каждые 3 с
+- Windows: ACPI-температура через WMI без запуска PowerShell
+- Агент: один вызов `GetSystemInfo` за цикл push, кэш nvidia-smi и температур
+
+## [1.0.7] — 2026-09-24
+
+### Исправлено
+
+- Windows: убрано мигание консольных окон (PowerShell/nvidia-smi/sc при опросе датчиков и трее)
+
 ## [1.0.6] — 2026-09-24
 
 ### Исправлено

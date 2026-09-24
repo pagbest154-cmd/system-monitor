@@ -3,11 +3,65 @@ package sysinfo
 import (
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 )
 
-func getNvidiaGPUs() []map[string]interface{} {
+const nvidiaCacheTTL = 30 * time.Second
+
+var (
+	nvidiaCache struct {
+		gpus []map[string]interface{}
+		at   time.Time
+	}
+	nvidiaCacheMu sync.Mutex
+)
+
+func getGPUs() []map[string]interface{} {
+	return getNvidiaGPUsCached()
+}
+
+func getNvidiaGPUsCached() []map[string]interface{} {
+	nvidiaCacheMu.Lock()
+	if nvidiaCache.gpus != nil && time.Since(nvidiaCache.at) < nvidiaCacheTTL {
+		gpus := nvidiaCache.gpus
+		nvidiaCacheMu.Unlock()
+		return gpus
+	}
+	nvidiaCacheMu.Unlock()
+
+	gpus := fetchNvidiaGPUs()
+	nvidiaCacheMu.Lock()
+	nvidiaCache.gpus = gpus
+	nvidiaCache.at = time.Now()
+	nvidiaCacheMu.Unlock()
+	return gpus
+}
+
+// NvidiaGPUTemperature returns cached nvidia-smi temperature when available.
+func NvidiaGPUTemperature() *float64 {
+	gpus := getNvidiaGPUsCached()
+	if len(gpus) == 0 {
+		return nil
+	}
+	temp, ok := gpus[0]["temperature_c"]
+	if !ok || temp == nil {
+		return nil
+	}
+	switch v := temp.(type) {
+	case float64:
+		return &v
+	case int:
+		f := float64(v)
+		return &f
+	default:
+		return nil
+	}
+}
+
+func fetchNvidiaGPUs() []map[string]interface{} {
 	cmd := hiddenexec.Command("nvidia-smi",
 		"--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,driver_version",
 		"--format=csv,noheader,nounits")

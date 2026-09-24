@@ -9,8 +9,27 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
+	"github.com/pagbest154-cmd/system-monitor/internal/sysinfo"
+)
+
+const temperatureCacheTTL = 15 * time.Second
+
+var (
+	cpuTempCache struct {
+		value *float64
+		at    time.Time
+		ok    bool
+	}
+	gpuTempCache struct {
+		value *float64
+		at    time.Time
+		ok    bool
+	}
+	tempCacheMu sync.Mutex
 )
 
 var cpuNameRE = regexp.MustCompile(`(?i)cpu|core|package|tctl|processor|xeon|ryzen`)
@@ -38,6 +57,42 @@ func (s gpuTemperatureSensor) Read() SensorReading {
 }
 
 func readCPUTemperature() *float64 {
+	tempCacheMu.Lock()
+	if cpuTempCache.ok && time.Since(cpuTempCache.at) < temperatureCacheTTL {
+		v := cpuTempCache.value
+		tempCacheMu.Unlock()
+		return v
+	}
+	tempCacheMu.Unlock()
+
+	v := readCPUTemperatureUncached()
+	tempCacheMu.Lock()
+	cpuTempCache.value = v
+	cpuTempCache.at = time.Now()
+	cpuTempCache.ok = true
+	tempCacheMu.Unlock()
+	return v
+}
+
+func readGPUTemperature() *float64 {
+	tempCacheMu.Lock()
+	if gpuTempCache.ok && time.Since(gpuTempCache.at) < temperatureCacheTTL {
+		v := gpuTempCache.value
+		tempCacheMu.Unlock()
+		return v
+	}
+	tempCacheMu.Unlock()
+
+	v := readGPUTemperatureUncached()
+	tempCacheMu.Lock()
+	gpuTempCache.value = v
+	gpuTempCache.at = time.Now()
+	gpuTempCache.ok = true
+	tempCacheMu.Unlock()
+	return v
+}
+
+func readCPUTemperatureUncached() *float64 {
 	if runtime.GOOS == "linux" {
 		return readLinuxThermal()
 	}
@@ -54,8 +109,8 @@ func readCPUTemperature() *float64 {
 	return nil
 }
 
-func readGPUTemperature() *float64 {
-	if v := readNvidiaSMITemp(); v != nil {
+func readGPUTemperatureUncached() *float64 {
+	if v := sysinfo.NvidiaGPUTemperature(); v != nil {
 		return v
 	}
 	if runtime.GOOS == "windows" {
@@ -88,35 +143,6 @@ func readLinuxThermal() *float64 {
 			continue
 		}
 		temps = append(temps, float64(raw)/1000.0)
-	}
-	if len(temps) == 0 {
-		return nil
-	}
-	max := temps[0]
-	for _, t := range temps[1:] {
-		if t > max {
-			max = t
-		}
-	}
-	return &max
-}
-
-func readWindowsACPI() *float64 {
-	script := "Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature | Select-Object -ExpandProperty CurrentTemperature"
-	out, err := hiddenexec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script).Output()
-	if err != nil {
-		return nil
-	}
-	temps := make([]float64, 0)
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		raw, err := strconv.ParseFloat(strings.TrimSpace(line), 64)
-		if err != nil {
-			continue
-		}
-		celsius := (raw/10.0) - 273.15
-		if celsius > 0 && celsius < 150 {
-			temps = append(temps, celsius)
-		}
 	}
 	if len(temps) == 0 {
 		return nil
@@ -215,22 +241,6 @@ func pickGPUTemp(readings []struct {
 		}
 	}
 	return &max
-}
-
-func readNvidiaSMITemp() *float64 {
-	out, err := hiddenexec.Command("nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits").Output()
-	if err != nil {
-		return nil
-	}
-	line := strings.TrimSpace(string(out))
-	if line == "" {
-		return nil
-	}
-	v, err := strconv.ParseFloat(strings.Split(line, "\n")[0], 64)
-	if err != nil {
-		return nil
-	}
-	return &v
 }
 
 func toFloat(v interface{}) (float64, bool) {

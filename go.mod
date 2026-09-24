@@ -9,6 +9,8 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/lxn/walk v0.0.0-20210112085537-c389da54e794
 	github.com/shirou/gopsutil/v4 v4.25.1
+	github.com/yusufpapurcu/wmi v1.2.4
+	golang.org/x/sys v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.34.5
 )
@@ -34,10 +36,8 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
-	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	modernc.org/libc v1.55.3 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
