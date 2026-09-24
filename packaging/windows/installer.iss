@@ -47,6 +47,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "trayautostart"; Description: "Запускать иконку в трее при входе в Windows"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checked
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -54,10 +55,13 @@ Source: "{#RepoRoot}\config\agent_sensors.yaml"; DestDir: "{#MyConfigDir}"; Flag
 Source: "third_party\nssm\win64\nssm.exe"; DestDir: "{app}\nssm"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"
-Name: "{group}\Конфигурация агента"; Filename: "notepad.exe"; Parameters: """{#MyConfigDir}\agent.yaml"""
+Name: "{group}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"
+Name: "{group}\Настройки агента"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--settings"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; Tasks: desktopicon
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyServiceName}-tray"; ValueData: """{app}\system-monitor-agent.exe"" --tray"; Flags: uninsdeletevalue; Tasks: trayautostart
 
 [UninstallRun]
 Filename: "{app}\nssm\nssm.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden; RunOnceId: "StopService"
@@ -218,6 +222,13 @@ begin
   Result := True;
 end;
 
+procedure LaunchTrayIcon;
+var
+  ResultCode: Integer;
+begin
+  Exec(ExpandConstant('{app}\system-monitor-agent.exe'), '--tray', '', SW_SHOWMINNOACTIVE, ewNoWait, ResultCode);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
@@ -226,6 +237,7 @@ begin
       Abort;
     if not InstallWindowsService then
       Abort;
+    LaunchTrayIcon;
   end;
 end;
 

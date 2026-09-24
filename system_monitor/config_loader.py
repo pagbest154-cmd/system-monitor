@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from .paths import (
     AGENT_CONFIG,
     AGENT_SENSORS_CONFIG,
+    AGENT_TOKEN_FILE,
     AGENTS_CONFIG,
     DASHBOARD_CONFIG,
     HUB_CONFIG,
@@ -224,6 +225,22 @@ def load_agent_config(path: Path | None = None) -> AgentFileConfig:
 def save_agent_config(config: AgentFileConfig, path: Path | None = None) -> None:
     path = path or AGENT_CONFIG
     _save_yaml(path, config.model_dump(mode="json"))
+
+
+def load_agent_token(config: AgentFileConfig | None = None) -> str:
+    config = config or load_agent_config()
+    if config.token.strip():
+        return config.token.strip()
+    token_path = Path(config.token_file) if config.token_file.strip() else AGENT_TOKEN_FILE
+    if token_path.exists():
+        return token_path.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def save_agent_token(token: str, path: str | Path | None = None) -> None:
+    token_path = Path(path) if path else AGENT_TOKEN_FILE
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    token_path.write_text(token.strip(), encoding="utf-8")
 
 
 def load_agent_sensors_config(path: Path | None = None) -> SensorsFile:

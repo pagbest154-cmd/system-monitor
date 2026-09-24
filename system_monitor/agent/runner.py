@@ -11,11 +11,13 @@ from ..config_loader import (
     SensorOverrideConfig,
     load_agent_config,
     load_agent_sensors_config,
+    load_agent_token,
     merge_agent_config,
 )
 from ..protocol.models import AgentReport, MetricPoint, SensorMeta
 from ..fleet.service import default_agent_id
 from ..system_info import get_system_info
+from .status import AgentStatus, write_agent_status
 from .transport import AgentTransport, create_transport
 
 
@@ -28,6 +30,16 @@ class AgentRunner:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._collector: Collector | None = None
+        self._last_status = AgentStatus(
+            agent_id=self.agent_id,
+            hub_url=config.hub_url,
+            hostname=socket.gethostname(),
+        )
+
+    def _write_status(self, **updates: object) -> None:
+        for key, value in updates.items():
+            setattr(self._last_status, key, value)
+        write_agent_status(self._last_status)
 
     def reload_collector(self) -> None:
         base = load_agent_sensors_config()
@@ -71,9 +83,11 @@ class AgentRunner:
             sensors=sensors,
         )
         self.transport.push_report(report)
+        return len(metrics)
 
     def _run(self) -> None:
         self._ensure_collector()
+        self._write_status(connected=False)
         last_config_sync = 0.0
         while not self._stop.is_set():
             now = time.time()
@@ -83,10 +97,27 @@ class AgentRunner:
                     last_config_sync = now
                 except Exception as exc:
                     print(f"system-monitor-agent: ошибка SyncConfig: {exc}")
+                    self._write_status(
+                        connected=False,
+                        last_error=str(exc),
+                        last_error_ts=now,
+                    )
             try:
-                self._push_once()
+                metrics_count = self._push_once()
+                self._write_status(
+                    connected=True,
+                    last_success_ts=time.time(),
+                    last_error=None,
+                    last_error_ts=None,
+                    metrics_count=metrics_count,
+                )
             except Exception as exc:
                 print(f"system-monitor-agent: ошибка отправки метрик: {exc}")
+                self._write_status(
+                    connected=False,
+                    last_error=str(exc),
+                    last_error_ts=time.time(),
+                )
             time.sleep(max(1, self.config.interval_sec))
 
     def start(self) -> None:
@@ -107,10 +138,6 @@ class AgentRunner:
 
 def build_runner(config_path: Path | None = None) -> AgentRunner:
     config = load_agent_config(config_path)
-    token = config.token
-    if not token and config.token_file:
-        token_path = Path(config.token_file)
-        if token_path.exists():
-            token = token_path.read_text(encoding="utf-8").strip()
+    token = load_agent_token(config)
     transport = create_transport(config.transport, config.hub_url, token)
     return AgentRunner(config, transport)
