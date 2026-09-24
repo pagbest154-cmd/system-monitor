@@ -33,6 +33,8 @@ jobs:
           context: .
           push: false
           load: true
+          build-args: |
+            VERSION=ci
           tags: system-monitor:ci
 
       - name: Install deb build dependencies

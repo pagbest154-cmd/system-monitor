@@ -16,17 +16,25 @@ import (
 const (
 	GitHubRepo           = "pagbest154-cmd/system-monitor"
 	ReleasesLatestPage   = "https://github.com/" + GitHubRepo + "/releases/latest"
+	ReleasesAPI          = "https://api.github.com/repos/" + GitHubRepo + "/releases?per_page=100"
 	DefaultCheckInterval = 24 * 60 * 60
 )
 
 type ReleaseCheckResult struct {
-	CurrentVersion   string  `json:"current_version"`
-	LatestVersion    string  `json:"latest_version"`
-	UpdateAvailable  bool    `json:"update_available"`
-	ReleaseURL       string  `json:"release_url"`
-	DownloadURL      *string `json:"download_url"`
-	CheckedAt        float64 `json:"checked_at"`
-	Error            *string `json:"error"`
+	CurrentVersion  string  `json:"current_version"`
+	LatestVersion   string  `json:"latest_version"`
+	UpdateAvailable bool    `json:"update_available"`
+	ReleaseURL      string  `json:"release_url"`
+	DownloadURL     *string `json:"download_url"`
+	CheckedAt       float64 `json:"checked_at"`
+	Error           *string `json:"error"`
+}
+
+type ghRelease struct {
+	TagName    string `json:"tag_name"`
+	Draft      bool   `json:"draft"`
+	Prerelease bool   `json:"prerelease"`
+	HTMLURL    string `json:"html_url"`
 }
 
 func NormalizeVersion(v string) string {
@@ -116,7 +124,55 @@ func parseReleaseTag(finalURL, body string) string {
 	return ""
 }
 
-func FetchLatestRelease(userAgent string) (latestVersion, releaseURL, tag string, err error) {
+func fetchReleasesFromAPI(userAgent string) ([]ghRelease, error) {
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, ReleasesAPI, nil)
+	if err != nil {
+		return nil, err
+	}
+	if userAgent == "" {
+		userAgent = "system-monitor"
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("github api %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var releases []ghRelease
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, err
+	}
+	return releases, nil
+}
+
+func pickLatestRelease(releases []ghRelease) (latestVersion, releaseURL, tag string, ok bool) {
+	for _, rel := range releases {
+		if rel.Draft || rel.Prerelease {
+			continue
+		}
+		v := NormalizeVersion(rel.TagName)
+		if v == "" {
+			continue
+		}
+		if !ok || IsNewerVersion(v, latestVersion) {
+			latestVersion = v
+			tag = rel.TagName
+			releaseURL = rel.HTMLURL
+			ok = true
+		}
+	}
+	return latestVersion, releaseURL, tag, ok
+}
+
+func fetchLatestReleaseHTML(userAgent string) (latestVersion, releaseURL, tag string, err error) {
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, ReleasesLatestPage, nil)
 	if err != nil {
@@ -143,6 +199,19 @@ func FetchLatestRelease(userAgent string) (latestVersion, releaseURL, tag string
 		return "", "", "", fmt.Errorf("empty release version")
 	}
 	return latestVersion, finalURL, tag, nil
+}
+
+func FetchLatestRelease(userAgent string) (latestVersion, releaseURL, tag string, err error) {
+	releases, err := fetchReleasesFromAPI(userAgent)
+	if err == nil {
+		v, url, t, ok := pickLatestRelease(releases)
+		if ok {
+			return v, url, t, nil
+		}
+	}
+
+	// Fallback for API rate limits or empty list.
+	return fetchLatestReleaseHTML(userAgent)
 }
 
 type AssetNameFunc func(version string) string

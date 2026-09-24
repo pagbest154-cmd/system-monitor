@@ -58,6 +58,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            VERSION=${{ needs.detect-changes.outputs.version }}
           tags: |
             ghcr.io/pagbest154-cmd/system-monitor:${{ needs.detect-changes.outputs.version }}
             ghcr.io/pagbest154-cmd/system-monitor:latest

@@ -1,8 +1,11 @@
 FROM golang:1.23-alpine AS builder
+ARG VERSION=dev
 WORKDIR /src
 COPY go.mod ./
 COPY . .
-RUN go mod tidy && CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/pagbest154-cmd/system-monitor/internal/version.Version=1.0.0" -o /out/system-monitor ./cmd/system-monitor
+RUN go mod tidy && CGO_ENABLED=0 go build \
+    -ldflags="-s -w -X github.com/pagbest154-cmd/system-monitor/internal/version.Version=${VERSION}" \
+    -o /out/system-monitor ./cmd/system-monitor
 
 FROM alpine:3.20
 WORKDIR /app
