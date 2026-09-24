@@ -40,6 +40,9 @@ PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile={#RepoRoot}\packaging\windows\app-icon.ico
 UninstallDisplayIcon={app}\system-monitor-agent.exe
+CloseApplications=force
+CloseApplicationsFilter=system-monitor-agent.exe
+RestartApplications=no
 SetupLogging=yes
 
 [Languages]
@@ -51,7 +54,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "trayautostart"; Description: "Запускать иконку в трее при входе в Windows"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs restartreplace
 Source: "{#RepoRoot}\config\agent_sensors.yaml"; DestDir: "{#MyConfigDir}"; Flags: onlyifdoesntexist
 Source: "third_party\nssm\win64\nssm.exe"; DestDir: "{app}\nssm"; Flags: ignoreversion
 
@@ -127,20 +130,41 @@ begin
   Result := False;
 end;
 
-procedure StopExistingService;
+procedure StopAgentProcesses;
 var
   ResultCode: Integer;
   Nssm, AppDir: String;
 begin
   Exec('sc.exe', 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(1500);
+  Sleep(1000);
+
   AppDir := ExpandConstant('{autopf}\system-monitor-agent');
   Nssm := AppDir + '\nssm\nssm.exe';
   if FileExists(Nssm) then
-  begin
     Exec(Nssm, 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+  Exec('taskkill.exe', '/F /IM system-monitor-agent.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1500);
+end;
+
+procedure StopExistingService;
+var
+  ResultCode: Integer;
+  Nssm, AppDir: String;
+begin
+  StopAgentProcesses;
+
+  AppDir := ExpandConstant('{autopf}\system-monitor-agent');
+  Nssm := AppDir + '\nssm\nssm.exe';
+  if FileExists(Nssm) then
     Exec(Nssm, 'remove {#MyServiceName} confirm', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  NeedsRestart := False;
+  StopExistingService;
+  Result := '';
 end;
 
 procedure GrantConfigDirPermissions;
@@ -299,11 +323,9 @@ var
 begin
   if UninstallStep = usUninstall then
   begin
+    StopAgentProcesses;
     Nssm := ExpandConstant('{app}\nssm\nssm.exe');
     if FileExists(Nssm) then
-    begin
-      Exec(Nssm, 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
       Exec(Nssm, 'remove {#MyServiceName} confirm', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    end;
   end;
 end;
