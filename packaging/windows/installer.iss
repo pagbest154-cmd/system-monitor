@@ -47,7 +47,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "trayautostart"; Description: "Запускать иконку в трее при входе в Windows"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checked
+Name: "trayautostart"; Description: "Запускать иконку в трее при входе в Windows"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
