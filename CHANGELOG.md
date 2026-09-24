@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-09-24
+
+### Исправлено
+
+- Hub: stack overflow при `--proxy-headers` (Docker CMD)
+- Windows: настройки агента (manifest Common Controls + отдельный процесс из трея)
+- Windows: иконки трея и установщика (порт `branding.py` → Go)
+
 ## [1.0.0] — 2026-09-24
 
 ### Изменено

@@ -25,8 +25,12 @@ awk -v ver="$version" '
 ' "$changelog" > "$out"
 
 if [[ ! -s "$out" ]]; then
-  echo "error: no changelog section for version $version" >&2
-  exit 1
+  echo "warning: no CHANGELOG.md section for version $version, using fallback" >&2
+  {
+    echo "## [${version}]"
+    echo
+    echo "Release ${version}."
+  } > "$out"
 fi
 
 echo "Release notes written to $out"
