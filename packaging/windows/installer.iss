@@ -229,12 +229,12 @@ begin
   end;
 end;
 
-procedure CurUninstallStep(CurUninstallStep: TUninstallStep);
+procedure CurUninstallStep(UninstallStep: TUninstallStep);
 var
   ResultCode: Integer;
   Nssm: String;
 begin
-  if CurUninstallStep = usUninstall then
+  if UninstallStep = usUninstall then
   begin
     Nssm := ExpandConstant('{app}\nssm\nssm.exe');
     if FileExists(Nssm) then
