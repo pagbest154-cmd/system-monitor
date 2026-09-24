@@ -13,4 +13,10 @@ echo "Version: $version (commits: $count)"
 sed -i "s/^version = .*/version = \"${version}\"/" pyproject.toml
 sed -i "s/^__version__ = .*/__version__ = \"${version}\"/" system_monitor/__init__.py
 
-echo "Updated pyproject.toml and system_monitor/__init__.py"
+if [[ -x "$root/scripts/sync-deb-version.sh" ]]; then
+  "$root/scripts/sync-deb-version.sh" "$version"
+else
+  echo "warning: scripts/sync-deb-version.sh not found" >&2
+fi
+
+echo "Updated pyproject.toml, system_monitor/__init__.py and debian/changelog"
