@@ -112,16 +112,32 @@ function initGlobalPeriodSelector(onChange) {
   select.addEventListener("change", () => onChange(select.value));
 }
 
-async function loadSensorMeta() {
-  const url = selectedAgent ? `/api/sensors?agent=${encodeURIComponent(selectedAgent)}` : "/api/sensors";
-  const data = await fetchJson(url);
+function sensorsApiUrl() {
+  return selectedAgent
+    ? `/api/sensors?agent=${encodeURIComponent(selectedAgent)}`
+    : "/api/sensors";
+}
+
+function buildLatestFromSensors(sensors) {
+  const latest = {};
+  sensors.forEach((s) => {
+    if (s.current) latest[s.id] = s.current;
+  });
+  return latest;
+}
+
+async function loadSensorData() {
+  const data = await fetchJson(sensorsApiUrl());
   sensorMeta = {};
   data.sensors
     .filter((s) => s.supported !== false)
     .forEach((s) => {
       sensorMeta[s.id] = s;
     });
-  return data.sensors.filter((s) => s.supported !== false);
+  return {
+    sensors: data.sensors.filter((s) => s.supported !== false),
+    latest: buildLatestFromSensors(data.sensors),
+  };
 }
 
 async function loadHistory(sensorIds, period) {
@@ -570,7 +586,8 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
   }
 
   if (panel.type === "line") {
-    const history = await loadHistory(sensorIds, globalPeriod);
+    const period = panel.period || globalPeriod;
+    const history = await loadHistory(sensorIds, period);
     if (chart && !recreate) {
       updateLineChart(chart, chartDom, history, sensorMeta);
     } else {
@@ -780,14 +797,7 @@ async function initHostSelector() {
   select.addEventListener("change", async () => {
     selectedAgent = select.value;
     saveAgent(selectedAgent);
-    await loadSensorMeta();
-    const sensors = await fetchJson(
-      selectedAgent ? `/api/sensors?agent=${encodeURIComponent(selectedAgent)}` : "/api/sensors"
-    );
-    const latest = {};
-    sensors.sensors.forEach((s) => {
-      if (s.current) latest[s.id] = s.current;
-    });
+    const { latest } = await loadSensorData();
     latestSnapshot = latest;
     await renderDashboard(latest);
     await refreshSystemInfo();
@@ -807,12 +817,7 @@ export async function initDashboard() {
 
   await refreshSystemInfo();
 
-  await loadSensorMeta();
-  const sensors = await fetchJson("/api/sensors");
-  const latest = {};
-  sensors.sensors.forEach((s) => {
-    if (s.current) latest[s.id] = s.current;
-  });
+  const { latest } = await loadSensorData();
   latestSnapshot = latest;
 
   await renderDashboard(latest);

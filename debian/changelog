@@ -1,3 +1,9 @@
+system-monitor-agent (0.0.12-1) unstable; urgency=medium
+
+  * Hub: fix empty agent dashboard charts and DB fallback for sensor values.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 17:30:00 +0700
+
 system-monitor-agent (0.0.11-1) unstable; urgency=medium
 
   * Windows: manual update check always fetches latest release from GitHub.

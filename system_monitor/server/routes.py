@@ -113,6 +113,10 @@ def list_sensors(agent: str | None = Query(default=None)) -> dict[str, Any]:
             sensor_id = meta["id"]
             full_id = prefixed_sensor_id(agent, sensor_id)
             current = latest.get(full_id)
+            if current is None:
+                current = state.store.get_latest(full_id)
+                if current is not None:
+                    latest[full_id] = {**current, "sensor_id": full_id}
             items.append(
                 {
                     **meta,
@@ -123,6 +127,8 @@ def list_sensors(agent: str | None = Query(default=None)) -> dict[str, Any]:
                     "current": current,
                 }
             )
+        if latest:
+            state.fleet.update_agent(agent, latest)
         return {"settings": {"retention_days": state.retention_days}, "sensors": items, "agent_id": agent}
 
     collector = state.collector
