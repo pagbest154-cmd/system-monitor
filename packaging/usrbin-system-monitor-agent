@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /opt/system-monitor-agent/venv/bin/system-monitor-agent "$@"

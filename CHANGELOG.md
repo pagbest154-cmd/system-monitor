@@ -3,6 +3,22 @@
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).  
 Версия `0.0.N` — N совпадает с числом коммитов в `main`.
 
+## [Unreleased]
+
+### Добавлено
+
+- Fleet-модель: **hub** (Docker) + **agents** (deb `system-monitor-agent`)
+- HTTP ingest: `POST /api/agents/{id}/metrics`, SyncConfig, Bearer token
+- Страница «Хосты», селектор агента на дашборде
+- debconf при установке agent: hub-url, agent-id, token
+- Docker-образ hub в GHCR; standalone через `docker-compose.standalone.yml`
+- Протокол AgentReport (Pydantic + `proto/agent.proto`), transport HTTP/gRPC abstraction
+
+### Изменено
+
+- Hub/дашборд — только Docker (не .deb)
+- APT repo — только `system-monitor-agent`
+
 ## [0.0.1] — 2026-09-24
 
 Первая публичная версия **system-monitor** — лёгкая система мониторинга с веб-панелью на русском языке.

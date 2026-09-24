@@ -1,13 +1,38 @@
 services:
-  system-monitor:
+  hub:
     build: .
-    container_name: system-monitor
+    image: ghcr.io/pagbest154-cmd/system-monitor:${VERSION:-latest}
+    container_name: system-monitor-hub
+    expose:
+      - "8080"
     ports:
-      - "8081:8080"
+      - "${HUB_PORT:-8080}:8080"
+    environment:
+      HUB_NAME: ${HUB_NAME:?Set HUB_NAME in .env}
+      HUB_KEY: ${HUB_KEY:?Set HUB_KEY in .env}
     volumes:
       - ./config:/app/config
-      - system-monitor-data:/app/data
+      - hub-data:/app/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: system-monitor-caddy
+    profiles: ["domain"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - hub
     restart: unless-stopped
 
 volumes:
-  system-monitor-data:
+  hub-data:
+  caddy-data:
+  caddy-config:

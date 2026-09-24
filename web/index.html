@@ -13,12 +13,17 @@
     <h1 id="page-title">Мониторинг системы</h1>
     <nav>
       <a href="/" class="active">Панель</a>
+      <a href="/hosts">Хосты</a>
       <a href="/settings">Настройки</a>
     </nav>
   </header>
 
   <main>
     <div class="meta-bar">
+      <label class="host-control" id="host-control" hidden>
+        <span>Хост</span>
+        <select id="host-select" class="period-select"></select>
+      </label>
       <div id="connection-status">
         <span class="status-dot"></span>
         Подключение...

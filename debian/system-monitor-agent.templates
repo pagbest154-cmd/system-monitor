@@ -1,0 +1,16 @@
+Template: system-monitor-agent/hub-url
+Type: string
+Default: http://127.0.0.1:8080
+Description: Hub URL (system-monitor Docker):
+ Введите адрес центрального hub, например http://192.168.1.10:8080
+
+Template: system-monitor-agent/agent-id
+Type: string
+Default: 
+Description: Agent ID:
+ Уникальный идентификатор агента (по умолчанию — hostname)
+
+Template: system-monitor-agent/token
+Type: password
+Description: Token (optional):
+ Токен из config/agents.yaml на hub. Enter — пропустить.

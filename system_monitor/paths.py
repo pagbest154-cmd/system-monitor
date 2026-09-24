@@ -24,4 +24,12 @@ else:
 
 SENSORS_CONFIG = CONFIG_DIR / "sensors.yaml"
 DASHBOARD_CONFIG = CONFIG_DIR / "dashboard.yaml"
+AGENTS_CONFIG = CONFIG_DIR / "agents.yaml"
+AGENT_CONFIG = CONFIG_DIR / "agent.yaml"
+AGENT_SENSORS_CONFIG = CONFIG_DIR / "agent_sensors.yaml"
+AGENT_TOKEN_FILE = CONFIG_DIR / "agent.token"
+HUB_CONFIG = CONFIG_DIR / "hub.yaml"
 DB_PATH = DATA_DIR / "metrics.db"
+
+# Bundled defaults shipped with the agent deb
+_PKG_CONFIG_DIR = _PKG_DIR.parent / "config" if _use_dev_layout() else ROOT_DIR / "config"

@@ -7,7 +7,7 @@ if (-not (Test-Path $python)) {
 }
 
 Start-Process -FilePath $python `
-    -ArgumentList "-m system_monitor --host 127.0.0.1 --port 8080" `
+    -ArgumentList "-m system_monitor --mode standalone --host 127.0.0.1 --port 8080" `
     -WorkingDirectory $root `
     -WindowStyle Hidden
 

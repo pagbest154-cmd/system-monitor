@@ -7,26 +7,24 @@ export DH_VERBOSE=1
 
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -rf debian/system-monitor/opt
+	rm -rf debian/system-monitor-agent/opt
 
 override_dh_auto_build:
 
 override_dh_auto_install:
-	install -d debian/system-monitor/opt/system-monitor
-	python3 -m venv debian/system-monitor/opt/system-monitor/venv
-	debian/system-monitor/opt/system-monitor/venv/bin/pip install \
+	install -d debian/system-monitor-agent/opt/system-monitor-agent
+	python3 -m venv debian/system-monitor-agent/opt/system-monitor-agent/venv
+	debian/system-monitor-agent/opt/system-monitor-agent/venv/bin/pip install \
 		--no-cache-dir --upgrade pip wheel
-	debian/system-monitor/opt/system-monitor/venv/bin/pip install \
+	debian/system-monitor-agent/opt/system-monitor-agent/venv/bin/pip install \
 		--no-cache-dir .
-	install -d debian/system-monitor/usr/share/system-monitor/web
-	cp -a web/. debian/system-monitor/usr/share/system-monitor/web/
-	install -d debian/system-monitor/etc/system-monitor
-	install -m 644 config/sensors.yaml debian/system-monitor/etc/system-monitor/
-	install -m 644 config/dashboard.yaml debian/system-monitor/etc/system-monitor/
-	install -d debian/system-monitor/usr/bin
-	install -m 755 packaging/usrbin-system-monitor debian/system-monitor/usr/bin/system-monitor
-	install -d debian/system-monitor/lib/systemd/system
-	install -m 644 debian/system-monitor.service debian/system-monitor/lib/systemd/system/system-monitor.service
+	install -d debian/system-monitor-agent/etc/system-monitor
+	install -m 644 config/agent.yaml debian/system-monitor-agent/etc/system-monitor/
+	install -m 644 config/agent_sensors.yaml debian/system-monitor-agent/etc/system-monitor/
+	install -d debian/system-monitor-agent/usr/bin
+	install -m 755 packaging/usrbin-system-monitor-agent debian/system-monitor-agent/usr/bin/system-monitor-agent
+	install -d debian/system-monitor-agent/lib/systemd/system
+	install -m 644 debian/system-monitor-agent.service debian/system-monitor-agent/lib/systemd/system/system-monitor-agent.service
 
 override_dh_auto_test:
 

@@ -1,0 +1,70 @@
+#!/bin/sh
+set -e
+
+AGENT_YAML="/etc/system-monitor/agent.yaml"
+TOKEN_FILE="/etc/system-monitor/agent.token"
+
+write_agent_yaml() {
+    hub_url="${1:-http://127.0.0.1:8080}"
+    agent_id="${2:-}"
+    token_file="${3:-/etc/system-monitor/agent.token}"
+
+    cat >"$AGENT_YAML" <<EOF
+hub_url: "$hub_url"
+agent_id: "$agent_id"
+token_file: $token_file
+interval_sec: 5
+transport: http
+EOF
+    chmod 0644 "$AGENT_YAML"
+}
+
+case "$1" in
+    configure)
+        if ! getent passwd system-monitor-agent >/dev/null; then
+            adduser --system --group --home /var/lib/system-monitor-agent --no-create-home system-monitor-agent
+        fi
+        mkdir -p /etc/system-monitor /var/lib/system-monitor-agent
+        chown system-monitor-agent:system-monitor-agent /var/lib/system-monitor-agent
+        chmod 0750 /var/lib/system-monitor-agent
+
+        if [ -f /usr/share/debconf/confmodule ]; then
+            . /usr/share/debconf/confmodule
+            db_get system-monitor-agent/hub-url || true
+            hub_url="${RET:-http://127.0.0.1:8080}"
+            db_get system-monitor-agent/agent-id || true
+            agent_id="${RET:-}"
+            db_get system-monitor-agent/token || true
+            token="${RET:-}"
+        else
+            hub_url="${HUB_URL:-http://127.0.0.1:8080}"
+            agent_id="${AGENT_ID:-}"
+            token="${AGENT_TOKEN:-}"
+        fi
+
+        if [ -z "$agent_id" ]; then
+            agent_id="$(hostname)"
+        fi
+
+        write_agent_yaml "$hub_url" "$agent_id" "$TOKEN_FILE"
+
+        if [ -n "$token" ]; then
+            umask 077
+            printf '%s' "$token" >"$TOKEN_FILE"
+            chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
+            chmod 0600 "$TOKEN_FILE"
+        elif [ ! -f "$TOKEN_FILE" ]; then
+            touch "$TOKEN_FILE"
+            chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
+            chmod 0600 "$TOKEN_FILE"
+        fi
+
+        if command -v deb-systemd-helper >/dev/null; then
+            deb-systemd-helper enable system-monitor-agent.service >/dev/null || true
+            deb-systemd-helper try-restart system-monitor-agent.service >/dev/null || \
+                deb-systemd-helper start system-monitor-agent.service >/dev/null || true
+        fi
+        ;;
+esac
+
+exit 0

@@ -7,15 +7,53 @@ on:
 
 permissions:
   contents: write
+  packages: write
   pages: write
   id-token: write
 
 jobs:
-  build-deb:
+  build-docker:
     runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Extract version
+        id: meta
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/pagbest154-cmd/system-monitor:${{ steps.meta.outputs.version }}
+            ghcr.io/pagbest154-cmd/system-monitor:latest
+
+  build-deb:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Extract version
+        id: meta
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Install build dependencies
         run: |
@@ -36,56 +74,86 @@ jobs:
       - name: Prepare debian files
         run: find debian packaging scripts -type f -exec sed -i 's/\r$//' {} +
 
+      - name: Sync deb version from tag
+        run: |
+          chmod +x scripts/sync-deb-version.sh scripts/publish-apt-repo.sh scripts/extract-release-notes.sh
+          ./scripts/sync-deb-version.sh "${{ steps.meta.outputs.version }}"
+
       - name: Build deb package
         run: |
           set -euxo pipefail
-          chmod +x debian/rules packaging/usrbin-system-monitor
-          chmod +x debian/postinst debian/prerm debian/postrm scripts/publish-apt-repo.sh
+          chmod +x debian/rules packaging/usrbin-system-monitor-agent
+          chmod +x debian/system-monitor-agent.postinst debian/system-monitor-agent.prerm debian/system-monitor-agent.postrm
+          chmod +x debian/system-monitor-agent.config
           dpkg-buildpackage -us -uc -b
           mkdir -p dist
           shopt -s nullglob
-          deb=(../system-monitor_*_amd64.deb)
-          if [ ${#deb[@]} -eq 0 ]; then deb=(../system-monitor_*.deb); fi
+          deb=(../system-monitor-agent_*_amd64.deb)
+          if [ ${#deb[@]} -eq 0 ]; then deb=(../system-monitor-agent_*.deb); fi
           mv "${deb[@]}" dist/
-          mv ../system-monitor_*.changes dist/ 2>/dev/null || true
-          mv ../system-monitor_*.buildinfo dist/ 2>/dev/null || true
+          mv ../system-monitor-agent_*.changes dist/ 2>/dev/null || true
+          mv ../system-monitor-agent_*.buildinfo dist/ 2>/dev/null || true
 
-      - name: Build apt repository
-        run: |
-          chmod +x scripts/publish-apt-repo.sh
-          ./scripts/publish-apt-repo.sh dist/system-monitor_*.deb dist/apt-repo
+      - name: Build APT repository
+        run: ./scripts/publish-apt-repo.sh dist/system-monitor-agent_*.deb dist/apt-repo
 
-      - name: Extract release notes
-        run: |
-          chmod +x scripts/extract-release-notes.sh
-          version="${GITHUB_REF#refs/tags/v}"
-          ./scripts/extract-release-notes.sh "$version" dist/RELEASE_NOTES.md
-
-      - name: Upload build artifacts
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
           name: release-assets
           path: dist/
 
-      - name: Create GitHub release
+  release:
+    needs: [build-docker, build-deb]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: release-assets
+          path: dist
+
+      - name: Prepare release notes
+        run: |
+          version="${{ needs.build-deb.outputs.version }}"
+          chmod +x scripts/extract-release-notes.sh
+          ./scripts/extract-release-notes.sh "$version" dist/RELEASE_NOTES.md
+          {
+            echo
+            echo "### Docker (hub)"
+            echo '```bash'
+            echo "docker pull ghcr.io/pagbest154-cmd/system-monitor:${version}"
+            echo "docker compose up -d"
+            echo '```'
+            echo
+            echo "### Agent (.deb)"
+            echo '```bash'
+            echo "sudo apt install ./system-monitor-agent_*_amd64.deb"
+            echo '```'
+          } >> dist/RELEASE_NOTES.md
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: false
           body_path: dist/RELEASE_NOTES.md
           fail_on_unmatched_files: false
           files: |
-            dist/system-monitor_*.deb
-            dist/system-monitor_*.changes
+            dist/system-monitor-agent_*.deb
+            dist/system-monitor-agent_*.changes
             dist/apt-repo/**/*
 
   publish-apt-pages:
-    needs: build-deb
+    needs: release
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download build artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
           name: release-assets

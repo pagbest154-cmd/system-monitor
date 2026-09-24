@@ -47,74 +47,83 @@ Live-обновления по WebSocket, история в SQLite.
 
 ## Архитектура
 
+**Fleet (hub + agents):**
+
+```mermaid
+flowchart TB
+    subgraph machines [Машины]
+        A1[system-monitor-agent]
+        A2[system-monitor-agent]
+    end
+    subgraph hubHost [Hub Docker]
+        API[FastAPI + WebSocket]
+        DB[(SQLite)]
+        UI[Dashboard]
+    end
+    A1 -->|HTTP push| API
+    A2 --> API
+    API --> DB
+    DB --> UI
+```
+
+**Standalone (одна машина):**
+
 ```mermaid
 flowchart LR
-    subgraph sensors [Датчики]
-        CPU[CPU / RAM]
-        DISK[Диски]
-        NET[Сеть]
-        PLG[HTTP / MQTT / GPIO]
-    end
-
-    subgraph backend [Backend]
-        COL[Collector]
-        DB[(SQLite)]
-        API[FastAPI]
-    end
-
-    subgraph ui [Веб-панель]
-        DASH[Dashboard]
-        WS[WebSocket]
-    end
-
-    CPU --> COL
-    DISK --> COL
-    NET --> COL
-    PLG --> COL
-    COL --> DB
-    COL --> WS
-    API --> DASH
-    DB --> API
-    WS --> DASH
+    COL[Collector] --> DB[(SQLite)] --> API[FastAPI] --> UI[Dashboard]
 ```
 
 ---
 
 ## Установка
 
-### Debian / Ubuntu (.deb)
-
-Скачать `.deb` из [релизов](https://github.com/pagbest154-cmd/system-monitor/releases):
+### Hub (Docker) — центральный дашборд
 
 ```bash
-sudo apt install ./system-monitor_*_amd64.deb
+git clone https://github.com/pagbest154-cmd/system-monitor.git
+cd system-monitor
+cp .env.example .env
+# HUB_NAME и HUB_KEY — имя хаба и ключ для входа в веб-интерфейс
+docker compose up -d
 ```
 
-Или подключить APT-репозиторий (публикуется на GitHub Pages при релизе):
+Образ: `ghcr.io/pagbest154-cmd/system-monitor:latest` · интерфейс: http://127.0.0.1:8080
+
+**Привязка домена (HTTPS):**
+
+```bash
+cp .env.example .env
+# DOMAIN=monitor.example.com  — DNS A-запись на IP сервера
+docker compose --profile domain up -d
+```
+
+В настройках hub укажите тот же домен — «URL для агентов» появится автоматически.  
+Caddy получит сертификат Let's Encrypt и проксирует на hub.
+
+**Standalone (одна машина):** `docker compose -f docker-compose.standalone.yml up -d`
+
+### Agent (.deb) — slim-пакет на машинах
+
+```bash
+sudo apt install ./system-monitor-agent_*_amd64.deb
+```
+
+При установке debconf спросит **Hub URL**, **Agent ID** и **token**.  
+На hub добавьте агента в [`config/agents.yaml`](config/agents.yaml) с тем же token.
+
+APT-репозиторий (GitHub Pages при релизе):
 
 ```bash
 echo "deb [trusted=yes] https://pagbest154-cmd.github.io/system-monitor/apt stable main" \
   | sudo tee /etc/apt/sources.list.d/system-monitor.list
 sudo apt update
-sudo apt install system-monitor
+sudo apt install system-monitor-agent
 ```
 
-Для публикации APT-репозитория через GitHub Actions:
-
-1. **Settings → Pages → Source: GitHub Actions**
-2. **Settings → Environments → github-pages → Deployment branches and tags** → добавить тег `v*`
-
-После установки сервис запускается автоматически:
-
-```bash
-sudo systemctl status system-monitor
-```
-
-| Путь | Назначение |
-|------|------------|
-| `/etc/system-monitor/` | Конфигурация |
-| `/var/lib/system-monitor/` | Данные SQLite |
-| `http://127.0.0.1:8080` | Веб-интерфейс |
+| Компонент | Способ | Путь конфигурации |
+|-----------|--------|-------------------|
+| Hub | Docker | `./config/` + volume `hub-data` |
+| Agent | apt | `/etc/system-monitor/agent.yaml` |
 
 ### Из исходников (Python)
 
@@ -130,7 +139,16 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
-python -m system_monitor
+pip install ".[hub]"
+python -m system_monitor --mode hub --host 0.0.0.0 --port 8080
+```
+
+**Agent (dev):**
+
+```bash
+pip install -r requirements-agent.txt
+pip install .
+system-monitor-agent --config config/agent.yaml
 ```
 
 **Опционально:**
@@ -142,9 +160,7 @@ pip install paho-mqtt                # MQTT-датчики
 
 Откройте в браузере: **http://127.0.0.1:8080**
 
-```bash
-python -m system_monitor --host 0.0.0.0 --port 8080
-```
+Standalone без fleet: `python -m system_monitor --mode standalone --host 0.0.0.0 --port 8080`
 
 ---
 
@@ -213,6 +229,16 @@ panels:
 
 | Метод | Путь | Описание |
 |-------|------|----------|
+| GET | `/api/hub/info` | Домен и public URL hub |
+| GET | `/api/config/hub` | Конфиг домена |
+| PUT | `/api/config/hub` | Сохранить домен |
+| GET | `/api/mode` | Режим: `standalone` / `hub` |
+| GET | `/api/agents` | Список агентов (hub) |
+| GET | `/api/agents/{id}/system` | Snapshot железа агента |
+| POST | `/api/agents/{id}/metrics` | Ingest метрик (agent, Bearer token) |
+| POST | `/api/agents/{id}/config` | SyncConfig overrides (agent) |
+| GET | `/api/sensors?agent=` | Датчики агента |
+| GET | `/api/metrics/{id}?agent=` | История метрик агента |
 | GET | `/api/sensors` | Список датчиков и текущие значения |
 | GET | `/api/metrics/{id}?period=1h` | История метрик |
 | GET | `/api/system` | Информация о железе (CPU, RAM, диски, GPU…) |

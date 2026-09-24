@@ -9,8 +9,6 @@ description = "Лёгкая система мониторинга с веб-па
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
     "psutil>=6.0.0",
     "pyyaml>=6.0.0",
     "pydantic>=2.0.0",
@@ -18,12 +16,22 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+hub = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+]
+grpc = [
+    "grpcio>=1.60.0",
+]
 pi = ["gpiozero>=2.0.0", "smbus2>=0.4.0"]
 mqtt = ["paho-mqtt>=2.0.0"]
 windows = ["wmi>=1.5.1"]
+agent = []
+all = ["system-monitor[hub,grpc,mqtt,pi,windows]"]
 
 [project.scripts]
 system-monitor = "system_monitor.__main__:main"
+system-monitor-agent = "system_monitor.agent.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["system_monitor*"]

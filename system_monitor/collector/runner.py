@@ -16,22 +16,28 @@ from .registry import create_sensor
 class Collector:
     def __init__(
         self,
-        store: MetricStore,
+        store: MetricStore | None = None,
         on_update: Callable[[dict[str, Any]], None] | None = None,
+        config: SensorsFile | None = None,
+        config_loader: Callable[[], SensorsFile] | None = None,
     ) -> None:
         self.store = store
         self.on_update = on_update
+        self._config_loader = config_loader or load_sensors_config
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
-        self._config = load_sensors_config()
+        self._config = config or self._config_loader()
         self._sensors: dict[str, Sensor] = {}
         self._last_poll: dict[str, float] = {}
         self._latest: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
         self.reload_config()
 
-    def reload_config(self) -> None:
-        self._config = load_sensors_config()
+    def reload_config(self, config: SensorsFile | None = None) -> None:
+        if config is not None:
+            self._config = config
+        else:
+            self._config = self._config_loader()
         sensors: dict[str, Sensor] = {}
         configured_paths = {
             cfg.params.get("path")
@@ -92,11 +98,13 @@ class Collector:
                     continue
 
                 reading = self._safe_read(sensor)
-                self.store.insert(sensor_id, reading.value, reading.status)
+                if self.store is not None:
+                    self.store.insert(sensor_id, reading.value, reading.status, ts=now)
                 payload = {
                     **reading.to_dict(),
                     "name": config.name,
                     "unit": config.unit,
+                    "type": config.type,
                     "ts": now,
                 }
                 with self._lock:
@@ -107,10 +115,11 @@ class Collector:
             if updates and self.on_update:
                 self.on_update(updates)
 
-            retention = self._config.settings.retention_days
-            if now - last_cleanup > 3600:
-                self.store.cleanup(retention)
-                last_cleanup = now
+            if self.store is not None:
+                retention = self._config.settings.retention_days
+                if now - last_cleanup > 3600:
+                    self.store.cleanup(retention)
+                    last_cleanup = now
 
             time.sleep(0.5)
 
@@ -148,3 +157,24 @@ class Collector:
     def get_active_sensor_ids(self) -> set[str]:
         with self._lock:
             return set(self._sensors.keys())
+
+    def build_sensor_meta(self) -> list[dict[str, Any]]:
+        active_ids = self.get_active_sensor_ids()
+        items = []
+        for cfg in self.get_sensor_configs():
+            if cfg.id not in active_ids:
+                continue
+            items.append(
+                {
+                    "id": cfg.id,
+                    "name": cfg.name,
+                    "type": cfg.type,
+                    "unit": cfg.unit,
+                    "enabled": cfg.enabled,
+                    "interval_sec": cfg.interval_sec,
+                    "params": cfg.params,
+                    "warn_above": cfg.warn_above,
+                    "critical_above": cfg.critical_above,
+                }
+            )
+        return items

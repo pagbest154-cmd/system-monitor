@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package system_monitor.agent;
+
+message MetricPoint {
+  string sensor_id = 1;
+  double ts = 2;
+  optional double value = 3;
+  string status = 4;
+}
+
+message SensorMeta {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string unit = 4;
+  bool enabled = 5;
+  optional int32 interval_sec = 6;
+}
+
+message SystemSnapshot {
+  bytes payload_json = 1;
+}
+
+message AgentReport {
+  string agent_id = 1;
+  string hostname = 2;
+  repeated MetricPoint metrics = 3;
+  SystemSnapshot system = 4;
+  int64 config_version = 5;
+  repeated SensorMeta sensors = 6;
+}
+
+message SensorOverride {
+  string sensor_id = 1;
+  optional bool enabled = 2;
+  optional int32 interval_sec = 3;
+  optional double warn_above = 4;
+  optional double critical_above = 5;
+}
+
+message AgentConfig {
+  int64 version = 1;
+  repeated SensorOverride overrides = 2;
+}
+
+message ConfigRequest {
+  string agent_id = 1;
+  int64 config_version = 2;
+}
+
+service AgentService {
+  rpc PushMetrics(AgentReport) returns (PushResponse);
+  rpc SyncConfig(ConfigRequest) returns (AgentConfig);
+}
+
+message PushResponse {
+  bool ok = 1;
+  string message = 2;
+}

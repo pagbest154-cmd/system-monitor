@@ -58,7 +58,8 @@ fi
 cat <<EOF
 
 Tag $tag pushed. GitHub Actions will:
-  - build system-monitor_*.deb
+  - build and push ghcr.io/pagbest154-cmd/system-monitor:$tag
+  - build system-monitor-agent_*.deb
   - create GitHub Release
   - publish APT repo to GitHub Pages
 

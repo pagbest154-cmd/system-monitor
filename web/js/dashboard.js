@@ -1,4 +1,6 @@
+import { fetchJson } from "./api.js";
 import { i18n, formatTime, formatUptime } from "./i18n.js";
+import { getSavedAgent, saveAgent } from "./hosts.js";
 import {
   createGaugeChart,
   createLineChart,
@@ -17,6 +19,18 @@ const PERIOD_STORAGE_KEY = "system-monitor:global-period";
 const AUTO_DISK_SENSOR = "auto_disks";
 
 let expandedPanelId = null;
+let appMode = "standalone";
+let selectedAgent = "";
+
+function agentQuery(extra = "") {
+  if (!selectedAgent) return extra;
+  const sep = extra.includes("?") ? "&" : extra ? "?" : "?";
+  return `${extra}${sep}agent=${encodeURIComponent(selectedAgent)}`;
+}
+
+function apiUrl(path) {
+  return `${path}${agentQuery(path.includes("?") ? "" : "")}`;
+}
 
 function getSavedPeriod(fallback = "1h") {
   try {
@@ -32,12 +46,6 @@ function savePeriod(period) {
   } catch {
     // localStorage недоступен
   }
-}
-
-async function fetchJson(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
 }
 
 function setConnectionStatus(online) {
@@ -71,20 +79,22 @@ function initGlobalPeriodSelector(onChange) {
 }
 
 async function loadSensorMeta() {
-  const data = await fetchJson("/api/sensors");
+  const url = selectedAgent ? `/api/sensors?agent=${encodeURIComponent(selectedAgent)}` : "/api/sensors";
+  const data = await fetchJson(url);
   sensorMeta = {};
   data.sensors
-    .filter((s) => s.supported)
+    .filter((s) => s.supported !== false)
     .forEach((s) => {
       sensorMeta[s.id] = s;
     });
-  return data.sensors.filter((s) => s.supported);
+  return data.sensors.filter((s) => s.supported !== false);
 }
 
 async function loadHistory(sensorIds, period) {
   const results = [];
   for (const sensorId of sensorIds) {
-    const data = await fetchJson(`/api/metrics/${sensorId}?period=${period}`);
+    const agentPart = selectedAgent ? `&agent=${encodeURIComponent(selectedAgent)}` : "";
+    const data = await fetchJson(`/api/metrics/${encodeURIComponent(sensorId)}?period=${period}${agentPart}`);
     results.push({ sensorId, points: data.points });
   }
   return results;
@@ -568,12 +578,21 @@ async function renderDashboard(latest = {}) {
 }
 
 function connectLive() {
+  if (liveSocket) {
+    liveSocket.close();
+    liveSocket = null;
+  }
   const protocol = location.protocol === "https:" ? "wss" : "ws";
-  liveSocket = new WebSocket(`${protocol}://${location.host}/ws/live`);
+  const agentPart = selectedAgent ? `?agent=${encodeURIComponent(selectedAgent)}` : "";
+  liveSocket = new WebSocket(`${protocol}://${location.host}/ws/live${agentPart}`);
 
   liveSocket.onopen = () => setConnectionStatus(true);
-  liveSocket.onclose = () => {
+  liveSocket.onclose = (event) => {
     setConnectionStatus(false);
+    if (event.code === 1008) {
+      window.location.href = "/login";
+      return;
+    }
     setTimeout(connectLive, 3000);
   };
 
@@ -617,17 +636,76 @@ function resizeCharts() {
 
 async function refreshSystemInfo() {
   try {
-    const systemInfo = await fetchJson("/api/system");
+    if (appMode === "hub" && !selectedAgent) {
+      const container = document.getElementById("system-info");
+      if (container) {
+        container.innerHTML = `<p class="sys-empty">${i18n.hosts.selectHost} — блок «Система» показывает данные выбранного агента.</p>`;
+      }
+      return;
+    }
+    const url = selectedAgent
+      ? `/api/system?agent=${encodeURIComponent(selectedAgent)}`
+      : "/api/system";
+    const systemInfo = await fetchJson(url);
     renderSystemInfo(systemInfo);
   } catch (err) {
     console.error("Не удалось обновить информацию о системе", err);
   }
 }
 
+async function initHostSelector() {
+  const control = document.getElementById("host-control");
+  const select = document.getElementById("host-select");
+  if (!control || !select || appMode !== "hub") return;
+
+  const params = new URLSearchParams(location.search);
+  const fromUrl = params.get("agent") || "";
+  selectedAgent = fromUrl || getSavedAgent();
+
+  const data = await fetchJson("/api/agents");
+  const agents = data.agents || [];
+  control.hidden = false;
+
+  select.innerHTML = "";
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = i18n.hosts.allHosts;
+  select.appendChild(allOption);
+
+  agents.forEach((agent) => {
+    const option = document.createElement("option");
+    option.value = agent.id;
+    option.textContent = agent.name || agent.id;
+    if (agent.id === selectedAgent) option.selected = true;
+    select.appendChild(option);
+  });
+
+  select.addEventListener("change", async () => {
+    selectedAgent = select.value;
+    saveAgent(selectedAgent);
+    await loadSensorMeta();
+    const sensors = await fetchJson(
+      selectedAgent ? `/api/sensors?agent=${encodeURIComponent(selectedAgent)}` : "/api/sensors"
+    );
+    const latest = {};
+    sensors.sensors.forEach((s) => {
+      if (s.current) latest[s.id] = s.current;
+    });
+    latestSnapshot = latest;
+    await renderDashboard(latest);
+    await refreshSystemInfo();
+    connectLive();
+  });
+}
+
 export async function initDashboard() {
   globalPeriod = getSavedPeriod("1h");
 
+  const modeData = await fetchJson("/api/mode");
+  appMode = modeData.mode || "standalone";
+
   initGlobalPeriodSelector((period) => setGlobalPeriod(period));
+  await initHostSelector();
 
   await refreshSystemInfo();
 

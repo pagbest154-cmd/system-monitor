@@ -13,7 +13,7 @@ component="main"
 arch="$(dpkg-deb -f "$deb_file" Architecture)"
 version="$(dpkg-deb -f "$deb_file" Version)"
 
-pool_dir="$out_dir/pool/main/s/system-monitor"
+pool_dir="$out_dir/pool/main/s/system-monitor-agent"
 packages_dir="$out_dir/dists/$suite/$component/binary-$arch"
 packages_file="$packages_dir/Packages"
 
@@ -24,8 +24,8 @@ apt-ftparchive packages "$out_dir/pool/main" > "$packages_file"
 gzip -9c "$packages_file" > "$packages_file.gz"
 
 cat >"$out_dir/apt-ftparchive.conf" <<EOF
-APT::FTPArchive::Release::Origin "system-monitor";
-APT::FTPArchive::Release::Label "system-monitor";
+APT::FTPArchive::Release::Origin "system-monitor-agent";
+APT::FTPArchive::Release::Label "system-monitor-agent";
 APT::FTPArchive::Release::Suite "$suite";
 APT::FTPArchive::Release::Codename "$suite";
 APT::FTPArchive::Release::Architectures "$arch";
@@ -43,7 +43,7 @@ Add this APT source:
 Then run:
 
   sudo apt update
-  sudo apt install system-monitor
+  sudo apt install system-monitor-agent
 
 Package version: $version
 EOF

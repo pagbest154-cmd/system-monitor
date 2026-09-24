@@ -1,6 +1,7 @@
-system-monitor (0.0.1-1) unstable; urgency=medium
+system-monitor-agent (0.0.2-1) unstable; urgency=medium
 
-  * Initial release.
-  * Web monitoring dashboard, Debian package, GitHub Actions CI.
+  * Slim agent package for fleet deployments.
+  * debconf: hub-url, agent-id, token on install.
+  * systemd unit system-monitor-agent.service.
 
- -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 01:20:00 +0700
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 24 Sep 2026 11:30:00 +0700

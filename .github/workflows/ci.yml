@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: system-monitor:ci
+
+      - name: Install deb build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            debhelper-compat \
+            build-essential \
+            devscripts \
+            python3 \
+            python3-dev \
+            python3-pip \
+            python3-venv \
+            python3-build \
+            python3-wheel \
+            apt-utils \
+            gzip
+
+      - name: Prepare debian files
+        run: find debian packaging scripts -type f -exec sed -i 's/\r$//' {} +
+
+      - name: Sync deb version
+        run: |
+          chmod +x scripts/sync-deb-version.sh
+          ./scripts/sync-deb-version.sh
+
+      - name: Build deb package
+        run: |
+          set -euxo pipefail
+          chmod +x debian/rules packaging/usrbin-system-monitor-agent
+          chmod +x debian/system-monitor-agent.postinst debian/system-monitor-agent.prerm debian/system-monitor-agent.postrm
+          chmod +x debian/system-monitor-agent.config
+          dpkg-buildpackage -us -uc -b
+          ls -la ../system-monitor-agent_*.deb
+
+      - name: Verify hub module
+        run: |
+          python3 -m venv /tmp/sm-venv
+          /tmp/sm-venv/bin/pip install -q -r requirements.txt ".[hub]"
+          /tmp/sm-venv/bin/python -c "from system_monitor.server import create_app; create_app('hub')"

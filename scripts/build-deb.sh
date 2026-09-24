@@ -17,10 +17,11 @@ sudo apt-get install -y \
   python3-build \
   python3-wheel
 
-chmod +x debian/rules packaging/usrbin-system-monitor
-chmod +x debian/postinst debian/prerm debian/postrm
+chmod +x debian/rules packaging/usrbin-system-monitor-agent
+chmod +x debian/system-monitor-agent.postinst debian/system-monitor-agent.prerm debian/system-monitor-agent.postrm
+chmod +x debian/system-monitor-agent.config
 dpkg-buildpackage -us -uc -b
 
 echo
 echo "Built packages:"
-ls -1 ../system-monitor_*.deb
+ls -1 ../system-monitor-agent_*.deb

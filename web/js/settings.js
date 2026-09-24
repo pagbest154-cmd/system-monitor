@@ -1,3 +1,4 @@
+import { fetchJson } from "./api.js";
 import { i18n } from "./i18n.js";
 
 const t = i18n.settingsPage;
@@ -33,12 +34,8 @@ let allSensors = [];
 let availableSensors = [];
 let sensorTypes = [];
 let panels = [];
-
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
-}
+let agents = [];
+let appMode = "standalone";
 
 function showMessage(text, isError = false) {
   const el = document.getElementById("save-message");
@@ -238,6 +235,136 @@ function readPanelsFromTable() {
   });
 }
 
+function generateAgentToken() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  const binary = String.fromCharCode(...bytes);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function renderAgentsTable() {
+  const tbody = document.querySelector("#agents-table tbody");
+  if (!tbody) return;
+  tbody.innerHTML = agents
+    .map(
+      (agent, index) => `
+      <tr data-index="${index}">
+        <td><input type="text" class="agent-id" value="${escapeHtml(agent.id)}"></td>
+        <td><input type="text" class="agent-name" value="${escapeHtml(agent.name || "")}"></td>
+        <td>
+          <div class="token-cell">
+            <input type="text" class="agent-token" value="${escapeHtml(agent.token || "")}" readonly>
+            <button type="button" class="btn btn-secondary btn-sm regen-token" title="${t.regenerateToken}">↻</button>
+            <button type="button" class="btn btn-secondary btn-sm copy-token" title="${t.copyToken}">⎘</button>
+          </div>
+        </td>
+        <td><button type="button" class="btn btn-secondary btn-sm remove-agent">Удалить</button></td>
+      </tr>
+    `
+    )
+    .join("");
+
+  tbody.querySelectorAll(".remove-agent").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const index = Number(btn.closest("tr")?.dataset.index);
+      agents.splice(index, 1);
+      renderAgentsTable();
+    });
+  });
+
+  tbody.querySelectorAll(".regen-token").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const row = btn.closest("tr");
+      const input = row?.querySelector(".agent-token");
+      if (input) input.value = generateAgentToken();
+    });
+  });
+
+  tbody.querySelectorAll(".copy-token").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest("tr");
+      const token = row?.querySelector(".agent-token")?.value || "";
+      if (!token) return;
+      try {
+        await navigator.clipboard.writeText(token);
+        showMessage(t.tokenCopied);
+      } catch {
+        showMessage("Не удалось скопировать", true);
+      }
+    });
+  });
+}
+
+function readAgentsFromTable() {
+  return [...document.querySelectorAll("#agents-table tbody tr")].map((row) => ({
+    id: row.querySelector(".agent-id")?.value.trim(),
+    name: row.querySelector(".agent-name")?.value.trim(),
+    token: row.querySelector(".agent-token")?.value.trim(),
+    overrides: [],
+  }));
+}
+
+function normalizeDomainInput(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0];
+}
+
+function resolveHubPublicUrl(domain, publicUrl, useHttps) {
+  if (publicUrl.trim()) return publicUrl.trim().replace(/\/$/, "");
+  const host = normalizeDomainInput(domain);
+  if (!host) return "";
+  return `${useHttps ? "https" : "http"}://${host}`;
+}
+
+function updateHubUrlPreview() {
+  const preview = document.getElementById("hub-url-preview");
+  if (!preview) return;
+  const domain = document.getElementById("hub-domain")?.value || "";
+  const publicUrl = document.getElementById("hub-public-url")?.value || "";
+  const useHttps = document.getElementById("hub-use-https")?.checked ?? true;
+  const resolved = resolveHubPublicUrl(domain, publicUrl, useHttps);
+  preview.textContent = resolved || "—";
+}
+
+function initHubDomainSection() {
+  const section = document.getElementById("hub-domain-section");
+  if (!section || appMode !== "hub") return;
+  section.hidden = false;
+
+  ["hub-domain", "hub-public-url", "hub-use-https"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", updateHubUrlPreview);
+    document.getElementById(id)?.addEventListener("change", updateHubUrlPreview);
+  });
+
+  document.getElementById("save-hub-domain")?.addEventListener("click", async () => {
+    try {
+      const payload = {
+        hub: {
+          domain: normalizeDomainInput(document.getElementById("hub-domain")?.value),
+          public_url: document.getElementById("hub-public-url")?.value.trim(),
+          use_https: document.getElementById("hub-use-https")?.checked ?? true,
+          trusted_hosts: ["*"],
+        },
+      };
+      const result = await fetchJson("/api/config/hub", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const resolved = result.hub?.public_url_resolved || "";
+      if (resolved) {
+        document.getElementById("hub-public-url").value = resolved;
+      }
+      updateHubUrlPreview();
+      showMessage(t.saved);
+    } catch (err) {
+      showMessage(err.message || t.saveError, true);
+    }
+  });
+}
+
 function addSensor() {
   const type = sensorTypes[0] || "system.cpu_percent";
   const id = `sensor_${Date.now()}`;
@@ -258,6 +385,9 @@ function addSensor() {
 }
 
 export async function initSettings() {
+  const modeData = await fetchJson("/api/mode");
+  appMode = modeData.mode || "standalone";
+
   const typesData = await fetchJson("/api/sensor-types");
   sensorTypes = typesData.types || [];
 
@@ -267,6 +397,26 @@ export async function initSettings() {
   allSensors = sensorsData.sensors.map((s) => ({ ...s, _existing: true }));
   availableSensors = allSensors.filter((s) => s.supported);
   panels = dashboardData.panels || [];
+
+  const sensorsSection = document.querySelector(".section:nth-of-type(2)");
+  const agentsSection = document.getElementById("agents-section");
+  if (appMode === "hub") {
+    if (sensorsSection) sensorsSection.hidden = true;
+    if (agentsSection) agentsSection.hidden = false;
+    const hubData = await fetchJson("/api/config/hub");
+    const hub = hubData.hub || {};
+    document.getElementById("hub-domain").value = hub.domain || "";
+    document.getElementById("hub-public-url").value = hub.public_url || "";
+    document.getElementById("hub-use-https").checked = hub.use_https !== false;
+    updateHubUrlPreview();
+    initHubDomainSection();
+    const agentsData = await fetchJson("/api/config/agents");
+    agents = (agentsData.agents || []).map((agent) => ({
+      ...agent,
+      token: agent.token && agent.token !== "change-me" ? agent.token : generateAgentToken(),
+    }));
+    renderAgentsTable();
+  }
 
   document.getElementById("retention-days").value = sensorsData.settings?.retention_days ?? 31;
   document.getElementById("default-interval-sec").value =
@@ -338,5 +488,34 @@ export async function initSettings() {
       span: 1,
     });
     renderPanelsTable();
+  });
+
+  document.getElementById("add-agent")?.addEventListener("click", () => {
+    agents.push({
+      id: `agent_${Date.now()}`,
+      name: "Новый агент",
+      token: generateAgentToken(),
+      overrides: [],
+    });
+    renderAgentsTable();
+  });
+
+  document.getElementById("save-agents")?.addEventListener("click", async () => {
+    try {
+      const payload = readAgentsFromTable().map((agent) => ({
+        ...agent,
+        token: agent.token || generateAgentToken(),
+      }));
+      const result = await fetchJson("/api/config/agents", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agents: payload }),
+      });
+      agents = result.agents || payload;
+      renderAgentsTable();
+      showMessage(t.saved);
+    } catch (err) {
+      showMessage(err.message || t.saveError, true);
+    }
   });
 }

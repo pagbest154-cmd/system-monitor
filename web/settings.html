@@ -11,6 +11,7 @@
     <h1>Настройки мониторинга</h1>
     <nav>
       <a href="/">Панель</a>
+      <a href="/hosts">Хосты</a>
       <a href="/settings" class="active">Настройки</a>
     </nav>
   </header>
@@ -58,8 +59,52 @@
       </div>
     </section>
 
-    <section class="section">
-      <h2>Панели графиков</h2>
+    <section class="section" id="hub-domain-section" hidden>
+      <h2>Домен hub</h2>
+      <p class="hint">Укажите домен для доступа к hub. Агентам указывайте «Публичный URL» как hub-url.</p>
+      <div class="form-row">
+        <label>
+          Домен
+          <input type="text" id="hub-domain" placeholder="monitor.example.com">
+        </label>
+        <label>
+          Публичный URL (опционально)
+          <input type="text" id="hub-public-url" placeholder="https://monitor.example.com">
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="hub-use-https" checked>
+          HTTPS
+        </label>
+      </div>
+      <p class="hint">URL для агентов: <code id="hub-url-preview">—</code></p>
+      <div class="actions-row">
+        <button id="save-hub-domain" class="btn">Сохранить домен</button>
+      </div>
+    </section>
+
+    <section class="section" id="agents-section" hidden>
+      <h2>Агенты</h2>
+      <p class="hint">Токены генерируются автоматически. Скопируйте token в конфиг агента после сохранения.</p>
+      <div class="table-wrap">
+        <table id="agents-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Имя</th>
+              <th>Token</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions-row">
+        <button id="add-agent" class="btn btn-secondary">Добавить агента</button>
+        <button id="save-agents" class="btn">Сохранить агентов</button>
+      </div>
+    </section>
+
+    <section class="section" id="panels-section">
       <div class="form-row">
         <label>
           Заголовок панели
