@@ -16,6 +16,7 @@ from ..config_loader import (
 from ..paths import AGENT_TOKEN_FILE
 from .branding import apply_tk_window_icon
 from .service_control import get_service_state, restart_service
+from .win_ui import enable_entry_clipboard
 from .updates import check_for_updates, format_update_message, get_installed_version, open_update_page
 
 
@@ -71,6 +72,7 @@ class SettingsApp:
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=4)
         entry = ttk.Entry(parent, textvariable=variable, width=42, show=show)
         entry.grid(row=row, column=1, sticky="ew", pady=4)
+        enable_entry_clipboard(entry)
         parent.columnconfigure(1, weight=1)
 
     def _check_updates(self) -> None:
@@ -120,12 +122,28 @@ class SettingsApp:
             interval_sec=interval_sec,
             transport=self.config.transport or "http",
         )
-        save_agent_config(updated, self.config_path)
-        save_agent_token(token, token_file)
+        try:
+            save_agent_config(updated, self.config_path)
+            save_agent_token(token, token_file)
+        except OSError as exc:
+            messagebox.showerror(
+                "Ошибка",
+                "Не удалось сохранить настройки.\n\n"
+                f"{exc}\n\n"
+                "Запустите «Настройки агента» от имени администратора.",
+                parent=self.root,
+            )
+            return
 
-        if messagebox.askyesno(
+        messagebox.showinfo(
             "Сохранено",
-            "Настройки сохранены.\nПерезапустить службу агента?",
+            "Настройки сохранены.\n"
+            "Служба подхватит изменения в течение нескольких секунд.",
+            parent=self.root,
+        )
+        if messagebox.askyesno(
+            "Перезапуск службы",
+            "Перезапустить службу агента сейчас?\n(может потребоваться запуск от администратора)",
             parent=self.root,
         ):
             ok, detail = restart_service()
@@ -135,7 +153,7 @@ class SettingsApp:
                 messagebox.showwarning(
                     "Перезапуск службы",
                     f"Не удалось перезапустить службу автоматически.\n\n{detail}\n\n"
-                    "Перезапустите службу «system-monitor-agent» вручную через services.msc.",
+                    "Изменения уже сохранены — служба применит их автоматически.",
                     parent=self.root,
                 )
         self.root.destroy()

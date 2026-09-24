@@ -189,5 +189,16 @@ def _launch_settings_window(config_path: Path | None = None) -> None:
     subprocess.Popen(args)
 
 
+def _tray_log_path() -> Path:
+    base = Path(os.environ.get("LOCALAPPDATA", "")) / "system-monitor"
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "tray.log"
+
+
 def run_tray(config_path: Path | None = None) -> None:
-    TrayApp(config_path or AGENT_CONFIG).run()
+    try:
+        TrayApp(config_path or AGENT_CONFIG).run()
+    except Exception as exc:
+        log_path = _tray_log_path()
+        log_path.write_text(f"tray error: {exc}\n", encoding="utf-8")
+        raise

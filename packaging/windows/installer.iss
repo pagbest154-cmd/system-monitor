@@ -127,6 +127,33 @@ begin
   Result := False;
 end;
 
+procedure StopExistingService;
+var
+  ResultCode: Integer;
+  Nssm, AppDir: String;
+begin
+  Exec('sc.exe', 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1500);
+  AppDir := ExpandConstant('{autopf}\system-monitor-agent');
+  Nssm := AppDir + '\nssm\nssm.exe';
+  if FileExists(Nssm) then
+  begin
+    Exec(Nssm, 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec(Nssm, 'remove {#MyServiceName} confirm', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
+end;
+
+procedure GrantConfigDirPermissions;
+var
+  ResultCode: Integer;
+  ConfigDir: String;
+begin
+  ConfigDir := ExpandConstant('{#MyConfigDir}');
+  ForceDirectories(ConfigDir);
+  Exec('icacls.exe', '"' + ConfigDir + '" /grant *S-1-5-32-545:(OI)(CI)M /T /C', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('icacls.exe', '"' + ConfigDir + '" /grant *S-1-5-11:(OI)(CI)M /T /C', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
 function WriteAgentConfig: Boolean;
 var
   HubUrl, AgentId, Token, TokenFile, ConfigFile: String;
@@ -151,6 +178,7 @@ begin
   ConfigFile := ConfigFilePath;
 
   ForceDirectories(ExpandConstant('{#MyConfigDir}'));
+  GrantConfigDirPermissions;
 
   SetArrayLength(Lines, 5);
   Lines[0] := 'hub_url: "' + EscapeYaml(HubUrl) + '"';
@@ -250,8 +278,12 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
+  if CurStep = ssInstall then
+    StopExistingService;
+
   if CurStep = ssPostInstall then
   begin
+    GrantConfigDirPermissions;
     if not WriteAgentConfig then
       Abort;
     if not InstallWindowsService then

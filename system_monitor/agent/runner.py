@@ -14,6 +14,7 @@ from ..config_loader import (
     load_agent_token,
     merge_agent_config,
 )
+from ..paths import AGENT_CONFIG
 from ..protocol.models import AgentReport, MetricPoint, SensorMeta
 from ..fleet.service import default_agent_id
 from ..system_info import get_system_info
@@ -23,10 +24,17 @@ from .updates import UPDATE_CHECK_INTERVAL_SEC, check_for_updates
 
 
 class AgentRunner:
-    def __init__(self, config: AgentFileConfig, transport: AgentTransport) -> None:
+    def __init__(
+        self,
+        config: AgentFileConfig,
+        transport: AgentTransport,
+        config_path: Path | None = None,
+    ) -> None:
+        self.config_path = config_path or AGENT_CONFIG
         self.config = config
         self.transport = transport
         self.agent_id = default_agent_id(config.agent_id)
+        self._config_mtime = 0.0
         self._config_version = 0
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -42,6 +50,37 @@ class AgentRunner:
         for key, value in updates.items():
             setattr(self._last_status, key, value)
         write_agent_status(self._last_status)
+
+    def _maybe_reload_config(self) -> None:
+        if not self.config_path.exists():
+            return
+        mtime = self.config_path.stat().st_mtime
+        if mtime == self._config_mtime:
+            return
+        self._config_mtime = mtime
+        try:
+            config = load_agent_config(self.config_path)
+            token = load_agent_token(config)
+            agent_id = default_agent_id(config.agent_id)
+            current_token = getattr(self.transport, "token", "")
+            changed = (
+                config.hub_url != self.config.hub_url
+                or config.interval_sec != self.config.interval_sec
+                or agent_id != self.agent_id
+                or token != current_token
+            )
+            if not changed:
+                self.config = config
+                return
+            self.transport.close()
+            self.config = config
+            self.agent_id = agent_id
+            self.transport = create_transport(config.transport, config.hub_url, token)
+            self._last_status.agent_id = agent_id
+            self._last_status.hub_url = config.hub_url
+            print(f"system-monitor-agent: config reloaded for {agent_id}")
+        except Exception as exc:
+            print(f"system-monitor-agent: ошибка перезагрузки config: {exc}")
 
     def _maybe_check_updates(self, now: float) -> None:
         if now - self._last_update_check < UPDATE_CHECK_INTERVAL_SEC:
@@ -116,6 +155,7 @@ class AgentRunner:
         self._maybe_check_updates(time.time())
         while not self._stop.is_set():
             now = time.time()
+            self._maybe_reload_config()
             self._maybe_check_updates(now)
             if now - last_config_sync > 60:
                 try:
@@ -163,7 +203,11 @@ class AgentRunner:
 
 
 def build_runner(config_path: Path | None = None) -> AgentRunner:
-    config = load_agent_config(config_path)
+    path = config_path or AGENT_CONFIG
+    config = load_agent_config(path)
     token = load_agent_token(config)
     transport = create_transport(config.transport, config.hub_url, token)
-    return AgentRunner(config, transport)
+    runner = AgentRunner(config, transport, config_path=path)
+    if path.exists():
+        runner._config_mtime = path.stat().st_mtime
+    return runner

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 import webbrowser
@@ -13,10 +14,11 @@ from .. import __version__
 from ..paths import AGENT_UPDATE_CACHE, CONFIG_DIR
 
 GITHUB_REPO = "pagbest154-cmd/system-monitor"
-RELEASES_LATEST_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-RELEASES_PAGE_URL = f"https://github.com/{GITHUB_REPO}/releases/latest"
+RELEASES_LATEST_PAGE = f"https://github.com/{GITHUB_REPO}/releases/latest"
+RELEASES_PAGE_URL = RELEASES_LATEST_PAGE
 APT_SOURCE_FILE = Path("/etc/apt/sources.list.d/system-monitor.list")
 UPDATE_CHECK_INTERVAL_SEC = 24 * 60 * 60
+MANUAL_CHECK_COOLDOWN_SEC = 15 * 60
 
 
 @dataclass
@@ -83,6 +85,12 @@ def _asset_name(latest_version: str) -> str:
     return f"system-monitor-agent_{latest_version}-1_amd64.deb"
 
 
+def _release_download_url(tag: str, latest_version: str) -> str:
+    tag_name = tag if tag.startswith("v") else f"v{latest_version}"
+    asset_name = _asset_name(latest_version)
+    return f"https://github.com/{GITHUB_REPO}/releases/download/{tag_name}/{asset_name}"
+
+
 def _install_hint(latest_version: str, download_url: str | None) -> str:
     if sys.platform == "win32":
         if download_url:
@@ -124,48 +132,39 @@ def _write_cache(result: UpdateCheckResult) -> None:
     )
 
 
-def _fetch_latest_release() -> dict:
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "system-monitor-agent",
-    }
+def _fetch_latest_release() -> tuple[str, str, str]:
+    headers = {"User-Agent": "system-monitor-agent"}
     with httpx.Client(timeout=15.0, follow_redirects=True) as client:
-        response = client.get(RELEASES_LATEST_URL, headers=headers)
+        response = client.get(RELEASES_LATEST_PAGE, headers=headers)
         response.raise_for_status()
-        payload = response.json()
-    if not isinstance(payload, dict):
-        raise ValueError("Некорректный ответ GitHub API")
-    return payload
+
+    final_url = str(response.url)
+    match = re.search(r"/releases/tag/(v?[^/?#]+)", final_url)
+    if not match:
+        raise ValueError("Не удалось определить версию из GitHub Releases")
+    tag = match.group(1)
+    latest_version = normalize_version(tag)
+    if not latest_version:
+        raise ValueError("В релизе не указана версия")
+    release_url = final_url
+    download_url = _release_download_url(tag, latest_version)
+    return latest_version, release_url, download_url
 
 
 def check_for_updates(force: bool = False) -> UpdateCheckResult:
     current_version = get_installed_version()
     now = time.time()
+    cached = _read_cache()
 
-    if not force:
-        cached = _read_cache()
-        if cached is not None and (now - cached.checked_at) < UPDATE_CHECK_INTERVAL_SEC:
-            cached.current_version = current_version
-            cached.update_available = is_newer_version(cached.latest_version, current_version)
-            return cached
+    cooldown = MANUAL_CHECK_COOLDOWN_SEC if force else UPDATE_CHECK_INTERVAL_SEC
+    if cached is not None and (now - cached.checked_at) < cooldown:
+        cached.current_version = current_version
+        cached.update_available = is_newer_version(cached.latest_version, current_version)
+        cached.error = None
+        return cached
 
     try:
-        payload = _fetch_latest_release()
-        tag_name = str(payload.get("tag_name", "")).strip()
-        latest_version = normalize_version(tag_name)
-        if not latest_version:
-            raise ValueError("В релизе не указана версия")
-
-        release_url = str(payload.get("html_url", RELEASES_PAGE_URL)).strip() or RELEASES_PAGE_URL
-        asset_name = _asset_name(latest_version)
-        download_url = None
-        for asset in payload.get("assets", []):
-            if not isinstance(asset, dict):
-                continue
-            if asset.get("name") == asset_name:
-                download_url = str(asset.get("browser_download_url", "")).strip() or None
-                break
-
+        latest_version, release_url, download_url = _fetch_latest_release()
         result = UpdateCheckResult(
             current_version=current_version,
             latest_version=latest_version,
@@ -178,7 +177,11 @@ def check_for_updates(force: bool = False) -> UpdateCheckResult:
         _write_cache(result)
         return result
     except Exception as exc:
-        result = UpdateCheckResult(
+        if cached is not None and not force:
+            cached.current_version = current_version
+            cached.update_available = is_newer_version(cached.latest_version, current_version)
+            return cached
+        return UpdateCheckResult(
             current_version=current_version,
             latest_version=current_version,
             update_available=False,
@@ -188,11 +191,15 @@ def check_for_updates(force: bool = False) -> UpdateCheckResult:
             checked_at=now,
             error=str(exc),
         )
-        return result
 
 
 def format_update_message(result: UpdateCheckResult) -> str:
     if result.error:
+        if "rate limit" in result.error.lower():
+            return (
+                "Слишком много запросов к GitHub.\n"
+                "Попробуйте позже или откройте страницу релизов вручную."
+            )
         return f"Не удалось проверить обновления: {result.error}"
     if result.update_available:
         return (

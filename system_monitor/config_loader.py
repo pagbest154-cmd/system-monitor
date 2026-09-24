@@ -238,7 +238,11 @@ def load_agent_config(path: Path | None = None) -> AgentFileConfig:
 
 def save_agent_config(config: AgentFileConfig, path: Path | None = None) -> None:
     path = path or AGENT_CONFIG
-    _save_yaml(path, config.model_dump(mode="json"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = config.model_dump(mode="json")
+    if payload.get("token_file"):
+        payload["token_file"] = str(payload["token_file"]).replace("\\", "/")
+    _save_yaml(path, payload)
 
 
 def load_agent_token(config: AgentFileConfig | None = None) -> str:
