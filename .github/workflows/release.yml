@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       hub: ${{ steps.detect.outputs.hub }}
+      windows: ${{ steps.detect.outputs.windows }}
+      deb: ${{ steps.detect.outputs.deb }}
       version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
@@ -27,11 +29,11 @@ jobs:
         id: meta
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Detect hub changes since previous tag
+      - name: Detect release changes since previous tag
         id: detect
         run: |
-          chmod +x scripts/detect-hub-changes.sh
-          ./scripts/detect-hub-changes.sh
+          chmod +x scripts/detect-release-changes.sh
+          ./scripts/detect-release-changes.sh
 
   build-docker:
     needs: detect-changes
@@ -61,17 +63,12 @@ jobs:
             ghcr.io/pagbest154-cmd/system-monitor:latest
 
   build-windows:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.windows == 'true'
     runs-on: windows-latest
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Extract version
-        id: meta
-        shell: bash
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -88,7 +85,7 @@ jobs:
 
       - name: Build Windows installer
         shell: pwsh
-        run: ./packaging/windows/build-windows-agent.ps1 -Version ${{ steps.meta.outputs.version }}
+        run: ./packaging/windows/build-windows-agent.ps1 -Version ${{ needs.detect-changes.outputs.version }}
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
@@ -97,16 +94,12 @@ jobs:
           path: packaging/windows/output/*.exe
 
   build-deb:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deb == 'true'
     runs-on: ubuntu-24.04
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Extract version
-        id: meta
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Install build dependencies
         run: |
@@ -130,7 +123,7 @@ jobs:
       - name: Sync deb version from tag
         run: |
           chmod +x scripts/sync-deb-version.sh scripts/publish-apt-repo.sh scripts/extract-release-notes.sh
-          ./scripts/sync-deb-version.sh "${{ steps.meta.outputs.version }}"
+          ./scripts/sync-deb-version.sh "${{ needs.detect-changes.outputs.version }}"
 
       - name: Build deb package
         run: |
@@ -160,21 +153,23 @@ jobs:
     needs: [detect-changes, build-docker, build-deb, build-windows]
     if: >-
       always() && !cancelled() &&
-      needs.build-deb.result == 'success' &&
-      needs.build-windows.result == 'success' &&
-      (needs.build-docker.result == 'success' || needs.build-docker.result == 'skipped')
+      (needs.build-docker.result == 'success' || needs.build-docker.result == 'skipped') &&
+      (needs.build-deb.result == 'success' || needs.build-deb.result == 'skipped') &&
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped')
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Download artifacts
+      - name: Download deb artifacts
+        if: needs.detect-changes.outputs.deb == 'true'
         uses: actions/download-artifact@v7
         with:
           name: release-assets
           path: dist
 
       - name: Download Windows installer
+        if: needs.detect-changes.outputs.windows == 'true'
         uses: actions/download-artifact@v7
         with:
           name: windows-agent
@@ -188,11 +183,30 @@ jobs:
       - name: Prepare release notes
         env:
           VERSION: ${{ needs.detect-changes.outputs.version }}
-          HUB_BUILT: ${{ needs.build-docker.result == 'success' }}
+          HUB_BUILT: ${{ needs.detect-changes.outputs.hub == 'true' && needs.build-docker.result == 'success' }}
+          DEB_BUILT: ${{ needs.detect-changes.outputs.deb == 'true' && needs.build-deb.result == 'success' }}
+          WINDOWS_BUILT: ${{ needs.detect-changes.outputs.windows == 'true' && needs.build-windows.result == 'success' }}
         run: |
           chmod +x scripts/extract-release-notes.sh
           ./scripts/extract-release-notes.sh "$VERSION" dist/RELEASE_NOTES.md
           {
+            echo
+            echo "### Сборка релиза"
+            if [ "$HUB_BUILT" = "true" ]; then
+              echo "- **Hub (Docker)** — пересобран"
+            else
+              echo "- **Hub (Docker)** — без изменений, образ не пересобирался"
+            fi
+            if [ "$DEB_BUILT" = "true" ]; then
+              echo "- **Agent (.deb)** — пересобран"
+            else
+              echo "- **Agent (.deb)** — без изменений, пакет не пересобирался"
+            fi
+            if [ "$WINDOWS_BUILT" = "true" ]; then
+              echo "- **Agent (Windows)** — пересобран"
+            else
+              echo "- **Agent (Windows)** — без изменений, установщик не пересобирался"
+            fi
             echo
             if [ "$HUB_BUILT" = "true" ]; then
               echo "### Docker (hub)"
@@ -200,20 +214,20 @@ jobs:
               echo "docker pull ghcr.io/pagbest154-cmd/system-monitor:${VERSION}"
               echo "docker compose up -d"
               echo '```'
-            else
-              echo "### Docker (hub)"
-              echo "Образ hub не пересобирался — в этом релизе изменений hub-кода нет."
-              echo "Используйте предыдущую версию из ghcr.io или \`docker compose pull\` при необходимости."
             fi
-            echo
-            echo "### Agent (.deb, Linux)"
-            echo '```bash'
-            echo "sudo apt install ./system-monitor-agent_*_amd64.deb"
-            echo '```'
-            echo
-            echo "### Agent (Windows)"
-            echo "Скачайте \`system-monitor-agent_${VERSION}_setup.exe\`, запустите установщик."
-            echo "При установке укажите Hub URL, Agent ID и token. Конфиг: \`%ProgramData%\\system-monitor\\agent.yaml\`"
+            if [ "$DEB_BUILT" = "true" ]; then
+              echo
+              echo "### Agent (.deb, Linux)"
+              echo '```bash'
+              echo "sudo apt install ./system-monitor-agent_${VERSION}-1_amd64.deb"
+              echo '```'
+            fi
+            if [ "$WINDOWS_BUILT" = "true" ]; then
+              echo
+              echo "### Agent (Windows)"
+              echo "Скачайте \`system-monitor-agent_${VERSION}_setup.exe\`, запустите установщик."
+              echo "Конфиг: \`%ProgramData%\\system-monitor\\agent.yaml\`"
+            fi
           } >> dist/RELEASE_NOTES.md
 
       - name: Create GitHub Release
@@ -222,7 +236,6 @@ jobs:
           generate_release_notes: false
           body_path: dist/RELEASE_NOTES.md
           fail_on_unmatched_files: false
-          # Не используйте dist/apt-repo/**/* — .deb в pool дублирует файл из dist/ и ломает re-upload.
           files: |
             dist/system-monitor-agent_*.deb
             dist/system-monitor-agent_*.changes
@@ -231,7 +244,8 @@ jobs:
             dist/windows/system-monitor-agent_*_setup.exe
 
   publish-apt-pages:
-    needs: release
+    needs: [release, build-deb, detect-changes]
+    if: needs.detect-changes.outputs.deb == 'true' && needs.build-deb.result == 'success'
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
