@@ -121,8 +121,32 @@ function sensorsApiUrl() {
 function buildLatestFromSensors(sensors) {
   const latest = {};
   sensors.forEach((s) => {
-    if (s.current) latest[s.id] = s.current;
+    if (s.current != null) latest[s.id] = s.current;
   });
+  return latest;
+}
+
+function diskSensorId(mountpoint) {
+  let cleaned = (mountpoint || "").trim().replace(/[\\/:]+$/g, "").toLowerCase();
+  cleaned = cleaned.replace(/:/g, "").replace(/\\/g, "_").replace(/\//g, "_");
+  cleaned = cleaned.replace(/[^a-z0-9_]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  return `disk_auto_${cleaned || "root"}`;
+}
+
+function latestFromSystem(system) {
+  const latest = {};
+  const now = Date.now() / 1000;
+  if (system.cpu?.percent != null) {
+    latest.cpu_percent = { value: system.cpu.percent, status: "ok", ts: now, unit: "%" };
+  }
+  if (system.memory?.percent != null) {
+    latest.ram_used = { value: system.memory.percent, status: "ok", ts: now, unit: "%" };
+  }
+  for (const part of system.disks || system.partitions || []) {
+    if (part.percent == null) continue;
+    const id = diskSensorId(part.mountpoint);
+    latest[id] = { value: part.percent, status: "ok", ts: now, unit: "%" };
+  }
   return latest;
 }
 
@@ -134,9 +158,32 @@ async function loadSensorData() {
     .forEach((s) => {
       sensorMeta[s.id] = s;
     });
+
+  let latest = buildLatestFromSensors(data.sensors);
+  if (selectedAgent && Object.keys(latest).length === 0) {
+    try {
+      const system = await fetchJson(`/api/system?agent=${encodeURIComponent(selectedAgent)}`);
+      latest = latestFromSystem(system);
+      if (data.sensors.length === 0) {
+        for (const [id, reading] of Object.entries(latest)) {
+          if (!sensorMeta[id]) {
+            sensorMeta[id] = {
+              id,
+              name: id.startsWith("disk_auto_") ? `Диск ${id.replace("disk_auto_", "")}` : id,
+              unit: reading.unit || "%",
+              supported: true,
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Не удалось получить system snapshot для датчиков", err);
+    }
+  }
+
   return {
     sensors: data.sensors.filter((s) => s.supported !== false),
-    latest: buildLatestFromSensors(data.sensors),
+    latest,
   };
 }
 

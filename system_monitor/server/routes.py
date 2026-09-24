@@ -29,6 +29,7 @@ from ..config_loader import (
 from ..protocol.models import AgentConfigResponse, AgentReport, prefixed_sensor_id, strip_agent_prefix
 from ..storage import MetricStore
 from ..system_info import get_system_info
+from ..fleet.report_enrichment import sensor_metas_from_system
 from ..fleet.service import build_agent_config_response, ingest_agent_report, verify_agent_token
 from .auth import (
     clear_session_cookie_header,
@@ -108,8 +109,18 @@ def list_sensors(agent: str | None = Query(default=None)) -> dict[str, Any]:
         if record is None:
             raise HTTPException(status_code=404, detail="Агент не найден")
         latest = state.fleet.get_agent_snapshot(agent)
+        metas = record.get("sensors") or []
+        if not metas:
+            system = record.get("system") or {}
+            if system:
+                metas = sensor_metas_from_system(system)
+            else:
+                metas = [
+                    {"id": sensor_id, "name": sensor_id, "type": "unknown", "unit": "%"}
+                    for sensor_id in state.store.list_agent_sensor_ids(agent)
+                ]
         items = []
-        for meta in record.get("sensors") or []:
+        for meta in metas:
             sensor_id = meta["id"]
             full_id = prefixed_sensor_id(agent, sensor_id)
             current = latest.get(full_id)

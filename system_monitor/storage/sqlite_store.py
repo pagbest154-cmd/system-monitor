@@ -110,6 +110,20 @@ class MetricStore:
             for row in rows
         ]
 
+    def list_agent_sensor_ids(self, agent_id: str) -> list[str]:
+        prefix = f"{agent_id}:"
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT sensor_id
+                FROM metrics
+                WHERE sensor_id LIKE ?
+                ORDER BY sensor_id
+                """,
+                (f"{prefix}%",),
+            ).fetchall()
+        return [str(row["sensor_id"])[len(prefix) :] for row in rows if row["sensor_id"].startswith(prefix)]
+
     def get_latest(self, sensor_id: str) -> dict[str, Any] | None:
         with self._lock, self._connect() as conn:
             row = conn.execute(

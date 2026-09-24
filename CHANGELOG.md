@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [0.0.15] — 2026-09-24
+
+### Исправлено
+
+- Hub: метрики CPU/RAM/дисков всегда берутся из system info (исправлен ключ `disks` вместо `storage`)
+- Hub: `/api/sensors?agent=` возвращает датчики даже если список в БД пустой
+- Dashboard: fallback gauge/bar из `/api/system` когда current ещё нет в БД
+
 ## [0.0.14] — 2026-09-24
 
 ### Исправлено
