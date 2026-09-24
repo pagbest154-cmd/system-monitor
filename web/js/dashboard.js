@@ -3,9 +3,13 @@ import { i18n, formatTime, formatUptime } from "./i18n.js";
 import { getSavedAgent, saveAgent } from "./hosts.js";
 import {
   createGaugeChart,
+  updateGaugeChart,
   createLineChart,
+  updateLineChart,
   createBarChart,
+  updateBarChart,
   createStatusCard,
+  updateStatusCard,
 } from "./charts.js";
 import {
   icon,
@@ -32,6 +36,11 @@ const AUTO_DISK_SENSOR = "auto_disks";
 let expandedPanelId = null;
 let appMode = "standalone";
 let selectedAgent = "";
+let lastDisplayedUpdateTs = 0;
+let liveRefreshTimer = null;
+let liveRefreshQueued = null;
+
+const LIVE_PANEL_REFRESH_MS = 1500;
 
 function normalizeSnapshot(data, agentId) {
   if (!data) return {};
@@ -79,6 +88,8 @@ function setConnectionStatus(online) {
 }
 
 function setLastUpdate(ts) {
+  if (!ts || ts === lastDisplayedUpdateTs) return;
+  lastDisplayedUpdateTs = ts;
   const el = document.getElementById("last-update");
   if (el) {
     el.innerHTML = `${icon("clock", "icon-sm")}<span>${i18n.lastUpdate}: ${formatTime(ts)}</span>`;
@@ -511,17 +522,29 @@ function resolvePanelSensors(panel) {
   return ids.filter((id) => sensorMeta[id]);
 }
 
-async function renderPanel(panel, latest) {
+async function refreshPanel(panel, latest, { recreate = false } = {}) {
   const container = document.getElementById(`panel-${panel.id}`);
   if (!container) return;
 
   const chartDom = container.querySelector(".panel-chart");
-  disposeChart(panel.id);
   const sensorIds = resolvePanelSensors(panel);
+  let chart = charts.get(panel.id);
+
+  if (recreate && chart) {
+    disposeChart(panel.id);
+    chart = null;
+  }
 
   if (panel.type === "gauge") {
     const sensorId = sensorIds[0];
-    charts.set(panel.id, createGaugeChart(chartDom, latest[sensorId]));
+    const reading = latest[sensorId];
+    const meta = sensorMeta[sensorId];
+    if (chart && !recreate) {
+      updateGaugeChart(chart, chartDom, reading, meta);
+    } else {
+      charts.set(panel.id, createGaugeChart(chartDom, reading, meta));
+      observePanelChart(panel, chartDom);
+    }
     return;
   }
 
@@ -531,30 +554,59 @@ async function renderPanel(panel, latest) {
       value: latest[id]?.value,
       status: latest[id]?.status,
     }));
-    charts.set(panel.id, createBarChart(chartDom, readings, sensorMeta));
+    if (chart && !recreate) {
+      updateBarChart(chart, chartDom, readings, sensorMeta);
+    } else {
+      charts.set(panel.id, createBarChart(chartDom, readings, sensorMeta));
+      observePanelChart(panel, chartDom);
+    }
     return;
   }
 
   if (panel.type === "status") {
     const sensorId = sensorIds[0];
-    createStatusCard(chartDom, latest[sensorId]);
+    updateStatusCard(chartDom, latest[sensorId]);
     return;
   }
 
   if (panel.type === "line") {
     const history = await loadHistory(sensorIds, globalPeriod);
-    charts.set(panel.id, createLineChart(chartDom, history, sensorMeta));
+    if (chart && !recreate) {
+      updateLineChart(chart, chartDom, history, sensorMeta);
+    } else {
+      if (chart) disposeChart(panel.id);
+      charts.set(panel.id, createLineChart(chartDom, history, sensorMeta));
+      observePanelChart(panel, chartDom);
+    }
   }
+}
 
-  observePanelChart(panel, chartDom);
+async function renderPanel(panel, latest) {
+  return refreshPanel(panel, latest, { recreate: true });
 }
 
 async function refreshAllLineCharts(latest = latestSnapshot) {
   for (const panel of dashboardPanels) {
     if (panel.type === "line") {
-      await renderPanel(panel, latest);
+      await refreshPanel(panel, latest);
     }
   }
+}
+
+function queueLivePanelRefresh(latest) {
+  liveRefreshQueued = latest;
+  if (liveRefreshTimer) return;
+  liveRefreshTimer = setTimeout(async () => {
+    liveRefreshTimer = null;
+    const data = liveRefreshQueued;
+    liveRefreshQueued = null;
+    if (!data) return;
+    for (const panel of dashboardPanels) {
+      if (panel.type === "gauge" || panel.type === "bar" || panel.type === "status") {
+        await refreshPanel(panel, data);
+      }
+    }
+  }, LIVE_PANEL_REFRESH_MS);
 }
 
 async function setGlobalPeriod(period, latest = latestSnapshot) {
@@ -583,6 +635,8 @@ async function renderDashboard(latest = {}) {
   const grid = document.getElementById("dashboard-grid");
   resizeObservers.forEach((observer) => observer.disconnect());
   resizeObservers.clear();
+  charts.forEach((chart) => chart.dispose());
+  charts.clear();
   grid.innerHTML = "";
   applyGridLayout();
 
@@ -654,12 +708,7 @@ function connectLive() {
         0
       );
       if (maxTs) setLastUpdate(maxTs);
-
-      for (const panel of dashboardPanels) {
-        if (panel.type === "gauge" || panel.type === "bar" || panel.type === "status") {
-          await renderPanel(panel, latest);
-        }
-      }
+      queueLivePanelRefresh(latest);
     }
   };
 }

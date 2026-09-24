@@ -1,6 +1,6 @@
 dashboard:
   title: Мониторинг системы
-  refresh_sec: 3
+  refresh_sec: 15
 
 panels:
   - id: system_chart

@@ -23,60 +23,91 @@ function layoutMode(width) {
   return "wide";
 }
 
-export function createGaugeChart(dom, reading) {
-  const chart = echarts.init(dom, null, { locale: "RU" });
+const CHART_TRANSITION = {
+  animation: true,
+  animationDuration: 500,
+  animationDurationUpdate: 900,
+  animationEasing: "cubicInOut",
+  animationEasingUpdate: "cubicInOut",
+};
+
+function gaugeReading(reading, meta) {
   const hasValue = reading != null && reading.value != null && !Number.isNaN(reading.value);
-  const value = hasValue ? reading.value : 0;
-  const unit = reading?.unit || "%";
-  const status = reading?.status || "unknown";
+  return {
+    hasValue,
+    value: hasValue ? reading.value : 0,
+    unit: reading?.unit || meta?.unit || "%",
+    status: reading?.status || "unknown",
+  };
+}
+
+function buildGaugeSeries(dom, reading, meta) {
+  const { hasValue, value, unit, status } = gaugeReading(reading, meta);
   const mode = layoutMode(chartWidth(dom));
   const detailSize = mode === "compact" ? 16 : mode === "medium" ? 18 : 22;
 
-  chart.setOption({
-    series: [
-      {
-        type: "gauge",
-        min: 0,
-        max: 100,
-        radius: mode === "compact" ? "82%" : "88%",
-        center: ["50%", "58%"],
-        progress: { show: true, width: mode === "compact" ? 10 : 12 },
-        axisLine: { lineStyle: { width: mode === "compact" ? 10 : 12 } },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        axisLabel: { show: false },
-        pointer: { show: true, length: "55%", width: 4 },
-        title: { show: false },
-        detail: {
-          valueAnimation: true,
-          formatter: hasValue ? `{value} ${unit}` : i18n.noData,
-          fontSize: detailSize,
-          fontWeight: 600,
-          color: "#e8edf4",
-          offsetCenter: [0, "18%"],
-        },
-        data: [{ value }],
-        itemStyle: { color: statusColor(status) },
-      },
-    ],
-  });
+  return {
+    type: "gauge",
+    min: 0,
+    max: 100,
+    radius: mode === "compact" ? "82%" : "88%",
+    center: ["50%", "58%"],
+    progress: { show: true, width: mode === "compact" ? 10 : 12 },
+    axisLine: { lineStyle: { width: mode === "compact" ? 10 : 12 } },
+    axisTick: { show: false },
+    splitLine: { show: false },
+    axisLabel: { show: false },
+    pointer: { show: true, length: "55%", width: 4 },
+    title: { show: false },
+    detail: {
+      valueAnimation: true,
+      formatter: hasValue ? `{value} ${unit}` : i18n.noData,
+      fontSize: detailSize,
+      fontWeight: 600,
+      color: "#e8edf4",
+      offsetCenter: [0, "18%"],
+    },
+    data: [{ value }],
+    itemStyle: { color: statusColor(status) },
+  };
+}
 
+export function createGaugeChart(dom, reading, meta) {
+  const chart = echarts.init(dom, null, { locale: "RU" });
+  chart.setOption({
+    ...CHART_TRANSITION,
+    series: [buildGaugeSeries(dom, reading, meta)],
+  });
   return chart;
 }
 
-export function createLineChart(dom, seriesData, sensorMeta) {
-  const chart = echarts.init(dom, null, { locale: "RU" });
-  const width = chartWidth(dom);
-  const mode = layoutMode(width);
-  const series = seriesData.map((item) => ({
+export function updateGaugeChart(chart, dom, reading, meta) {
+  chart.setOption(
+    {
+      ...CHART_TRANSITION,
+      series: [buildGaugeSeries(dom, reading, meta)],
+    },
+    false
+  );
+}
+
+function buildLineSeries(seriesData, sensorMeta) {
+  return seriesData.map((item) => ({
     name: sensorMeta[item.sensorId]?.name || item.sensorId,
     type: "line",
     smooth: true,
     showSymbol: false,
     data: item.points.map((p) => [p.ts * 1000, p.value]),
   }));
+}
 
-  chart.setOption({
+function buildLineOptions(dom, seriesData, sensorMeta) {
+  const width = chartWidth(dom);
+  const mode = layoutMode(width);
+  const series = buildLineSeries(seriesData, sensorMeta);
+
+  return {
+    ...CHART_TRANSITION,
     tooltip: {
       trigger: "axis",
       valueFormatter: (value) => (value == null ? i18n.noData : value),
@@ -112,13 +143,20 @@ export function createLineChart(dom, seriesData, sensorMeta) {
       splitLine: { lineStyle: { color: "#2d3a4f" } },
     },
     series,
-  });
+  };
+}
 
+export function createLineChart(dom, seriesData, sensorMeta) {
+  const chart = echarts.init(dom, null, { locale: "RU" });
+  chart.setOption(buildLineOptions(dom, seriesData, sensorMeta));
   return chart;
 }
 
-export function createBarChart(dom, readings, sensorMeta) {
-  const chart = echarts.init(dom, null, { locale: "RU" });
+export function updateLineChart(chart, dom, seriesData, sensorMeta) {
+  chart.setOption(buildLineOptions(dom, seriesData, sensorMeta), false);
+}
+
+function buildBarOptions(dom, readings, sensorMeta) {
   const width = chartWidth(dom);
   const mode = layoutMode(width);
   const categories = readings.map((r) => sensorMeta[r.sensorId]?.name || r.sensorId);
@@ -127,7 +165,8 @@ export function createBarChart(dom, readings, sensorMeta) {
   const useHorizontal = mode === "compact" || (mode === "medium" && categories.length > 2);
 
   if (useHorizontal) {
-    chart.setOption({
+    return {
+      ...CHART_TRANSITION,
       tooltip: { trigger: "axis" },
       grid: { left: 8, right: 24, top: 8, bottom: 8, containLabel: true },
       xAxis: {
@@ -162,11 +201,11 @@ export function createBarChart(dom, readings, sensorMeta) {
           },
         },
       ],
-    });
-    return chart;
+    };
   }
 
-  chart.setOption({
+  return {
+    ...CHART_TRANSITION,
     tooltip: { trigger: "axis" },
     grid: { left: 40, right: 8, top: 12, bottom: mode === "compact" ? 48 : 32 },
     xAxis: {
@@ -201,9 +240,17 @@ export function createBarChart(dom, readings, sensorMeta) {
         },
       },
     ],
-  });
+  };
+}
 
+export function createBarChart(dom, readings, sensorMeta) {
+  const chart = echarts.init(dom, null, { locale: "RU" });
+  chart.setOption(buildBarOptions(dom, readings, sensorMeta));
   return chart;
+}
+
+export function updateBarChart(chart, dom, readings, sensorMeta) {
+  chart.setOption(buildBarOptions(dom, readings, sensorMeta), false);
 }
 
 export function createStatusCard(dom, reading) {
@@ -216,4 +263,11 @@ export function createStatusCard(dom, reading) {
       ${statusBadge(status, i18n.status[status] || status)}
     </div>
   `;
+}
+
+export function updateStatusCard(dom, reading) {
+  const key = `${reading?.value ?? "null"}|${reading?.status ?? "unknown"}`;
+  if (dom.dataset.statusKey === key) return;
+  dom.dataset.statusKey = key;
+  createStatusCard(dom, reading);
 }
