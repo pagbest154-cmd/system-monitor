@@ -29,9 +29,12 @@ func runSettingsDialog(configPath string) error {
 	var hubEdit, agentEdit, tokenEdit *walk.LineEdit
 	var intervalEdit *walk.NumberEdit
 
-	_, err = MainWindow{
+	if cfg.IntervalSec <= 0 {
+		cfg.IntervalSec = 5
+	}
+
+	window := MainWindow{
 		Title:   "Настройки агента system-monitor",
-		Icon:    settingsIconPath(),
 		MinSize: Size{Width: 520, Height: 280},
 		Layout:  VBox{},
 		Children: []Widget{
@@ -72,7 +75,12 @@ func runSettingsDialog(configPath string) error {
 				},
 			},
 		},
-	}.Run()
+	}
+	if icon := settingsIconPath(); icon != "" {
+		window.Icon = icon
+	}
+
+	_, err = window.Run()
 	if err != nil {
 		logSettingsError("settings UI: " + err.Error())
 		return fmt.Errorf("settings UI: %w", err)
@@ -100,5 +108,5 @@ func settingsIconPath() string {
 			return iconPath
 		}
 	}
-	return filepath.Join("packaging", "windows", "app-icon.ico")
+	return ""
 }

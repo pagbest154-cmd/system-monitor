@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,7 +46,11 @@ func onTrayReady(configPath string) {
 		for {
 			select {
 			case <-mSettings.ClickedCh:
-				_ = launchSettings(configPath)
+				go func() {
+					if err := launchSettings(configPath); err != nil {
+						systray.SetTooltip("Настройки: " + err.Error())
+					}
+				}()
 			case <-mRestart.ClickedCh:
 				_ = restartService()
 			case <-mLog.ClickedCh:
@@ -55,8 +58,7 @@ func onTrayReady(configPath string) {
 			case <-mConfig.ClickedCh:
 				_ = openPath(paths.ConfigDir)
 			case <-mUpdate.ClickedCh:
-				result := agent.CheckForUpdates(true)
-				fmt.Println(agent.FormatUpdateMessage(result))
+				go checkUpdatesFromTray()
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				return

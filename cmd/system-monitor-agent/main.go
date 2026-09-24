@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
@@ -27,9 +28,10 @@ func main() {
 
 	if *checkUpdate {
 		result := agent.CheckForUpdates(true)
-		fmt.Println(agent.FormatUpdateMessage(result))
+		msg := formatUpdateDialog(result)
+		fmt.Println(msg)
+		showUpdateResult(result, msg)
 		if result.Error != nil {
-			fmt.Println(*result.Error)
 			os.Exit(1)
 		}
 		if result.UpdateAvailable {
@@ -46,8 +48,10 @@ func main() {
 		return
 	}
 	if *settings {
+		runtime.LockOSThread()
 		if err := runSettings(*configPath); err != nil {
 			fmt.Fprintf(os.Stderr, "settings: %v\n", err)
+			showError("system-monitor agent", "Не удалось открыть настройки:\n"+err.Error())
 			os.Exit(1)
 		}
 		return
