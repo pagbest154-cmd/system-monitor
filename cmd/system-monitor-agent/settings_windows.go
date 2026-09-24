@@ -4,6 +4,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
@@ -26,6 +28,7 @@ func runSettingsDialog(configPath string) error {
 
 	_, err = MainWindow{
 		Title:   "Настройки агента system-monitor",
+		Icon:    settingsIconPath(),
 		MinSize: Size{Width: 520, Height: 280},
 		Layout:  VBox{},
 		Children: []Widget{
@@ -71,4 +74,15 @@ func runSettingsDialog(configPath string) error {
 		return fmt.Errorf("settings UI: %w", err)
 	}
 	return nil
+}
+
+func settingsIconPath() string {
+	exe, err := os.Executable()
+	if err == nil {
+		iconPath := filepath.Join(filepath.Dir(exe), "app-icon.ico")
+		if _, err := os.Stat(iconPath); err == nil {
+			return iconPath
+		}
+	}
+	return filepath.Join("packaging", "windows", "app-icon.ico")
 }

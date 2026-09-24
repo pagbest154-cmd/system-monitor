@@ -10,6 +10,7 @@ import (
 
 	"github.com/getlantern/systray"
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 	"github.com/pagbest154-cmd/system-monitor/internal/version"
 )
@@ -45,7 +46,7 @@ func onTrayReady(configPath string) {
 		for {
 			select {
 			case <-mSettings.ClickedCh:
-				_ = runSettingsDialog(configPath)
+				_ = launchSettings(configPath)
 			case <-mRestart.ClickedCh:
 				_ = restartService()
 			case <-mLog.ClickedCh:
@@ -84,14 +85,7 @@ func refreshTrayIcon() {
 }
 
 func trayIcon(key string) []byte {
-	switch key {
-	case "ok":
-		return greenIconPNG
-	case "error":
-		return redIconPNG
-	default:
-		return grayIconPNG
-	}
+	return branding.TrayPNG(key)
 }
 
 func openPath(path string) error {
@@ -101,13 +95,3 @@ func openPath(path string) error {
 func restartService() error {
 	return exec.Command("sc", "stop", "system-monitor-agent").Run()
 }
-
-var greenIconPNG = []byte{
-	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-	0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0xf3, 0xff,
-	0x61, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x60, 0x00, 0x02, 0x00,
-	0x00, 0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
-	0xae, 0x42, 0x60, 0x82,
-}
-var redIconPNG = greenIconPNG
-var grayIconPNG = greenIconPNG

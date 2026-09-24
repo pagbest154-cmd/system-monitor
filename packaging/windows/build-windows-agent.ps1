@@ -40,26 +40,23 @@ function Ensure-InnoSetup {
 }
 
 function Ensure-Icon {
-    if (Test-Path $IconFile) { return }
-    Write-Host "Generating app-icon.ico..."
-    Add-Type -AssemblyName System.Drawing
-    $bmp = New-Object System.Drawing.Bitmap 32, 32
-    $graphics = [System.Drawing.Graphics]::FromImage($bmp)
-    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $graphics.Clear([System.Drawing.Color]::FromArgb(37, 99, 235))
-    $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
-    $graphics.FillEllipse($brush, 6, 6, 20, 20)
-    $graphics.Dispose()
-    $icon = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
-    $stream = [System.IO.File]::Create($IconFile)
-    try {
-        $icon.Save($stream)
-    } finally {
-        $stream.Close()
-        $icon.Dispose()
-        $bmp.Dispose()
+    Write-Host "Generating app-icon.ico from branding..."
+    Push-Location $Root
+    go run ./cmd/gen-icons
+    Pop-Location
+    if (-not (Test-Path $IconFile)) {
+        throw "Icon not generated: $IconFile"
     }
-    Write-Host "Created: $IconFile"
+}
+
+function Ensure-WindowsResources {
+    $manifest = Join-Path $PackagingDir "app.manifest"
+    $rsrcOut = Join-Path $Root "cmd\system-monitor-agent\rsrc.syso"
+    if (-not (Get-Command rsrc -ErrorAction SilentlyContinue)) {
+        go install github.com/akavel/rsrc@v0.10.2
+    }
+    Write-Host "Embedding Windows manifest and icon..."
+    rsrc -manifest $manifest -ico $IconFile -o $rsrcOut
 }
 
 Write-Host "Building system-monitor-agent $Version for Windows (Go)..."
@@ -69,12 +66,14 @@ New-Item -ItemType Directory -Force -Path $DistDir, $OutputDir | Out-Null
 
 Ensure-Nssm
 Ensure-Icon
+Ensure-WindowsResources
 
 $agentExe = Join-Path $DistDir "system-monitor-agent.exe"
 Push-Location $Root
 $env:CGO_ENABLED = "0"
-$ldflags = "-s -w -X github.com/pagbest154-cmd/system-monitor/internal/version.Version=$Version"
+$ldflags = "-H windowsgui -s -w -X github.com/pagbest154-cmd/system-monitor/internal/version.Version=$Version"
 go build -ldflags $ldflags -o $agentExe ./cmd/system-monitor-agent
+Remove-Item (Join-Path $Root "cmd\system-monitor-agent\rsrc.syso") -ErrorAction SilentlyContinue
 Pop-Location
 
 if (-not (Test-Path $agentExe)) {

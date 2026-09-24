@@ -33,14 +33,10 @@ func main() {
 	server.StartCollector()
 
 	addr := fmt.Sprintf("%s:%d", *host, *port)
-	handler := server.Router()
-	if *proxyHeaders {
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handler.ServeHTTP(w, r)
-		})
-	}
+	// --proxy-headers kept for docker-compose compatibility; chi RealIP + RequestIsSecure handle proxies.
+	_ = proxyHeaders
 
-	httpServer := &http.Server{Addr: addr, Handler: handler}
+	httpServer := &http.Server{Addr: addr, Handler: server.Router()}
 	go func() {
 		log.Printf("system-monitor %s listening on http://%s", version.Version, addr)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
