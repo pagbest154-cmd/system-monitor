@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from system_monitor.fleet.report_enrichment import enrich_agent_report, sensor_metas_from_system
+from system_monitor.fleet.report_enrichment import (
+    enrich_agent_report,
+    reading_from_system,
+    sensor_metas_from_system,
+)
 from system_monitor.protocol.models import AgentReport, MetricPoint
 
 
@@ -40,6 +44,19 @@ def test_sensor_metas_from_system_includes_defaults_and_disks() -> None:
     assert "cpu_percent" in ids
     assert "ram_used" in ids
     assert "disk_auto_e" in ids
+
+
+def test_reading_from_system_uses_disks_key() -> None:
+    reading = reading_from_system(
+        {
+            "cpu": {"percent": 12.5},
+            "memory": {"percent": 64.0},
+            "disks": [{"mountpoint": "C:\\", "percent": 40.0}],
+        },
+        "disk_auto_c",
+    )
+    assert reading is not None
+    assert reading["value"] == 40.0
 
 
 def test_enrich_overrides_null_collector_metric() -> None:

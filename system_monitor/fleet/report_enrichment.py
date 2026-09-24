@@ -30,6 +30,37 @@ def _disk_partitions(system: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
+def reading_from_system(system: dict[str, Any], sensor_id: str, ts: float | None = None) -> dict[str, Any] | None:
+    """Build a current reading for a sensor from a stored system snapshot."""
+    if not system:
+        return None
+    now = ts if ts is not None else time.time()
+
+    if sensor_id == "cpu_percent":
+        value = (system.get("cpu") or {}).get("percent")
+        if value is None:
+            return None
+        return {"value": float(value), "status": "ok", "ts": now, "unit": "%"}
+
+    if sensor_id == "ram_used":
+        value = (system.get("memory") or {}).get("percent")
+        if value is None:
+            return None
+        return {"value": float(value), "status": "ok", "ts": now, "unit": "%"}
+
+    if sensor_id.startswith("disk_auto_"):
+        for part in _disk_partitions(system):
+            mountpoint = str(part.get("mountpoint") or "")
+            if _mount_to_sensor_id(mountpoint) != sensor_id:
+                continue
+            value = part.get("percent")
+            if value is None:
+                return None
+            return {"value": float(value), "status": "ok", "ts": now, "unit": "%"}
+
+    return None
+
+
 def sensor_metas_from_system(system: dict[str, Any]) -> list[dict[str, Any]]:
     """Build sensor metadata list from a stored system snapshot."""
     metas = [meta.model_dump(mode="json") for meta in _DEFAULT_SENSORS.values()]
@@ -59,6 +90,7 @@ def enrich_agent_report(report: AgentReport) -> AgentReport:
 
     def set_metric(sensor_id: str, value: Any) -> None:
         if value is None:
+            metrics_map.pop(sensor_id, None)
             return
         metrics_map[sensor_id] = MetricPoint(
             sensor_id=sensor_id,

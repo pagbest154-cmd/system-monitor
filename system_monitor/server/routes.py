@@ -29,7 +29,7 @@ from ..config_loader import (
 from ..protocol.models import AgentConfigResponse, AgentReport, prefixed_sensor_id, strip_agent_prefix
 from ..storage import MetricStore
 from ..system_info import get_system_info
-from ..fleet.report_enrichment import sensor_metas_from_system
+from ..fleet.report_enrichment import reading_from_system, sensor_metas_from_system
 from ..fleet.service import build_agent_config_response, ingest_agent_report, verify_agent_token
 from .auth import (
     clear_session_cookie_header,
@@ -109,9 +109,9 @@ def list_sensors(agent: str | None = Query(default=None)) -> dict[str, Any]:
         if record is None:
             raise HTTPException(status_code=404, detail="Агент не найден")
         latest = state.fleet.get_agent_snapshot(agent)
+        system = record.get("system") or {}
         metas = record.get("sensors") or []
         if not metas:
-            system = record.get("system") or {}
             if system:
                 metas = sensor_metas_from_system(system)
             else:
@@ -124,10 +124,16 @@ def list_sensors(agent: str | None = Query(default=None)) -> dict[str, Any]:
             sensor_id = meta["id"]
             full_id = prefixed_sensor_id(agent, sensor_id)
             current = latest.get(full_id)
-            if current is None:
-                current = state.store.get_latest(full_id)
-                if current is not None:
-                    latest[full_id] = {**current, "sensor_id": full_id}
+            if current is None or current.get("value") is None:
+                stored = state.store.get_latest(full_id)
+                if stored is not None and stored.get("value") is not None:
+                    current = {**stored, "sensor_id": full_id}
+                    latest[full_id] = current
+            if (current is None or current.get("value") is None) and system:
+                from_system = reading_from_system(system, sensor_id)
+                if from_system is not None:
+                    current = {**from_system, "sensor_id": full_id}
+                    latest[full_id] = current
             items.append(
                 {
                     **meta,
@@ -247,6 +253,7 @@ def push_metrics(
             "ts": point.ts,
         }
         for point in report.metrics
+        if point.value is not None
     }
     state.fleet.update_agent(agent_id, latest)
     return result

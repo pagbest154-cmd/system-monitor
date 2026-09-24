@@ -141,6 +141,8 @@ class AgentRunner:
         return self._collector
 
     def _snapshot_from_system(self) -> dict[str, dict[str, object]]:
+        from ..disk_discovery import _mount_to_sensor_id
+
         info = get_system_info()
         now = time.time()
         snapshot: dict[str, dict[str, object]] = {}
@@ -165,13 +167,46 @@ class AgentRunner:
                 "unit": "%",
             }
 
+        for part in info.get("disks") or info.get("partitions") or []:
+            mountpoint = str(part.get("mountpoint") or "")
+            percent = part.get("percent")
+            if percent is None:
+                continue
+            sensor_id = _mount_to_sensor_id(mountpoint)
+            snapshot[sensor_id] = {
+                "sensor_id": sensor_id,
+                "value": float(percent),
+                "status": "ok",
+                "ts": now,
+                "unit": "%",
+            }
+
         return snapshot
+
+    @staticmethod
+    def _snapshot_has_values(snapshot: dict[str, dict[str, object]]) -> bool:
+        return any(item.get("value") is not None for item in snapshot.values())
+
+    def _merge_snapshot(
+        self,
+        primary: dict[str, dict[str, object]],
+        fallback: dict[str, dict[str, object]],
+    ) -> dict[str, dict[str, object]]:
+        merged = dict(primary)
+        for sensor_id, reading in fallback.items():
+            current = merged.get(sensor_id)
+            if current is None or current.get("value") is None:
+                merged[sensor_id] = reading
+        return merged
 
     def _push_once(self) -> None:
         collector = self._ensure_collector()
         snapshot = collector.get_latest_snapshot()
-        if not snapshot:
-            snapshot = self._snapshot_from_system()
+        system_snapshot = self._snapshot_from_system()
+        if not self._snapshot_has_values(snapshot):
+            snapshot = system_snapshot
+        else:
+            snapshot = self._merge_snapshot(snapshot, system_snapshot)
         metrics = [
             MetricPoint(
                 sensor_id=str(item.get("sensor_id", sensor_id)),

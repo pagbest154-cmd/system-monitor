@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+## [0.0.16] — 2026-09-24
+
+### Исправлено
+
+- Датчики с `value: null` больше не блокируют показ данных из system snapshot
+- Hub `/api/sensors` подставляет current из system, если в БД только null
+- Агент не пишет null-метрики; snapshot дополняется из system info
+- Dashboard: gauge/графики берут данные из system; WS не затирает значения null
+
 ## [0.0.15] — 2026-09-24
 
 ### Исправлено

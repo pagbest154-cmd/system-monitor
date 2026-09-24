@@ -53,6 +53,8 @@ def ingest_agent_report(
 
     rows: list[tuple[str, float, float | None, str]] = []
     for point in report.metrics:
+        if point.value is None:
+            continue
         full_id = prefixed_sensor_id(report.agent_id, point.sensor_id)
         rows.append((full_id, point.ts, point.value, point.status))
 
@@ -76,6 +78,7 @@ def ingest_agent_report(
                 "ts": point.ts,
             }
             for point in report.metrics
+            if point.value is not None
         }
         if latest:
             live_hub.schedule_broadcast(

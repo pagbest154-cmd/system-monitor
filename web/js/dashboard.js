@@ -118,12 +118,26 @@ function sensorsApiUrl() {
     : "/api/sensors";
 }
 
+function hasReadingValue(reading) {
+  return reading != null && reading.value != null && !Number.isNaN(reading.value);
+}
+
 function buildLatestFromSensors(sensors) {
   const latest = {};
   sensors.forEach((s) => {
-    if (s.current != null) latest[s.id] = s.current;
+    if (hasReadingValue(s.current)) latest[s.id] = s.current;
   });
   return latest;
+}
+
+function mergeLatestReadings(base, extra) {
+  const merged = { ...base };
+  for (const [id, reading] of Object.entries(extra || {})) {
+    if (hasReadingValue(reading)) {
+      merged[id] = reading;
+    }
+  }
+  return merged;
 }
 
 function diskSensorId(mountpoint) {
@@ -160,20 +174,28 @@ async function loadSensorData() {
     });
 
   let latest = buildLatestFromSensors(data.sensors);
-  if (selectedAgent && Object.keys(latest).length === 0) {
+  if (selectedAgent) {
     try {
       const system = await fetchJson(`/api/system?agent=${encodeURIComponent(selectedAgent)}`);
-      latest = latestFromSystem(system);
-      if (data.sensors.length === 0) {
-        for (const [id, reading] of Object.entries(latest)) {
-          if (!sensorMeta[id]) {
-            sensorMeta[id] = {
-              id,
-              name: id.startsWith("disk_auto_") ? `Диск ${id.replace("disk_auto_", "")}` : id,
-              unit: reading.unit || "%",
-              supported: true,
-            };
-          }
+      latest = mergeLatestReadings(latest, latestFromSystem(system));
+      const knownIds = new Set(data.sensors.map((s) => s.id));
+      for (const [id, reading] of Object.entries(latest)) {
+        if (!sensorMeta[id]) {
+          sensorMeta[id] = {
+            id,
+            name: id.startsWith("disk_auto_")
+              ? `Диск ${id.replace("disk_auto_", "")}`
+              : id === "cpu_percent"
+                ? "Загрузка процессора"
+                : id === "ram_used"
+                  ? "Использование памяти"
+                  : id,
+            unit: reading.unit || "%",
+            supported: true,
+          };
+        }
+        if (!knownIds.has(id)) {
+          data.sensors.push(sensorMeta[id]);
         }
       }
     } catch (err) {
@@ -187,12 +209,17 @@ async function loadSensorData() {
   };
 }
 
-async function loadHistory(sensorIds, period) {
+async function loadHistory(sensorIds, period, latest = latestSnapshot) {
   const results = [];
   for (const sensorId of sensorIds) {
     const agentPart = selectedAgent ? `&agent=${encodeURIComponent(selectedAgent)}` : "";
     const data = await fetchJson(`/api/metrics/${encodeURIComponent(sensorId)}?period=${period}${agentPart}`);
-    results.push({ sensorId, points: data.points });
+    let points = (data.points || []).filter((point) => point.value != null && !Number.isNaN(point.value));
+    const reading = latest[sensorId];
+    if (!points.length && hasReadingValue(reading)) {
+      points = [{ ts: reading.ts || Date.now() / 1000, value: reading.value, status: reading.status || "ok" }];
+    }
+    results.push({ sensorId, points });
   }
   return results;
 }
@@ -640,7 +667,7 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
 
   if (panel.type === "line") {
     const period = panel.period || globalPeriod;
-    const history = await loadHistory(sensorIds, period);
+    const history = await loadHistory(sensorIds, period, latest);
     if (chart && !recreate) {
       updateLineChart(chart, chartDom, history, sensorMeta);
     } else {
@@ -771,7 +798,9 @@ function connectLive() {
       const agentKey = selectedAgent || message.agent_id || "";
       const incoming = normalizeSnapshot(message.data || {}, agentKey);
       const latest =
-        message.type === "update" ? { ...latestSnapshot, ...incoming } : incoming;
+        message.type === "update"
+          ? mergeLatestReadings(latestSnapshot, incoming)
+          : mergeLatestReadings({}, incoming);
       latestSnapshot = latest;
       const maxTs = Object.values(latest).reduce(
         (acc, item) => Math.max(acc, item.ts || 0),
