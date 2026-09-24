@@ -97,7 +97,7 @@ func renderIcon(size int, status string) *image.RGBA {
 	return img
 }
 
-// TrayPNG returns a 16x16 tray icon encoded as PNG.
+// TrayPNG returns a 16x16 tray icon encoded as PNG (non-Windows platforms).
 func TrayPNG(status string) []byte {
 	img := RenderIcon(16, status)
 	var buf bytes.Buffer

@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -85,7 +86,25 @@ func refreshTrayIcon() {
 }
 
 func trayIcon(key string) []byte {
+	if data := branding.TrayICO(key); len(data) > 0 {
+		return data
+	}
+	if data := loadInstalledIcon(); len(data) > 0 {
+		return data
+	}
 	return branding.TrayPNG(key)
+}
+
+func loadInstalledIcon() []byte {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(exe), "app-icon.ico"))
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 func openPath(path string) error {

@@ -56,7 +56,7 @@ function Ensure-WindowsResources {
         go install github.com/akavel/rsrc@v0.10.2
     }
     Write-Host "Embedding Windows manifest and icon..."
-    rsrc -manifest $manifest -ico $IconFile -o $rsrcOut
+    rsrc -arch amd64 -manifest $manifest -ico $IconFile -o $rsrcOut
 }
 
 Write-Host "Building system-monitor-agent $Version for Windows (Go)..."

@@ -5,7 +5,6 @@ package main
 import (
 	"os"
 	"os/exec"
-	"syscall"
 )
 
 func launchSettings(configPath string) error {
@@ -17,7 +16,6 @@ func launchSettings(configPath string) error {
 	if configPath != "" {
 		args = append(args, "--config", configPath)
 	}
-	cmd := exec.Command(exe, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd.Start()
+	// GUI subprocess: do not set HideWindow — it suppresses the settings window.
+	return exec.Command(exe, args...).Start()
 }

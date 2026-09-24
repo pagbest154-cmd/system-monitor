@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
 	"github.com/pagbest154-cmd/system-monitor/internal/config"
+	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 )
 
 func runSettings(configPath string) error {
@@ -19,6 +21,7 @@ func runSettings(configPath string) error {
 func runSettingsDialog(configPath string) error {
 	cfg, err := config.LoadAgentConfig(configPath)
 	if err != nil {
+		logSettingsError("LoadAgentConfig: " + err.Error())
 		return err
 	}
 	token := config.LoadAgentToken(cfg)
@@ -71,9 +74,22 @@ func runSettingsDialog(configPath string) error {
 		},
 	}.Run()
 	if err != nil {
+		logSettingsError("settings UI: " + err.Error())
 		return fmt.Errorf("settings UI: %w", err)
 	}
 	return nil
+}
+
+func logSettingsError(msg string) {
+	_ = os.MkdirAll(paths.ConfigDir, 0755)
+	path := filepath.Join(paths.ConfigDir, "settings.err.log")
+	line := fmt.Sprintf("%s  %s\n", time.Now().Format(time.RFC3339), msg)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return
+	}
+	_, _ = f.WriteString(line)
+	_ = f.Close()
 }
 
 func settingsIconPath() string {
