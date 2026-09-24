@@ -40,31 +40,31 @@ def _status_icon_key(status: AgentStatus | None, service_state: str) -> str:
     return "idle"
 
 
+def _truncate_tooltip(text: str, max_len: int = 127) -> str:
+    text = text.replace("\r\n", " ").replace("\n", " ").strip()
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1] + "…"
+
+
 def _status_tooltip(status: AgentStatus | None, service_state: str) -> str:
-    lines = ["system-monitor agent"]
     if service_state == "missing":
-        lines.append("Служба не установлена")
-        return "\n".join(lines)
+        return _truncate_tooltip("system-monitor agent — служба не установлена")
     if service_state == "stopped":
-        lines.append("Служба остановлена")
-        return "\n".join(lines)
-
+        return _truncate_tooltip("system-monitor agent — служба остановлена")
     if status is None:
-        lines.append("Ожидание данных от службы")
-        return "\n".join(lines)
+        return _truncate_tooltip("system-monitor agent — ожидание данных")
 
-    lines.append(f"Статус: {status.status_label()}")
-    if status.hub_url:
-        lines.append(f"Hub: {status.hub_url}")
+    parts = ["system-monitor agent", status.status_label()]
     if status.agent_id:
-        lines.append(f"Agent ID: {status.agent_id}")
-    if status.last_success_ts:
-        lines.append(f"Последняя отправка: {_format_ts(status.last_success_ts)}")
+        parts.append(status.agent_id)
+    if status.hub_url:
+        parts.append(status.hub_url)
     if status.last_error:
-        lines.append(f"Ошибка: {status.last_error}")
-    if status.update_available and status.latest_version:
-        lines.append(f"Доступно обновление: {status.latest_version}")
-    return "\n".join(lines)
+        parts.append(status.last_error)
+    elif status.update_available and status.latest_version:
+        parts.append(f"обновление {status.latest_version}")
+    return _truncate_tooltip(" — ".join(parts))
 
 
 class TrayApp:
@@ -82,19 +82,19 @@ class TrayApp:
 
     def _build_menu(self) -> pystray.Menu:
         return pystray.Menu(
-            pystray.MenuItem(lambda icon, item: self._menu_status_text(), None, enabled=False),
+            pystray.MenuItem(lambda *_args: self._menu_status_text(), None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Настройки", self._open_settings),
             pystray.MenuItem("Перезапустить службу", self._restart_service),
             pystray.MenuItem("Открыть лог", self._open_log),
             pystray.MenuItem("Открыть папку конфигурации", self._open_config_dir),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem(lambda icon, item: self._menu_version_text(), None, enabled=False),
+            pystray.MenuItem(lambda *_args: self._menu_version_text(), None, enabled=False),
             pystray.MenuItem("Проверить обновления", self._check_updates),
             pystray.MenuItem(
-                lambda icon, item: self._menu_update_text(),
+                lambda *_args: self._menu_update_text(),
                 self._open_update,
-                visible=lambda item: self._update_available,
+                visible=lambda *_args: self._update_available,
             ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Выход", self._quit),
@@ -118,7 +118,7 @@ class TrayApp:
 
     def _restart_service(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         ok, detail = restart_service()
-        icon.title = detail if ok else f"Ошибка: {detail}"
+        icon.title = _truncate_tooltip(detail if ok else f"Ошибка: {detail}")
 
     def _open_log(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         log_path = CONFIG_DIR / "agent.err.log"
@@ -146,7 +146,12 @@ class TrayApp:
             result = check_for_updates(force=True)
             self._update_available = result.update_available
             self._latest_version = result.latest_version
-            icon.title = format_update_message(result)
+            if result.error:
+                icon.title = _truncate_tooltip(f"Обновления: {result.error}")
+            elif result.update_available:
+                icon.title = _truncate_tooltip(f"Доступно обновление {result.latest_version}")
+            else:
+                icon.title = _truncate_tooltip(f"Версия {result.current_version} актуальна")
             icon.update_menu()
 
         threading.Thread(target=_run, daemon=True).start()

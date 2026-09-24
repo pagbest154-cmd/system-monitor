@@ -52,7 +52,9 @@ def restart_service() -> tuple[bool, str]:
         if result.returncode == 0:
             return True, "Служба перезапущена"
         detail = (result.stderr or result.stdout or "").strip()
-        return False, detail or f"Код выхода {result.returncode}"
+        if not detail or result.returncode in {5, 740}:
+            return False, "Недостаточно прав. Запустите от имени администратора."
+        return False, detail
 
     for command in (
         ["net", "stop", SERVICE_NAME],
@@ -67,5 +69,7 @@ def restart_service() -> tuple[bool, str]:
         )
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
-            return False, detail or f"Не удалось выполнить {' '.join(command)}"
+            if not detail or result.returncode in {5, 740}:
+                return False, "Недостаточно прав. Запустите от имени администратора."
+            return False, detail
     return True, "Служба перезапущена"
