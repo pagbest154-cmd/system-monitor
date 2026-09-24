@@ -532,8 +532,14 @@ function resolvePanelSensors(panel) {
   let ids;
   if (panel.sensors?.includes(AUTO_DISK_SENSOR)) {
     ids = Object.keys(sensorMeta).filter((id) => id.startsWith("disk_auto_"));
+    if (!ids.length) {
+      ids = Object.keys(latestSnapshot).filter((id) => id.startsWith("disk_auto_"));
+    }
   } else {
     ids = panel.sensors || [];
+  }
+  if (appMode === "hub" && selectedAgent) {
+    return ids;
   }
   return ids.filter((id) => sensorMeta[id]);
 }

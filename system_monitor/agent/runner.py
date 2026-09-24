@@ -130,6 +130,7 @@ class AgentRunner:
         merged = merge_agent_config(base, overrides)
         if self._collector is None:
             self._collector = Collector(store=None, config=merged)
+            self._collector.start()
         else:
             self._collector.reload_config(merged)
 
@@ -139,9 +140,38 @@ class AgentRunner:
             self._collector.start()
         return self._collector
 
+    def _snapshot_from_system(self) -> dict[str, dict[str, object]]:
+        info = get_system_info()
+        now = time.time()
+        snapshot: dict[str, dict[str, object]] = {}
+
+        cpu = info.get("cpu") or {}
+        if cpu.get("percent") is not None:
+            snapshot["cpu_percent"] = {
+                "sensor_id": "cpu_percent",
+                "value": float(cpu["percent"]),
+                "status": "ok",
+                "ts": now,
+                "unit": "%",
+            }
+
+        memory = info.get("memory") or {}
+        if memory.get("percent") is not None:
+            snapshot["ram_used"] = {
+                "sensor_id": "ram_used",
+                "value": float(memory["percent"]),
+                "status": "ok",
+                "ts": now,
+                "unit": "%",
+            }
+
+        return snapshot
+
     def _push_once(self) -> None:
         collector = self._ensure_collector()
         snapshot = collector.get_latest_snapshot()
+        if not snapshot:
+            snapshot = self._snapshot_from_system()
         metrics = [
             MetricPoint(
                 sensor_id=str(item.get("sensor_id", sensor_id)),
@@ -165,8 +195,12 @@ class AgentRunner:
 
     def _run(self) -> None:
         self._ensure_collector()
+        try:
+            self.reload_collector()
+        except Exception as exc:
+            print(f"system-monitor-agent: начальная синхронизация config: {exc}")
         self._write_status(connected=False)
-        last_config_sync = 0.0
+        last_config_sync = time.time()
         self._maybe_check_updates(time.time())
         while not self._stop.is_set():
             now = time.time()

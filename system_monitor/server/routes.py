@@ -219,8 +219,11 @@ def push_metrics(
         raise HTTPException(status_code=400, detail="agent_id в URL и теле не совпадают")
     _require_token(agent_id, authorization)
     state = _state()
+    from ..fleet.report_enrichment import enrich_agent_report
+
+    report = enrich_agent_report(body)
     result = ingest_agent_report(
-        body,
+        report,
         store=state.store,
         live_hub=state.hub,
         retention_days=state.retention_days,
@@ -232,7 +235,7 @@ def push_metrics(
             "status": point.status,
             "ts": point.ts,
         }
-        for point in body.metrics
+        for point in report.metrics
     }
     state.fleet.update_agent(agent_id, latest)
     return result
