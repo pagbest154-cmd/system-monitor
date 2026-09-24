@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Синхронизирует версию в debian/changelog (0.0.N-1).
+# Синхронизирует версию в debian/changelog (<tag>-1).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -7,8 +7,19 @@ cd "$root"
 
 version="${1:-}"
 if [[ -z "$version" ]]; then
-  count="$(git rev-list --count HEAD)"
-  version="0.0.${count}"
+  ref="${GITHUB_REF_NAME:-}"
+  if [[ "$ref" =~ ^v[0-9] ]]; then
+    version="${ref#v}"
+  elif [[ -f internal/version/version.go ]]; then
+    version="$(grep -oP 'Version = "\K[^"]+' internal/version/version.go || true)"
+  fi
+fi
+if [[ -z "$version" ]]; then
+  echo "error: version required (arg, GITHUB_REF_NAME, or internal/version/version.go)" >&2
+  exit 1
+fi
+if [[ "$version" == v* ]]; then
+  version="${version#v}"
 fi
 
 deb_version="${version}-1"

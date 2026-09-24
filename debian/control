@@ -3,8 +3,7 @@ Section: utils
 Priority: optional
 Maintainer: pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13),
-               build-essential,
-               golang-go (>= 1.23)
+               build-essential
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Homepage: https://github.com/pagbest154-cmd/system-monitor

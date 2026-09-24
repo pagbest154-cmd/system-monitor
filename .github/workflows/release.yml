@@ -94,10 +94,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debhelper-compat build-essential devscripts golang-go apt-utils gzip
+          sudo apt-get install -y debhelper-compat build-essential devscripts apt-utils gzip
 
       - name: Prepare debian files
         run: find debian packaging scripts -type f -exec sed -i 's/\r$//' {} +
@@ -105,7 +110,7 @@ jobs:
       - name: Sync deb version from tag
         run: |
           chmod +x scripts/sync-deb-version.sh scripts/publish-apt-repo.sh scripts/extract-release-notes.sh
-          ./scripts/sync-deb-version.sh "${{ needs.detect-changes.outputs.version }}"
+          ./scripts/sync-deb-version.sh "${{ needs.detect-changes.outputs.version || github.ref_name }}"
 
       - name: Build deb package
         run: |
@@ -113,7 +118,7 @@ jobs:
           chmod +x debian/rules
           chmod +x debian/system-monitor-agent.postinst debian/system-monitor-agent.prerm debian/system-monitor-agent.postrm
           chmod +x debian/system-monitor-agent.config
-          dpkg-buildpackage -us -uc -b
+          dpkg-buildpackage -us -uc -b -d
           mkdir -p dist
           shopt -s nullglob
           deb=(../system-monitor-agent_*_amd64.deb)

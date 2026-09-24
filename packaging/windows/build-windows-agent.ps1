@@ -41,12 +41,25 @@ function Ensure-InnoSetup {
 
 function Ensure-Icon {
     if (Test-Path $IconFile) { return }
-    $favicon = Join-Path $Root "web\icons\favicon.svg"
-    if (-not (Test-Path $favicon)) {
-        throw "Icon not found: $IconFile or $favicon"
+    Write-Host "Generating app-icon.ico..."
+    Add-Type -AssemblyName System.Drawing
+    $bmp = New-Object System.Drawing.Bitmap 32, 32
+    $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $graphics.Clear([System.Drawing.Color]::FromArgb(37, 99, 235))
+    $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
+    $graphics.FillEllipse($brush, 6, 6, 20, 20)
+    $graphics.Dispose()
+    $icon = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+    $stream = [System.IO.File]::Create($IconFile)
+    try {
+        $icon.Save($stream)
+    } finally {
+        $stream.Close()
+        $icon.Dispose()
+        $bmp.Dispose()
     }
-    Copy-Item $favicon $IconFile
-    Write-Host "Using favicon as setup icon placeholder: $IconFile"
+    Write-Host "Created: $IconFile"
 }
 
 Write-Host "Building system-monitor-agent $Version for Windows (Go)..."
@@ -59,6 +72,7 @@ Ensure-Icon
 
 $agentExe = Join-Path $DistDir "system-monitor-agent.exe"
 Push-Location $Root
+$env:CGO_ENABLED = "0"
 $ldflags = "-s -w -X github.com/pagbest154-cmd/system-monitor/internal/version.Version=$Version"
 go build -ldflags $ldflags -o $agentExe ./cmd/system-monitor-agent
 Pop-Location
