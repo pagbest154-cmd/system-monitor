@@ -37,14 +37,18 @@ func runSettingsDialog(configPath string) error {
 		_ = os.Chdir(filepath.Dir(exe))
 	}
 
+	const dlgW, dlgH = 440, 210
+
 	window := MainWindow{
 		Title:   "Настройки агента system-monitor",
-		MinSize: Size{Width: 520, Height: 280},
-		Layout:  VBox{},
+		Size:    Size{Width: dlgW, Height: dlgH},
+		MinSize: Size{Width: dlgW, Height: dlgH},
+		MaxSize: Size{Width: dlgW, Height: dlgH},
+		Layout:  VBox{Margins: Margins{Left: 10, Top: 10, Right: 10, Bottom: 10}},
 		Children: []Widget{
 			GroupBox{
 				Title:  "Подключение",
-				Layout: Grid{Columns: 2},
+				Layout: Grid{Columns: 2, Spacing: 8},
 				Children: []Widget{
 					Label{Text: "Hub URL:"},
 					LineEdit{AssignTo: &hubEdit, Text: cfg.HubURL},
@@ -59,8 +63,10 @@ func runSettingsDialog(configPath string) error {
 			Composite{
 				Layout: HBox{},
 				Children: []Widget{
+					HSpacer{},
 					PushButton{
-						Text: "Сохранить",
+						Text:      "Сохранить",
+						MaxSize:   Size{Width: 100, Height: 0},
 						OnClicked: func() {
 							cfg.HubURL = hubEdit.Text()
 							cfg.AgentID = agentEdit.Text()
@@ -71,7 +77,8 @@ func runSettingsDialog(configPath string) error {
 						},
 					},
 					PushButton{
-						Text: "Отмена",
+						Text:      "Отмена",
+						MaxSize:   Size{Width: 100, Height: 0},
 						OnClicked: func() {
 							walk.App().Exit(0)
 						},

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -25,6 +26,10 @@ func onTrayReady(configPath string) {
 	systray.SetTooltip("system-monitor agent")
 	systray.SetIcon(trayIcon("idle"))
 
+	mStatus := systray.AddMenuItem(trayStatusText(nil), "")
+	mStatus.Disable()
+	systray.AddSeparator()
+
 	mSettings := systray.AddMenuItem("Настройки", "Открыть настройки")
 	mRestart := systray.AddMenuItem("Перезапустить службу", "")
 	mLog := systray.AddMenuItem("Открыть лог", "")
@@ -38,7 +43,7 @@ func onTrayReady(configPath string) {
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
-			refreshTrayIcon()
+			refreshTrayIcon(mStatus)
 		}
 	}()
 
@@ -67,8 +72,10 @@ func onTrayReady(configPath string) {
 	}()
 }
 
-func refreshTrayIcon() {
+func refreshTrayIcon(mStatus *systray.MenuItem) {
 	status, _ := agent.ReadStatus()
+	mStatus.SetTitle(trayStatusText(status))
+
 	iconKey := "idle"
 	if status != nil {
 		if status.Connected && !status.IsStale() {
@@ -76,15 +83,56 @@ func refreshTrayIcon() {
 		} else if status.LastError != nil {
 			iconKey = "error"
 		}
-		tooltip := status.AgentID
-		if status.Connected {
-			tooltip = "Подключён: " + tooltip
-		} else {
-			tooltip = "Ошибка: " + tooltip
-		}
-		systray.SetTooltip(tooltip)
 	}
+	systray.SetTooltip(trayTooltipText(status))
 	systray.SetIcon(trayIcon(iconKey))
+}
+
+func trayStatusText(status *agent.Status) string {
+	if !serviceRunning() {
+		return "Служба: не запущена"
+	}
+	if status == nil {
+		return "Статус: ожидание"
+	}
+	if status.Connected && !status.IsStale() {
+		if status.AgentID != "" {
+			return "Статус: подключён (" + status.AgentID + ")"
+		}
+		return "Статус: подключён"
+	}
+	if status.LastError != nil && *status.LastError != "" {
+		return "Статус: ошибка"
+	}
+	return "Статус: ожидание"
+}
+
+func trayTooltipText(status *agent.Status) string {
+	if !serviceRunning() {
+		return "system-monitor agent — служба не запущена"
+	}
+	if status == nil {
+		return "system-monitor agent — ожидание данных"
+	}
+	parts := []string{"system-monitor agent"}
+	if status.Connected && !status.IsStale() {
+		parts = append(parts, "подключён")
+	} else if status.LastError != nil && *status.LastError != "" {
+		parts = append(parts, *status.LastError)
+	} else {
+		parts = append(parts, "ожидание")
+	}
+	if status.AgentID != "" {
+		parts = append(parts, status.AgentID)
+	}
+	if status.HubURL != "" {
+		parts = append(parts, status.HubURL)
+	}
+	text := strings.Join(parts, " — ")
+	if len(text) > 127 {
+		return text[:126] + "…"
+	}
+	return text
 }
 
 func trayIcon(key string) []byte {
