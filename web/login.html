@@ -31,10 +31,12 @@
   </main>
   <script type="module">
     import { icon, initFavicon, initDataIcons, setIcon } from "/static/js/icons.js";
+    import { initFooter } from "/static/js/footer.js";
     import { initLoginPage } from "/static/js/login.js";
     initFavicon();
     setIcon(document.getElementById("login-logo"), "monitor");
     initDataIcons();
+    initFooter();
     initLoginPage().catch((err) => console.error(err));
   </script>
 </body>

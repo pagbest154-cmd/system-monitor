@@ -21,6 +21,52 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+.app-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.6rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.app-footer strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.footer-sep {
+  opacity: 0.5;
+}
+
+.footer-ok {
+  color: var(--ok);
+}
+
+.footer-update {
+  color: var(--warn);
+}
+
+.footer-update a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.footer-muted {
+  color: var(--muted);
 }
 
 a {
@@ -902,13 +948,18 @@ input[type="checkbox"] {
 
 .login-page {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
+  padding: 1.5rem 1.5rem 0;
   background:
     radial-gradient(ellipse at top, rgba(59, 130, 246, 0.14), transparent 55%),
     var(--bg);
+}
+
+.login-page main.login-shell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .login-shell {

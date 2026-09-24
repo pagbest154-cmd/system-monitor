@@ -120,6 +120,8 @@ def is_public_path(path: str, method: str) -> bool:
         return True
     if path == "/api/auth/status" and method.upper() == "GET":
         return True
+    if path == "/api/version" and method.upper() == "GET":
+        return True
     if method.upper() == "POST" and _AGENT_PATH_RE.match(path):
         return True
     return False

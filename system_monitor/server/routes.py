@@ -101,6 +101,32 @@ def get_mode() -> dict[str, str]:
     return {"mode": _state().mode}
 
 
+@router.get("/api/version")
+def get_version_info() -> dict[str, Any]:
+    from .. import __version__
+    from ..paths import HUB_UPDATE_CACHE
+    from ..release_updates import check_release_updates
+
+    release = check_release_updates(
+        __version__,
+        cache_path=HUB_UPDATE_CACHE,
+        user_agent="system-monitor-hub",
+    )
+    payload: dict[str, Any] = {
+        "current_version": release.current_version,
+        "latest_version": release.latest_version,
+        "update_available": release.update_available,
+        "release_url": release.release_url,
+        "error": release.error,
+    }
+    if _state().mode == "hub" and release.update_available:
+        payload["update_hint"] = (
+            f"docker pull ghcr.io/pagbest154-cmd/system-monitor:{release.latest_version} && "
+            "docker compose up -d"
+        )
+    return payload
+
+
 @router.get("/api/sensors")
 def list_sensors(agent: str | None = Query(default=None)) -> dict[str, Any]:
     state = _state()

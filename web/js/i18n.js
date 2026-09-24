@@ -103,6 +103,12 @@ export const i18n = {
     NVMe: "NVMe",
     unknown: "неизвестно",
   },
+  footer: {
+    loading: "Проверка версии…",
+    upToDate: "Актуальная версия установлена",
+    updateAvailable: "Доступна новая версия",
+    updateCheckFailed: "Не удалось проверить обновления",
+  },
   hosts: {
     title: "Хосты",
     name: "Имя",

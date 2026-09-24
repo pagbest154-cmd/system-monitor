@@ -39,9 +39,11 @@
 
   <script type="module">
     import { initNavIcons, initFavicon } from "/static/js/icons.js";
+    import { initFooter } from "/static/js/footer.js";
     import { initDashboard } from "/static/js/dashboard.js";
     initFavicon();
     initNavIcons();
+    initFooter();
     initDashboard().catch((err) => console.error(err));
   </script>
 </body>

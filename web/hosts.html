@@ -23,9 +23,11 @@
 
   <script type="module">
     import { initNavIcons, initFavicon } from "/static/js/icons.js";
+    import { initFooter } from "/static/js/footer.js";
     import { initHostsPage } from "/static/js/hosts.js";
     initFavicon();
     initNavIcons();
+    initFooter();
     initHostsPage().catch((err) => console.error(err));
   </script>
 </body>

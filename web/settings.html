@@ -146,10 +146,12 @@
 
   <script type="module">
     import { initNavIcons, initFavicon, initDataIcons } from "/static/js/icons.js";
+    import { initFooter } from "/static/js/footer.js";
     import { initSettings } from "/static/js/settings.js";
     initFavicon();
     initNavIcons();
     initDataIcons();
+    initFooter();
     initSettings().catch((err) => console.error(err));
   </script>
 </body>
