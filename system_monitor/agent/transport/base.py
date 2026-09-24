@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ..protocol.models import AgentConfigResponse, AgentReport
+from ...protocol.models import AgentConfigResponse, AgentReport
 
 
 class AgentTransport(ABC):
