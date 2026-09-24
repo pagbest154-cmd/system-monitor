@@ -20,7 +20,11 @@ packages_file="$packages_dir/Packages"
 mkdir -p "$pool_dir" "$packages_dir"
 cp "$deb_file" "$pool_dir/"
 
-apt-ftparchive packages "$out_dir/pool/main" > "$packages_file"
+# Run from repo root so Packages lists paths like pool/main/... (not dist/apt-repo/pool/...).
+(
+  cd "$out_dir"
+  apt-ftparchive packages pool/main >"dists/$suite/$component/binary-$arch/Packages"
+)
 gzip -9c "$packages_file" > "$packages_file.gz"
 
 cat >"$out_dir/apt-ftparchive.conf" <<EOF
@@ -31,8 +35,10 @@ APT::FTPArchive::Release::Codename "$suite";
 APT::FTPArchive::Release::Architectures "$arch";
 EOF
 
-apt-ftparchive -c="$out_dir/apt-ftparchive.conf" release "$out_dir/dists/$suite" \
-  > "$out_dir/dists/$suite/Release"
+(
+  cd "$out_dir"
+  apt-ftparchive -c=apt-ftparchive.conf release "dists/$suite" >"dists/$suite/Release"
+)
 rm -f "$out_dir/apt-ftparchive.conf"
 
 cat >"$out_dir/README.txt" <<EOF
