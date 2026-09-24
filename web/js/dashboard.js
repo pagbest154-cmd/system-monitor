@@ -33,6 +33,8 @@ let dashboardPanels = [];
 const PERIOD_STORAGE_KEY = "system-monitor:global-period";
 const AUTO_DISK_SENSOR = "auto_disks";
 
+const TEMP_SENSOR_IDS = new Set(["cpu_temp", "gpu_temp"]);
+
 const DEFAULT_PANEL_SENSORS = {
   system_chart: ["cpu_percent", "ram_used"],
   disk_bars: [AUTO_DISK_SENSOR],
@@ -724,6 +726,31 @@ function resolvePanelSensors(panel) {
   return ids.filter((id) => sensorMeta[id]);
 }
 
+function isTemperaturePanel(panel) {
+  if (panel.id === "temp_chart") return true;
+  const ids = panelSensorIds(panel);
+  return ids.length > 0 && ids.every((id) => TEMP_SENSOR_IDS.has(id));
+}
+
+function temperatureDataAvailable(sensorIds, latest, history) {
+  if (sensorIds.some((id) => hasReadingValue(latest[id]))) {
+    return true;
+  }
+  return (history || []).some((item) => (item.points || []).length > 0);
+}
+
+function showPanelUnavailable(panelId, chartDom, message) {
+  disposeChart(panelId);
+  chartDom.dataset.unavailable = "1";
+  chartDom.innerHTML = `<p class="sys-empty panel-empty">${message}</p>`;
+}
+
+function clearPanelUnavailable(chartDom) {
+  if (chartDom.dataset.unavailable !== "1") return;
+  delete chartDom.dataset.unavailable;
+  chartDom.innerHTML = "";
+}
+
 async function refreshPanel(panel, latest, { recreate = false } = {}) {
   const container = document.getElementById(`panel-${panel.id}`);
   if (!container) return;
@@ -773,6 +800,11 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
 
   if (panel.type === "line") {
     const history = await loadHistory(sensorIds, globalPeriod, latest);
+    if (isTemperaturePanel(panel) && !temperatureDataAvailable(sensorIds, latest, history)) {
+      showPanelUnavailable(panel.id, chartDom, i18n.tempUnavailable);
+      return;
+    }
+    clearPanelUnavailable(chartDom);
     if (chart && !recreate) {
       updateLineChart(chart, chartDom, history, sensorMeta);
     } else {

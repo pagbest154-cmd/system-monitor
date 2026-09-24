@@ -14,10 +14,12 @@ import (
 )
 
 const (
-	GitHubRepo           = "pagbest154-cmd/system-monitor"
-	ReleasesLatestPage   = "https://github.com/" + GitHubRepo + "/releases/latest"
-	ReleasesAPI          = "https://api.github.com/repos/" + GitHubRepo + "/releases?per_page=100"
-	DefaultCheckInterval = 24 * 60 * 60
+	GitHubRepo              = "pagbest154-cmd/system-monitor"
+	ReleasesLatestPage      = "https://github.com/" + GitHubRepo + "/releases/latest"
+	ReleasesAPI             = "https://api.github.com/repos/" + GitHubRepo + "/releases?per_page=100"
+	DefaultCheckInterval    = 24 * 60 * 60
+	HubVersionCheckInterval = 60 * 60 // hub footer: refresh at most once per hour
+	UpToDateRecheckInterval = 60 * 60 // re-check GitHub if cache claims "up to date"
 )
 
 type ReleaseCheckResult struct {
@@ -226,11 +228,24 @@ func CheckReleaseUpdates(currentVersion, cachePath string, force bool, userAgent
 	if cachePath != "" {
 		cached, _ = readCache(cachePath)
 	}
-	if !force && cached != nil && (now-cached.CheckedAt) < float64(checkInterval) {
+	if !force && cached != nil {
+		age := now - cached.CheckedAt
+		cachedAtVersion := NormalizeVersion(cached.CurrentVersion)
 		cached.CurrentVersion = current
 		cached.UpdateAvailable = IsNewerVersion(cached.LatestVersion, current)
 		cached.Error = nil
-		return *cached
+		needsRefresh := age >= float64(checkInterval)
+		// Hub/package was upgraded since the last check — cached latest is stale.
+		if cachedAtVersion != current {
+			needsRefresh = true
+		}
+		// Cache may say "up to date" while new releases were published after the last check.
+		if !needsRefresh && !cached.UpdateAvailable && age >= float64(UpToDateRecheckInterval) {
+			needsRefresh = true
+		}
+		if !needsRefresh {
+			return *cached
+		}
 	}
 	latestVersion, releaseURL, tag, err := FetchLatestRelease(userAgent)
 	if err != nil {

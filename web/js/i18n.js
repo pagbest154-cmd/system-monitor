@@ -5,6 +5,7 @@ export const i18n = {
   live: "Онлайн",
   offline: "Нет связи",
   lastUpdate: "Обновлено",
+  tempUnavailable: "Датчики недоступны (VPS)",
   period: {
     "1h": "Час",
     "6h": "6 часов",

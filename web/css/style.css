@@ -469,6 +469,17 @@ main {
   width: 100%;
 }
 
+.panel-chart .panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: inherit;
+  height: 100%;
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+}
+
 /* 1 колонка — мобильный (колонки пересчитываются в JS) */
 @media (max-width: 767px) {
   .panel.expanded {

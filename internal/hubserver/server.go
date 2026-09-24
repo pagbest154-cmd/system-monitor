@@ -155,7 +155,7 @@ func (s *Server) handleMode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
-	result := release.CheckReleaseUpdates(version.Version, paths.HubUpdateCache, false, "system-monitor-hub", release.DefaultCheckInterval, nil)
+	result := release.CheckReleaseUpdates(version.Version, paths.HubUpdateCache, false, "system-monitor-hub", release.HubVersionCheckInterval, nil)
 	payload := map[string]interface{}{
 		"current_version":  result.CurrentVersion,
 		"latest_version":   result.LatestVersion,
