@@ -2,7 +2,7 @@
 from pathlib import Path
 
 SPEC_DIR = Path(SPECPATH)
-ROOT = SPEC_DIR.parent.parent.parent
+ROOT = SPEC_DIR.parent.parent
 
 block_cipher = None
 
