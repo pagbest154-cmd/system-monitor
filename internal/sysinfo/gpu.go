@@ -1,13 +1,14 @@
 package sysinfo
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 )
 
 func getNvidiaGPUs() []map[string]interface{} {
-	cmd := exec.Command("nvidia-smi",
+	cmd := hiddenexec.Command("nvidia-smi",
 		"--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,driver_version",
 		"--format=csv,noheader,nounits")
 	out, err := cmd.Output()

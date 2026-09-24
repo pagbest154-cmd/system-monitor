@@ -12,6 +12,7 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
 	"github.com/pagbest154-cmd/system-monitor/internal/branding"
+	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 	"github.com/pagbest154-cmd/system-monitor/internal/version"
 )
@@ -26,7 +27,7 @@ func onTrayReady(configPath string) {
 	systray.SetTooltip("system-monitor agent")
 	systray.SetIcon(trayIcon("idle"))
 
-	mStatus := systray.AddMenuItem(trayStatusText(nil), "")
+	mStatus := systray.AddMenuItem(trayStatusText(nil, serviceRunning()), "")
 	mStatus.Disable()
 	systray.AddSeparator()
 
@@ -74,7 +75,8 @@ func onTrayReady(configPath string) {
 
 func refreshTrayIcon(mStatus *systray.MenuItem) {
 	status, _ := agent.ReadStatus()
-	mStatus.SetTitle(trayStatusText(status))
+	running := serviceRunning()
+	mStatus.SetTitle(trayStatusText(status, running))
 
 	iconKey := "idle"
 	if status != nil {
@@ -84,12 +86,12 @@ func refreshTrayIcon(mStatus *systray.MenuItem) {
 			iconKey = "error"
 		}
 	}
-	systray.SetTooltip(trayTooltipText(status))
+	systray.SetTooltip(trayTooltipText(status, running))
 	systray.SetIcon(trayIcon(iconKey))
 }
 
-func trayStatusText(status *agent.Status) string {
-	if !serviceRunning() {
+func trayStatusText(status *agent.Status, running bool) string {
+	if !running {
 		return "Служба: не запущена"
 	}
 	if status == nil {
@@ -107,8 +109,8 @@ func trayStatusText(status *agent.Status) string {
 	return "Статус: ожидание"
 }
 
-func trayTooltipText(status *agent.Status) string {
-	if !serviceRunning() {
+func trayTooltipText(status *agent.Status, running bool) string {
+	if !running {
 		return "system-monitor agent — служба не запущена"
 	}
 	if status == nil {
@@ -162,5 +164,5 @@ func openPath(path string) error {
 }
 
 func restartService() error {
-	return exec.Command("sc", "stop", "system-monitor-agent").Run()
+	return hiddenexec.Command("sc", "stop", "system-monitor-agent").Run()
 }

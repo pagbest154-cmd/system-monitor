@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 )
 
 var cpuNameRE = regexp.MustCompile(`(?i)cpu|core|package|tctl|processor|xeon|ryzen`)
@@ -102,7 +103,7 @@ func readLinuxThermal() *float64 {
 
 func readWindowsACPI() *float64 {
 	script := "Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature | Select-Object -ExpandProperty CurrentTemperature"
-	out, err := exec.Command("powershell", "-NoProfile", "-Command", script).Output()
+	out, err := hiddenexec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script).Output()
 	if err != nil {
 		return nil
 	}
@@ -134,7 +135,7 @@ func readHWMonitor(namespace string) []struct {
 	value float64
 } {
 	script := "Get-CimInstance -Namespace " + namespace + " -ClassName Sensor -ErrorAction SilentlyContinue | Where-Object { $_.SensorType -eq 'Temperature' -and $_.Value -ne $null } | Select-Object Name, Value | ConvertTo-Json -Compress"
-	out, err := exec.Command("powershell", "-NoProfile", "-Command", script).Output()
+	out, err := hiddenexec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script).Output()
 	if err != nil || len(strings.TrimSpace(string(out))) == 0 {
 		return nil
 	}
@@ -217,7 +218,7 @@ func pickGPUTemp(readings []struct {
 }
 
 func readNvidiaSMITemp() *float64 {
-	out, err := exec.Command("nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits").Output()
+	out, err := hiddenexec.Command("nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits").Output()
 	if err != nil {
 		return nil
 	}

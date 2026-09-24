@@ -3,12 +3,13 @@
 package main
 
 import (
-	"os/exec"
 	"strings"
+
+	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 )
 
 func serviceRunning() bool {
-	out, err := exec.Command("sc", "query", "system-monitor-agent").Output()
+	out, err := hiddenexec.Command("sc", "query", "system-monitor-agent").Output()
 	if err != nil {
 		return false
 	}

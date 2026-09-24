@@ -5,10 +5,10 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 	"golang.org/x/sys/windows"
 )
 
@@ -37,7 +37,7 @@ func launchSettings(configPath string) error {
 		// Fallback: cmd start (works when ShellExecute is blocked).
 		startArgs := []string{"/C", "start", "", quoteWindows(exe)}
 		startArgs = append(startArgs, params...)
-		cmd := exec.Command("cmd.exe", startArgs...)
+		cmd := hiddenexec.Command("cmd.exe", startArgs...)
 		cmd.Dir = filepath.Dir(exe)
 		if startErr := cmd.Start(); startErr != nil {
 			msg := fmt.Sprintf("Не удалось открыть настройки:\n%v\n%v", err, startErr)
