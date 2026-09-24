@@ -114,9 +114,34 @@ def save_sensors_config(config: SensorsFile, path: Path | None = None) -> None:
     _save_yaml(path, config.model_dump(mode="json"))
 
 
+def default_panel_sensors() -> dict[str, list[str]]:
+    data = _load_yaml(_PKG_CONFIG_DIR / "dashboard.yaml")
+    mapping: dict[str, list[str]] = {}
+    for panel in data.get("panels") or []:
+        panel_id = panel.get("id")
+        sensors = panel.get("sensors") or []
+        if panel_id and sensors:
+            mapping[str(panel_id)] = [str(item) for item in sensors]
+    return mapping
+
+
+def enrich_dashboard_panels(panels: list[PanelConfig]) -> list[PanelConfig]:
+    """Restore bundled sensor bindings when a panel was saved with an empty list."""
+    defaults = default_panel_sensors()
+    enriched: list[PanelConfig] = []
+    for panel in panels:
+        if not panel.sensors and panel.id in defaults:
+            enriched.append(panel.model_copy(update={"sensors": defaults[panel.id]}))
+        else:
+            enriched.append(panel)
+    return enriched
+
+
 def load_dashboard_config(path: Path | None = None) -> DashboardFile:
     path = path or DASHBOARD_CONFIG
-    return DashboardFile.model_validate(_load_yaml(path))
+    config = DashboardFile.model_validate(_load_yaml(path))
+    config.panels = enrich_dashboard_panels(config.panels)
+    return config
 
 
 def save_dashboard_config(config: DashboardFile, path: Path | None = None) -> None:

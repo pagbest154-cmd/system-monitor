@@ -428,13 +428,23 @@ def update_sensors_config(body: SensorsUpdate) -> dict[str, str]:
 
 @router.put("/api/config/dashboard")
 def update_dashboard_config(body: DashboardUpdate) -> dict[str, str]:
+    from ..config_loader import enrich_dashboard_panels
+
     current = load_dashboard_config()
     data = current.model_dump(mode="json")
     if body.dashboard is not None:
         data["dashboard"] = body.dashboard
     if body.panels is not None:
-        data["panels"] = body.panels
+        defaults = {panel.id: panel.sensors for panel in current.panels if panel.sensors}
+        panels = []
+        for panel in body.panels:
+            sensors = panel.get("sensors") or []
+            if not sensors and panel.get("id") in defaults:
+                sensors = defaults[panel["id"]]
+            panels.append({**panel, "sensors": sensors})
+        data["panels"] = panels
     config = DashboardFile.model_validate(data)
+    config.panels = enrich_dashboard_panels(config.panels)
     save_dashboard_config(config)
     return {"status": "ok"}
 

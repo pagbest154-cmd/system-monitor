@@ -33,6 +33,15 @@ let dashboardPanels = [];
 const PERIOD_STORAGE_KEY = "system-monitor:global-period";
 const AUTO_DISK_SENSOR = "auto_disks";
 
+const DEFAULT_PANEL_SENSORS = {
+  system_chart: ["cpu_percent", "ram_used"],
+  disk_bars: [AUTO_DISK_SENSOR],
+  net_chart: ["net_rx", "net_tx"],
+  temp_chart: ["cpu_temp", "gpu_temp"],
+  cpu_gauge: ["cpu_percent"],
+  ram_gauge: ["ram_used"],
+};
+
 let expandedPanelId = null;
 let appMode = "standalone";
 let selectedAgent = "";
@@ -602,15 +611,21 @@ function renderSystemInfo(info) {
   `;
 }
 
+function panelSensorIds(panel) {
+  if (panel.sensors?.length) return panel.sensors;
+  return DEFAULT_PANEL_SENSORS[panel.id] || [];
+}
+
 function resolvePanelSensors(panel) {
   let ids;
-  if (panel.sensors?.includes(AUTO_DISK_SENSOR)) {
+  const configured = panelSensorIds(panel);
+  if (configured.includes(AUTO_DISK_SENSOR)) {
     ids = Object.keys(sensorMeta).filter((id) => id.startsWith("disk_auto_"));
     if (!ids.length) {
       ids = Object.keys(latestSnapshot).filter((id) => id.startsWith("disk_auto_"));
     }
   } else {
-    ids = panel.sensors || [];
+    ids = configured;
   }
   if (appMode === "hub" && selectedAgent) {
     return ids;
@@ -797,10 +812,7 @@ function connectLive() {
       }
       const agentKey = selectedAgent || message.agent_id || "";
       const incoming = normalizeSnapshot(message.data || {}, agentKey);
-      const latest =
-        message.type === "update"
-          ? mergeLatestReadings(latestSnapshot, incoming)
-          : mergeLatestReadings({}, incoming);
+      const latest = mergeLatestReadings(latestSnapshot, incoming);
       latestSnapshot = latest;
       const maxTs = Object.values(latest).reduce(
         (acc, item) => Math.max(acc, item.ts || 0),
@@ -867,6 +879,10 @@ async function initHostSelector() {
   allOption.value = "";
   allOption.textContent = i18n.hosts.allHosts;
   select.appendChild(allOption);
+
+  if (!selectedAgent && agents.length === 1) {
+    selectedAgent = agents[0].id;
+  }
 
   agents.forEach((agent) => {
     const option = document.createElement("option");

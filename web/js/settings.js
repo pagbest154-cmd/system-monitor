@@ -23,6 +23,16 @@ const TYPE_LABELS = {
   "remote.mqtt": "MQTT",
 };
 
+const HUB_PANEL_SENSOR_OPTIONS = [
+  { id: "cpu_percent", name: "Загрузка процессора" },
+  { id: "ram_used", name: "Использование памяти" },
+  { id: "net_rx", name: "Сеть — входящий трафик" },
+  { id: "net_tx", name: "Сеть — исходящий трафик" },
+  { id: "cpu_temp", name: "Температура CPU" },
+  { id: "gpu_temp", name: "Температура GPU" },
+  { id: "auto_disks", name: "Все диски (auto)" },
+];
+
 const DEFAULT_PARAMS = {
   "system.disk_usage": { path: "C:\\" },
   "system.network_bytes": { direction: "recv" },
@@ -63,7 +73,13 @@ function typeOptions(selected) {
 
 function sensorCheckboxOptions(selectedIds) {
   const selected = new Set(selectedIds || []);
-  return availableSensors
+  const optionsById = new Map(availableSensors.map((sensor) => [sensor.id, sensor]));
+  for (const id of selected) {
+    if (!optionsById.has(id)) {
+      optionsById.set(id, { id, name: id });
+    }
+  }
+  return Array.from(optionsById.values())
     .map(
       (sensor) => `
         <label class="sensor-check">
@@ -251,9 +267,14 @@ function readPanelsFromTable() {
     row.querySelectorAll("[data-field]").forEach((input) => {
       const field = input.dataset.field;
       if (field === "sensors") {
-        panel.sensors = Array.from(input.querySelectorAll('input[type="checkbox"]:checked')).map(
+        const checked = Array.from(input.querySelectorAll('input[type="checkbox"]:checked')).map(
           (el) => el.value
         );
+        const checkboxes = input.querySelectorAll('input[type="checkbox"]');
+        panel.sensors =
+          checked.length || checkboxes.length
+            ? checked
+            : panel.sensors || [];
       } else if (field === "span") {
         panel.span = normalizeSpan(input.value);
       } else if (["row", "col"].includes(field)) {
@@ -453,6 +474,7 @@ export async function initSettings() {
   const sensorsSection = document.querySelector(".section:nth-of-type(2)");
   const agentsSection = document.getElementById("agents-section");
   if (appMode === "hub") {
+    availableSensors = HUB_PANEL_SENSOR_OPTIONS;
     if (sensorsSection) sensorsSection.hidden = true;
     if (agentsSection) agentsSection.hidden = false;
     const hubData = await fetchJson("/api/config/hub");
