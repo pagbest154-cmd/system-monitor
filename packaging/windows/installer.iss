@@ -39,7 +39,7 @@ WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile={#RepoRoot}\packaging\windows\app-icon.ico
-UninstallDisplayIcon={app}\system-monitor-agent.exe
+UninstallDisplayIcon={app}\app-icon.ico
 CloseApplications=force
 CloseApplicationsFilter=system-monitor-agent.exe
 RestartApplications=no
@@ -57,12 +57,13 @@ Name: "trayautostart"; Description: "Запускать иконку в трее
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs restartreplace
 Source: "{#RepoRoot}\config\agent_sensors.yaml"; DestDir: "{#MyConfigDir}"; Flags: onlyifdoesntexist
 Source: "third_party\nssm\win64\nssm.exe"; DestDir: "{app}\nssm"; Flags: ignoreversion
+Source: "{#RepoRoot}\packaging\windows\app-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"
-Name: "{group}\Настройки агента"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--settings"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; IconFilename: "{app}\app-icon.ico"
+Name: "{group}\Настройки агента"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--settings"; IconFilename: "{app}\app-icon.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; Tasks: desktopicon; IconFilename: "{app}\app-icon.ico"
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyServiceName}-tray"; ValueData: """{app}\system-monitor-agent.exe"" --tray"; Flags: uninsdeletevalue; Tasks: trayautostart

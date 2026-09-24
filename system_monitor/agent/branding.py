@@ -124,12 +124,15 @@ def save_app_icon(path: Path, sizes: tuple[int, ...] = _ICON_SIZES) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     ordered = tuple(sorted(sizes, reverse=True))
     images = [render_icon(size, "ok") for size in ordered]
-    images[0].save(
-        path,
-        format="ICO",
-        sizes=[(image.width, image.height) for image in images],
-        append_images=images[1:],
-    )
+    save_kwargs: dict[str, object] = {
+        "format": "ICO",
+        "sizes": [(image.width, image.height) for image in images],
+        "append_images": images[1:],
+    }
+    try:
+        images[0].save(path, bitmap_format="png", **save_kwargs)
+    except TypeError:
+        images[0].save(path, **save_kwargs)
     return path
 
 

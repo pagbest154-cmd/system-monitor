@@ -9,6 +9,9 @@ ICON_FILE = SPEC_DIR / "app-icon.ico"
 
 if not ICON_FILE.is_file():
     subprocess.run([sys.executable, str(SPEC_DIR / "generate_icon.py")], check=True)
+if not ICON_FILE.is_file():
+    raise SystemExit(f"Application icon not found: {ICON_FILE}")
+ICON_PATH = str(ICON_FILE.resolve())
 
 block_cipher = None
 
@@ -18,7 +21,7 @@ a = Analysis(
     binaries=[],
     datas=[
         (str(ROOT / "config" / "agent_sensors.yaml"), "config"),
-        (str(ICON_FILE), "assets"),
+        (ICON_PATH, "assets"),
     ],
     hiddenimports=[
         "system_monitor",
@@ -91,7 +94,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    icon=str(ICON_FILE),
+    icon=ICON_PATH,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,

@@ -31,6 +31,20 @@ function Ensure-Nssm {
     Remove-Item (Join-Path $ThirdPartyDir "nssm-src") -Recurse -Force
 }
 
+function Ensure-Rcedit {
+    $rcedit = Join-Path $ThirdPartyDir "rcedit-x64.exe"
+    if (Test-Path $rcedit) {
+        return $rcedit
+    }
+
+    New-Item -ItemType Directory -Force -Path $ThirdPartyDir | Out-Null
+    Write-Host "Downloading rcedit..."
+    Invoke-WebRequest `
+        -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" `
+        -OutFile $rcedit
+    return $rcedit
+}
+
 function Ensure-InnoSetup {
     $iscc = @(
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -51,8 +65,17 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 Ensure-Nssm
 
+$iconFile = Join-Path $PackagingDir "app-icon.ico"
 Write-Host "Generating app-icon.ico..."
 python (Join-Path $PackagingDir "generate_icon.py")
+if (-not (Test-Path $iconFile)) {
+    throw "Icon file was not generated: $iconFile"
+}
+$iconSize = (Get-Item $iconFile).Length
+if ($iconSize -lt 500) {
+    throw "Icon file looks invalid ($iconSize bytes): $iconFile"
+}
+Write-Host "Icon ready: $iconFile ($iconSize bytes)"
 
 Push-Location $Root
 python -m PyInstaller `
@@ -64,9 +87,15 @@ python -m PyInstaller `
 Pop-Location
 
 $agentDist = Join-Path $DistDir "system-monitor-agent"
-if (-not (Test-Path (Join-Path $agentDist "system-monitor-agent.exe"))) {
-    throw "PyInstaller output not found: $agentDist\system-monitor-agent.exe"
+$agentExe = Join-Path $agentDist "system-monitor-agent.exe"
+if (-not (Test-Path $agentExe)) {
+    throw "PyInstaller output not found: $agentExe"
 }
+
+Write-Host "Embedding application icon with rcedit..."
+$rcedit = Ensure-Rcedit
+& $rcedit $agentExe --set-icon $iconFile
+Copy-Item $iconFile (Join-Path $agentDist "app-icon.ico") -Force
 
 $iscc = Ensure-InnoSetup
 & $iscc `
