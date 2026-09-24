@@ -4,6 +4,38 @@ set -e
 AGENT_YAML="/etc/system-monitor/agent.yaml"
 TOKEN_FILE="/etc/system-monitor/agent.token"
 
+install_runtime() {
+    venv="/opt/system-monitor-agent/venv"
+    src="/usr/share/system-monitor-agent/src"
+
+    if ! command -v python3 >/dev/null; then
+        echo "system-monitor-agent: python3 не найден." >&2
+        return 1
+    fi
+    if ! python3 -c "import venv" 2>/dev/null; then
+        echo "system-monitor-agent: установите python3-venv." >&2
+        return 1
+    fi
+    if ! python3 -m pip --version >/dev/null 2>&1; then
+        echo "system-monitor-agent: установите python3-pip." >&2
+        return 1
+    fi
+    if [ ! -f "$src/pyproject.toml" ]; then
+        echo "system-monitor-agent: исходники пакета не найдены в $src." >&2
+        return 1
+    fi
+
+    rm -rf "$venv"
+    python3 -m venv "$venv"
+    "$venv/bin/python3" -m pip install --no-cache-dir --upgrade pip wheel
+    if ! "$venv/bin/python3" -m pip install --no-cache-dir "$src"; then
+        echo "system-monitor-agent: не удалось установить зависимости (нужен интернет)." >&2
+        return 1
+    fi
+    chown -R system-monitor-agent:system-monitor-agent /opt/system-monitor-agent
+    return 0
+}
+
 write_agent_yaml() {
     hub_url="${1:-http://127.0.0.1:8080}"
     agent_id="${2:-}"
@@ -48,6 +80,12 @@ case "$1" in
 
         if [ -z "$agent_id" ]; then
             agent_id="$(hostname)"
+        fi
+
+        if ! install_runtime; then
+            echo "Повторите после установки python3-venv python3-pip и с интернетом:" >&2
+            echo "  sudo apt install python3-venv python3-pip" >&2
+            echo "  sudo dpkg-reconfigure system-monitor-agent" >&2
         fi
 
         write_agent_yaml "$hub_url" "$agent_id" "$TOKEN_FILE"

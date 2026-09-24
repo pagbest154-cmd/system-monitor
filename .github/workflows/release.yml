@@ -64,7 +64,6 @@ jobs:
 
   build-windows:
     needs: detect-changes
-    if: needs.detect-changes.outputs.windows == 'true'
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -95,7 +94,6 @@ jobs:
 
   build-deb:
     needs: detect-changes
-    if: needs.detect-changes.outputs.deb == 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -162,14 +160,12 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download deb artifacts
-        if: needs.detect-changes.outputs.deb == 'true'
         uses: actions/download-artifact@v7
         with:
           name: release-assets
           path: dist
 
       - name: Download Windows installer
-        if: needs.detect-changes.outputs.windows == 'true'
         uses: actions/download-artifact@v7
         with:
           name: windows-agent
@@ -184,8 +180,8 @@ jobs:
         env:
           VERSION: ${{ needs.detect-changes.outputs.version }}
           HUB_BUILT: ${{ needs.detect-changes.outputs.hub == 'true' && needs.build-docker.result == 'success' }}
-          DEB_BUILT: ${{ needs.detect-changes.outputs.deb == 'true' && needs.build-deb.result == 'success' }}
-          WINDOWS_BUILT: ${{ needs.detect-changes.outputs.windows == 'true' && needs.build-windows.result == 'success' }}
+          DEB_BUILT: ${{ needs.build-deb.result == 'success' }}
+          WINDOWS_BUILT: ${{ needs.build-windows.result == 'success' }}
         run: |
           chmod +x scripts/extract-release-notes.sh
           ./scripts/extract-release-notes.sh "$VERSION" dist/RELEASE_NOTES.md
@@ -198,14 +194,14 @@ jobs:
               echo "- **Hub (Docker)** — без изменений, образ не пересобирался"
             fi
             if [ "$DEB_BUILT" = "true" ]; then
-              echo "- **Agent (.deb)** — пересобран"
+              echo "- **Agent (.deb)** — собран"
             else
-              echo "- **Agent (.deb)** — без изменений, пакет не пересобирался"
+              echo "- **Agent (.deb)** — ошибка сборки"
             fi
             if [ "$WINDOWS_BUILT" = "true" ]; then
-              echo "- **Agent (Windows)** — пересобран"
+              echo "- **Agent (Windows)** — собран"
             else
-              echo "- **Agent (Windows)** — без изменений, установщик не пересобирался"
+              echo "- **Agent (Windows)** — ошибка сборки"
             fi
             echo
             if [ "$HUB_BUILT" = "true" ]; then
@@ -244,8 +240,8 @@ jobs:
             dist/windows/system-monitor-agent_*_setup.exe
 
   publish-apt-pages:
-    needs: [release, build-deb, detect-changes]
-    if: needs.detect-changes.outputs.deb == 'true' && needs.build-deb.result == 'success'
+    needs: [release, build-deb]
+    if: needs.build-deb.result == 'success'
     runs-on: ubuntu-24.04
     environment:
       name: github-pages

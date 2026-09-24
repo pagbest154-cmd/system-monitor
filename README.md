@@ -112,7 +112,7 @@ docker compose up -d
 Конкретная версия: `VERSION=0.0.20 docker compose pull && docker compose up -d`  
 В футере веб-интерфейса — установленная версия и статус обновления с GitHub.
 
-> Не каждый релиз пересобирает Docker-образ: hub, `.deb` и `.exe` собираются **независимо**, только если менялся соответствующий код. Смотрите блок «Сборка релиза» в [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
+> На каждом релизе собираются **оба агента** — `.deb` (Linux) и `.exe` (Windows). Docker-образ hub пересобирается только при изменениях hub-кода. Смотрите блок «Сборка релиза» в [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
 
 ### Подключение агентов к hub
 
@@ -151,12 +151,15 @@ sudo dpkg-reconfigure system-monitor-agent
 Без интерактива:
 
 ```bash
+sudo apt install python3-venv python3-pip
 sudo DEBIAN_FRONTEND=noninteractive \
   HUB_URL=https://monitor.example.com \
   AGENT_ID=my-laptop \
   AGENT_TOKEN=your-secret-token \
   apt install ./system-monitor-agent_*_amd64.deb
 ```
+
+При первой установке нужен **интернет** — `postinst` создаёт venv и ставит зависимости под ваш Python.
 
 После установки: `sudo systemctl status system-monitor-agent` · логи: `journalctl -u system-monitor-agent -f`
 
@@ -283,7 +286,8 @@ Standalone без fleet: `python -m system_monitor --mode standalone --host 0.0.
 | Агент онлайн, API пустой | `GET /api/sensors?agent=<id>` — есть ли `current` с `value` |
 | История пустая | `GET /api/metrics/cpu_percent?agent=<id>&period=1h` — копятся ли `points` |
 | Windows: ошибка PyInstaller PKG archive | Установите агент **0.0.17+** (сломанные сборки 0.0.14–0.0.16) |
-| Linux: `venv/bin/system-monitor-agent: not found` (status 127) | Обновите deb до **0.0.23+** |
+| Linux: `venv/bin/system-monitor-agent: not found` (status 127) | Обновите deb до **0.0.24+** |
+| Linux: `pydantic_core._pydantic_core` missing (status 1) | **0.0.24+** или `sudo dpkg-reconfigure system-monitor-agent` с интернетом |
 | Служба не стартует после обновления | Логи: `%ProgramData%\system-monitor\agent.log` |
 
 **Быстрая проверка API** (с cookie сессии или Basic Auth `HUB_NAME:HUB_KEY`):
