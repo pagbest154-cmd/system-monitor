@@ -102,6 +102,23 @@ begin
   Result := Value;
 end;
 
+procedure StopAgentProcesses;
+var
+  ResultCode: Integer;
+  Nssm, AppDir: String;
+begin
+  Exec('sc.exe', 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1000);
+
+  AppDir := ExpandConstant('{autopf}\system-monitor-agent');
+  Nssm := AppDir + '\nssm\nssm.exe';
+  if FileExists(Nssm) then
+    Exec(Nssm, 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+  Exec('taskkill.exe', '/F /IM system-monitor-agent.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1500);
+end;
+
 function InitializeSetup(): Boolean;
 begin
   if ConfigExists then
@@ -138,23 +155,6 @@ begin
     Exit;
   end;
   Result := False;
-end;
-
-procedure StopAgentProcesses;
-var
-  ResultCode: Integer;
-  Nssm, AppDir: String;
-begin
-  Exec('sc.exe', 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(1000);
-
-  AppDir := ExpandConstant('{autopf}\system-monitor-agent');
-  Nssm := AppDir + '\nssm\nssm.exe';
-  if FileExists(Nssm) then
-    Exec(Nssm, 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-
-  Exec('taskkill.exe', '/F /IM system-monitor-agent.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(1500);
 end;
 
 procedure StopExistingService;
