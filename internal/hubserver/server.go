@@ -106,6 +106,7 @@ func (s *Server) Router() http.Handler {
 	r.Post("/api/agents/{agentID}/heartbeat", s.handleHeartbeat)
 	r.Post("/api/agents/{agentID}/config", s.handleSyncConfig)
 	r.Get("/api/agents/{agentID}/notify", s.handleAgentNotify)
+	r.Get("/api/agents/{agentID}/notify/catalog", s.handleAgentNotifyCatalog)
 	r.Get("/api/dashboard", s.handleDashboard)
 	r.Put("/api/config/sensors", s.handleUpdateSensors)
 	r.Put("/api/config/dashboard", s.handleUpdateDashboard)

@@ -163,7 +163,7 @@ func IsPublicPath(path, method string) bool {
 		if method == http.MethodPost {
 			return true
 		}
-		if method == http.MethodGet && strings.HasSuffix(path, "/notify") {
+		if method == http.MethodGet && (strings.HasSuffix(path, "/notify") || strings.HasSuffix(path, "/notify/catalog")) {
 			return true
 		}
 	}

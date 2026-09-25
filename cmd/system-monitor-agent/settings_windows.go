@@ -15,6 +15,7 @@ import (
 	"github.com/pagbest154-cmd/system-monitor/internal/config"
 	"github.com/pagbest154-cmd/system-monitor/internal/fleet"
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
+	"github.com/pagbest154-cmd/system-monitor/internal/protocol"
 	"github.com/pagbest154-cmd/system-monitor/internal/version"
 )
 
@@ -36,19 +37,41 @@ func runSettingsDialog(configPath string) error {
 		_ = os.Chdir(filepath.Dir(exe))
 	}
 
+	ownID := fleet.DefaultAgentID(cfg.AgentID)
+	selected, _ := config.LoadNotifySubscriptions()
+	selectedSet := map[string]bool{}
+	for _, id := range selected {
+		selectedSet[id] = true
+	}
+	if len(selectedSet) == 0 {
+		selectedSet[ownID] = true
+	}
+
+	var catalog protocol.NotifyCatalogResponse
+	var catalogErr error
+	if token != "" {
+		transport := agent.NewTransport(cfg.HubURL, token)
+		catalog, catalogErr = transport.FetchNotifyCatalog(ownID)
+	}
+
 	notifyStatus := fetchNotifyStatus(cfg, token)
 
+	var mw *walk.MainWindow
 	var hubEdit, agentEdit, tokenEdit *walk.LineEdit
 	var intervalEdit *walk.NumberEdit
-	const dlgW, dlgH = 460, 320
+	var notifyGroup *walk.GroupBox
+	notifyChecks := map[string]*walk.CheckBox{}
 
-	window := MainWindow{
-		Title:   "Настройки " + branding.AgentName,
-		Font:    Font{Family: "Segoe UI", PointSize: 9},
-		Size:    Size{Width: dlgW, Height: dlgH},
-		MinSize: Size{Width: dlgW, Height: dlgH},
-		MaxSize: Size{Width: dlgW, Height: dlgH},
-		Layout:  VBox{Margins: Margins{Left: 12, Top: 12, Right: 12, Bottom: 12}},
+	const dlgW, dlgH = 480, 520
+
+	decl := MainWindow{
+		AssignTo: &mw,
+		Title:    "Настройки " + branding.AgentName,
+		Font:     Font{Family: "Segoe UI", PointSize: 9},
+		Size:     Size{Width: dlgW, Height: dlgH},
+		MinSize:  Size{Width: dlgW, Height: dlgH},
+		MaxSize:  Size{Width: dlgW, Height: dlgH},
+		Layout:   VBox{Margins: Margins{Left: 12, Top: 12, Right: 12, Bottom: 12}},
 		Children: []Widget{
 			Label{Text: branding.AgentName + " · v" + version.Version},
 			GroupBox{
@@ -64,6 +87,11 @@ func runSettingsDialog(configPath string) error {
 					Label{Text: "Интервал (сек):"},
 					NumberEdit{AssignTo: &intervalEdit, Value: float64(cfg.IntervalSec), MinValue: 1, MaxValue: 3600},
 				},
+			},
+			GroupBox{
+				AssignTo: &notifyGroup,
+				Title:    "Уведомления — хосты",
+				Layout:   VBox{Spacing: 6},
 			},
 			Label{Text: notifyStatus},
 			Composite{
@@ -90,7 +118,7 @@ func runSettingsDialog(configPath string) error {
 						OnClicked: func() { walk.App().Exit(0) },
 					},
 					PushButton{
-						Text: "Сохранить",
+						Text:    "Сохранить",
 						MaxSize: Size{Width: 100, Height: 0},
 						OnClicked: func() {
 							cfg.HubURL = hubEdit.Text()
@@ -98,6 +126,13 @@ func runSettingsDialog(configPath string) error {
 							cfg.IntervalSec = int(intervalEdit.Value())
 							_ = config.SaveAgentConfig(cfg, configPath)
 							_ = config.SaveAgentToken(tokenEdit.Text(), "")
+							ids := make([]string, 0, len(notifyChecks))
+							for id, cb := range notifyChecks {
+								if cb.Checked() {
+									ids = append(ids, id)
+								}
+							}
+							_ = config.SaveNotifySubscriptions(ids)
 							walk.App().Exit(0)
 						},
 					},
@@ -106,8 +141,39 @@ func runSettingsDialog(configPath string) error {
 		},
 	}
 
-	_, err = window.Run()
-	if err != nil {
+	if err := decl.Create(); err != nil {
+		logSettingsError("settings UI create: " + err.Error())
+		return fmt.Errorf("settings UI: %w", err)
+	}
+
+	if notifyGroup != nil {
+		if catalogErr != nil {
+			lbl, _ := walk.NewLabel(notifyGroup)
+			lbl.SetText("Список хостов недоступен.\nОбновите hub до последней версии.")
+		} else if len(catalog.Items) == 0 {
+			lbl, _ := walk.NewLabel(notifyGroup)
+			lbl.SetText("Нет хостов с включёнными алертами.\nВключите алерты на странице Хосты.")
+		} else {
+			for _, item := range catalog.Items {
+				cb, err := walk.NewCheckBox(notifyGroup)
+				if err != nil {
+					continue
+				}
+				label := item.Name
+				if label == "" {
+					label = item.AgentID
+				}
+				if label != item.AgentID {
+					label = fmt.Sprintf("%s (%s)", label, item.AgentID)
+				}
+				cb.SetText(label)
+				cb.SetChecked(selectedSet[item.AgentID])
+				notifyChecks[item.AgentID] = cb
+			}
+		}
+	}
+
+	if _, err := mw.Run(); err != nil {
 		logSettingsError("settings UI: " + err.Error())
 		return fmt.Errorf("settings UI: %w", err)
 	}
@@ -118,16 +184,34 @@ func fetchNotifyStatus(cfg *config.AgentFileConfig, token string) string {
 	if token == "" {
 		return "Уведомления: укажите token и сохраните настройки"
 	}
-	agentID := fleet.DefaultAgentID(cfg.AgentID)
-	transport := agent.NewTransport(cfg.HubURL, token)
-	notify, err := transport.FetchNotifyConfig(agentID)
-	if err != nil {
-		return "Уведомления: hub не отвечает (обновите hub до 1.0.18+)"
+	ownID := fleet.DefaultAgentID(cfg.AgentID)
+	selected, _ := config.LoadNotifySubscriptions()
+	if len(selected) == 0 {
+		selected = []string{ownID}
 	}
-	if !notify.Enabled || notify.Topic == "" {
+	transport := agent.NewTransport(cfg.HubURL, token)
+	catalog, err := transport.FetchNotifyCatalog(ownID)
+	if err != nil {
+		return "Уведомления: hub не отвечает (нужен hub 1.0.32+)"
+	}
+	enabled := 0
+	byID := map[string]bool{}
+	for _, item := range catalog.Items {
+		if item.Enabled && item.Topic != "" {
+			byID[item.AgentID] = true
+			enabled++
+		}
+	}
+	if enabled == 0 {
 		return "Уведомления: выключены — включите алерты на странице Хосты"
 	}
-	return "Уведомления: включены · " + notify.NtfyBaseURL
+	subscribed := 0
+	for _, id := range selected {
+		if byID[id] {
+			subscribed++
+		}
+	}
+	return fmt.Sprintf("Уведомления: %d из %d хостов · %s", subscribed, enabled, catalog.NtfyBaseURL)
 }
 
 func logSettingsError(msg string) {

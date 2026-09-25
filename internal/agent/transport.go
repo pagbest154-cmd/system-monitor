@@ -92,6 +92,31 @@ func (t *Transport) SyncConfig(agentID string, configVersion int) (protocol.Agen
 	return out, nil
 }
 
+func (t *Transport) FetchNotifyCatalog(agentID string) (protocol.NotifyCatalogResponse, error) {
+	endpoint := fmt.Sprintf("%s/api/agents/%s/notify/catalog", t.HubURL, agentID)
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return protocol.NotifyCatalogResponse{}, err
+	}
+	for k, v := range t.headers() {
+		req.Header.Set(k, v)
+	}
+	resp, err := t.client.Do(req)
+	if err != nil {
+		return protocol.NotifyCatalogResponse{}, WrapRequestError("fetch notify catalog", endpoint, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		data, _ := io.ReadAll(resp.Body)
+		return protocol.NotifyCatalogResponse{}, WrapHTTPError("fetch notify catalog", endpoint, resp.StatusCode, string(data))
+	}
+	var out protocol.NotifyCatalogResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return protocol.NotifyCatalogResponse{}, fmt.Errorf("fetch notify catalog decode: %w", err)
+	}
+	return out, nil
+}
+
 func (t *Transport) FetchNotifyConfig(agentID string) (protocol.AgentNotifyResponse, error) {
 	endpoint := fmt.Sprintf("%s/api/agents/%s/notify", t.HubURL, agentID)
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)

@@ -62,3 +62,16 @@ type AgentNotifyResponse struct {
 	Topic       string `json:"topic"`
 	Token       string `json:"token"`
 }
+
+type NotifyCatalogItem struct {
+	AgentID string `json:"agent_id"`
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+	Topic   string `json:"topic"`
+	Token   string `json:"token"`
+}
+
+type NotifyCatalogResponse struct {
+	NtfyBaseURL string              `json:"ntfy_base_url"`
+	Items       []NotifyCatalogItem `json:"items"`
+}
