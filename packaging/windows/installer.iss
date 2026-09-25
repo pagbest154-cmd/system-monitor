@@ -164,7 +164,7 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   NeedsRestart := False;
-  StopExistingService;
+  StopAgentProcesses;
   Result := '';
 end;
 
@@ -297,14 +297,19 @@ end;
 procedure LaunchTrayIcon;
 var
   ResultCode: Integer;
+  Exe: String;
 begin
-  Exec(ExpandConstant('{app}\system-monitor-agent.exe'), '--tray', '', SW_HIDE, ewNoWait, ResultCode);
+  Exe := ExpandConstant('{app}\system-monitor-agent.exe');
+  Exec('powershell.exe',
+    '-NoProfile -WindowStyle Hidden -Command ' +
+    '"$s=New-Object -ComObject Shell.Application; $s.ShellExecute(''' + Exe + ''',''--tray'','''','''',0)"',
+    '', SW_HIDE, ewNoWait, ResultCode);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
-    StopExistingService;
+    StopAgentProcesses;
 
   if CurStep = ssPostInstall then
   begin
