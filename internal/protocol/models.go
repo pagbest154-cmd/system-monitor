@@ -36,6 +36,8 @@ type SensorMeta struct {
 type AgentReport struct {
 	AgentID       string                 `json:"agent_id"`
 	Hostname      string                 `json:"hostname,omitempty"`
+	AgentVersion  string                 `json:"agent_version,omitempty"`
+	Platform      string                 `json:"platform,omitempty"`
 	Metrics       []MetricPoint          `json:"metrics,omitempty"`
 	System        map[string]interface{} `json:"system,omitempty"`
 	ConfigVersion int                    `json:"config_version"`

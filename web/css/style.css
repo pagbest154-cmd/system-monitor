@@ -362,6 +362,72 @@ header nav a.active .icon {
   text-transform: capitalize;
 }
 
+.host-version-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.host-version-current {
+  color: var(--text);
+}
+
+.host-version-outdated {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.host-version-unknown {
+  color: var(--muted);
+}
+
+.host-platform {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.host-update-btn {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.host-update-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.host-update-section {
+  margin-top: 1rem;
+}
+
+.host-update-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.host-update-command {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.host-update-command code {
+  flex: 1 1 12rem;
+  display: block;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
 #agents-table th,
 #agents-table td {
   vertical-align: middle;

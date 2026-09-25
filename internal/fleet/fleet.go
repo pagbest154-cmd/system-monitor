@@ -78,12 +78,14 @@ func IngestAgentReport(report *protocol.AgentReport, store *storage.MetricStore,
 		sensorsPayload = append(sensorsPayload, sensorMetaMap(s))
 	}
 	_ = store.UpsertAgent(storage.AgentUpsert{
-		AgentID:  report.AgentID,
-		Name:     displayName,
-		Hostname: report.Hostname,
-		Status:   "online",
-		System:   report.System,
-		Sensors:  sensorsPayload,
+		AgentID:      report.AgentID,
+		Name:         displayName,
+		Hostname:     report.Hostname,
+		AgentVersion: report.AgentVersion,
+		Platform:     report.Platform,
+		Status:       "online",
+		System:       report.System,
+		Sensors:      sensorsPayload,
 	})
 	if liveHub != nil {
 		latest := map[string]interface{}{}

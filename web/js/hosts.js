@@ -28,6 +28,120 @@ function agentMetric(agent, key) {
   return null;
 }
 
+function platformLabel(platform) {
+  if (platform === "linux") return "Linux";
+  if (platform === "windows") return "Windows";
+  if (platform === "darwin") return "macOS";
+  return platform || "";
+}
+
+function renderVersionCell(agent) {
+  const ver = agent.agent_version || "";
+  const platform = platformLabel(agent.platform);
+  if (!ver) {
+    return `<span class="host-version-unknown" title="${i18n.hosts.versionUnknownHint}">—</span>`;
+  }
+  const outdated = agent.update_available === true;
+  const versionClass = outdated ? "host-version-outdated" : "host-version-current";
+  const platformHtml = platform ? `<span class="host-platform">${platform}</span>` : "";
+  const updateBtn = outdated
+    ? `<button type="button" class="host-update-btn" data-agent-id="${agent.id}" title="${i18n.hosts.updateTitle}">${i18n.hosts.update}</button>`
+    : "";
+  return `<div class="host-version-cell"><span class="${versionClass}">v${ver}</span>${platformHtml}${updateBtn}</div>`;
+}
+
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (button) {
+      const prev = button.textContent;
+      button.textContent = i18n.hosts.updateCopied;
+      setTimeout(() => {
+        button.textContent = prev;
+      }, 1500);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function openUpdateModal(agent, meta) {
+  const existing = document.getElementById("host-update-modal");
+  if (existing) existing.remove();
+
+  const latest = meta.latest_agent_version || "";
+  const platform = agent.platform || "";
+  const aptCommand = meta.agent_apt_command || "sudo apt update && sudo apt install --only-upgrade system-monitor-agent";
+  const debUrl = meta.agent_deb_url || "";
+  const windowsUrl = meta.agent_windows_url || "";
+  const releaseUrl = meta.agent_release_url || "https://github.com/pagbest154-cmd/system-monitor/releases";
+
+  const linuxSection =
+    platform === "linux" || !platform
+      ? `
+        <section class="host-update-section">
+          <h3>${i18n.hosts.updateLinuxApt}</h3>
+          <div class="host-update-command">
+            <code>${aptCommand}</code>
+            <button type="button" class="btn-secondary host-update-copy" data-copy="${aptCommand}">${i18n.hosts.updateCopy}</button>
+          </div>
+          ${
+            debUrl
+              ? `<p><a href="${debUrl}" target="_blank" rel="noopener noreferrer">${i18n.hosts.updateLinuxDeb}</a> (v${latest})</p>`
+              : ""
+          }
+        </section>
+      `
+      : "";
+
+  const windowsSection =
+    platform === "windows"
+      ? `
+        <section class="host-update-section">
+          <h3>Windows</h3>
+          ${
+            windowsUrl
+              ? `<p><a href="${windowsUrl}" target="_blank" rel="noopener noreferrer">${i18n.hosts.updateWindows}</a> (v${latest})</p>`
+              : ""
+          }
+          <p class="alert-hint">${i18n.hosts.updateWindowsTray}</p>
+        </section>
+      `
+      : "";
+
+  const modal = document.createElement("div");
+  modal.id = "host-update-modal";
+  modal.className = "host-alerts-modal";
+  modal.innerHTML = `
+    <div class="host-alerts-backdrop" data-close="1"></div>
+    <div class="host-alerts-panel" role="dialog" aria-labelledby="host-update-title">
+      <header class="host-alerts-header">
+        <h2 id="host-update-title">${i18n.hosts.updateModalTitle}</h2>
+        <p class="host-alerts-subtitle">${agent.name || agent.id}</p>
+        <button type="button" class="host-alerts-close" data-close="1" aria-label="${i18n.hosts.alertsClose}">×</button>
+      </header>
+      <div class="host-alerts-body">
+        <p>${i18n.hosts.updateCurrent}: <strong>v${agent.agent_version || "?"}</strong></p>
+        ${latest ? `<p>${i18n.hosts.updateLatest}: <strong>v${latest}</strong></p>` : ""}
+        ${linuxSection}
+        ${windowsSection}
+        <p><a href="${releaseUrl}" target="_blank" rel="noopener noreferrer">${i18n.hosts.updateRelease}</a></p>
+      </div>
+      <footer class="host-alerts-footer">
+        <button type="button" class="btn-secondary" data-close="1">${i18n.hosts.alertsClose}</button>
+      </footer>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelectorAll("[data-close]").forEach((el) => {
+    el.addEventListener("click", () => modal.remove());
+  });
+  modal.querySelectorAll(".host-update-copy").forEach((button) => {
+    button.addEventListener("click", () => copyText(button.dataset.copy || "", button));
+  });
+}
+
 function defaultAlertConfig() {
   return {
     enabled: false,
@@ -286,6 +400,13 @@ export async function initHostsPage() {
 
   const data = await fetchJson("/api/agents");
   const agents = data.agents || [];
+  const listMeta = {
+    latest_agent_version: data.latest_agent_version,
+    agent_release_url: data.agent_release_url,
+    agent_deb_url: data.agent_deb_url,
+    agent_windows_url: data.agent_windows_url,
+    agent_apt_command: data.agent_apt_command,
+  };
 
   if (!agents.length) {
     wrap.innerHTML = `<p class="sys-empty">${i18n.hosts.empty}</p>`;
@@ -305,6 +426,7 @@ export async function initHostsPage() {
           <td>${statusBadge(status, statusLabel)}</td>
           <td>${cpu != null ? `${cpu}%` : "—"}</td>
           <td>${ram != null ? `${ram}%` : "—"}</td>
+          <td>${renderVersionCell(agent)}</td>
           <td>${agent.last_seen ? formatTime(agent.last_seen) : "—"}</td>
           <td>
             <button type="button" class="host-alerts-btn" data-agent-id="${agent.id}" title="${i18n.hosts.alertsTitle}">
@@ -325,6 +447,7 @@ export async function initHostsPage() {
           <th><span class="th-icon">${icon("wifi", "icon-xs")}${i18n.hosts.status}</span></th>
           <th><span class="th-icon">${icon("cpu", "icon-xs")}CPU</span></th>
           <th><span class="th-icon">${icon("memoryStick", "icon-xs")}RAM</span></th>
+          <th>${i18n.hosts.version}</th>
           <th><span class="th-icon">${icon("clock", "icon-xs")}${i18n.hosts.lastSeen}</span></th>
           <th><span class="th-icon">${icon("bell", "icon-xs")}${i18n.hosts.alertsColumn}</span></th>
         </tr>
@@ -337,6 +460,12 @@ export async function initHostsPage() {
     button.addEventListener("click", () => {
       const agent = agents.find((item) => item.id === button.dataset.agentId);
       if (agent) openAlertsModal(agent).catch((err) => console.error(err));
+    });
+  });
+  wrap.querySelectorAll(".host-update-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const agent = agents.find((item) => item.id === button.dataset.agentId);
+      if (agent) openUpdateModal(agent, listMeta);
     });
   });
 }

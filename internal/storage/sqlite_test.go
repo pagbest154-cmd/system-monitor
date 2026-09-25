@@ -19,11 +19,17 @@ func TestMetricStore(t *testing.T) {
 	if err != nil || latest == nil {
 		t.Fatal("expected latest value")
 	}
-	if err := store.UpsertAgent(AgentUpsert{AgentID: "host1", Name: "Host", Hostname: "host1"}); err != nil {
+	if err := store.UpsertAgent(AgentUpsert{
+		AgentID: "host1", Name: "Host", Hostname: "host1",
+		AgentVersion: "1.0.35", Platform: "linux",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	agents, err := store.ListAgents()
 	if err != nil || len(agents) != 1 {
 		t.Fatalf("expected one agent, got %v", agents)
+	}
+	if agents[0]["agent_version"] != "1.0.35" || agents[0]["platform"] != "linux" {
+		t.Fatalf("unexpected agent metadata: %v", agents[0])
 	}
 }

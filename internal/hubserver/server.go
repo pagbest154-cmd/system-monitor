@@ -325,7 +325,33 @@ func (s *Server) handleSystem(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListAgents(w http.ResponseWriter, r *http.Request) {
 	agents, _ := s.Store.ListAgents()
-	writeJSON(w, http.StatusOK, map[string]interface{}{"agents": agents})
+	agentRelease := release.CheckReleaseUpdates(
+		"0.0.0",
+		paths.HubAgentLatestCache,
+		false,
+		"system-monitor-hub",
+		release.HubVersionCheckInterval,
+		nil,
+	)
+	latest := agentRelease.LatestVersion
+	releaseURL := agentRelease.ReleaseURL
+	for _, agent := range agents {
+		current, _ := agent["agent_version"].(string)
+		if current != "" && latest != "" {
+			agent["update_available"] = release.IsNewerVersion(latest, current)
+		}
+	}
+	payload := map[string]interface{}{
+		"agents":               agents,
+		"latest_agent_version": latest,
+		"agent_release_url":    releaseURL,
+	}
+	if latest != "" {
+		payload["agent_deb_url"] = release.ReleaseDownloadURL("", latest, release.AgentDebAssetName(latest))
+		payload["agent_windows_url"] = release.ReleaseDownloadURL("", latest, release.AgentWindowsSetupAssetName(latest))
+		payload["agent_apt_command"] = "sudo apt update && sudo apt install --only-upgrade system-monitor-agent"
+	}
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func (s *Server) handleGetAgent(w http.ResponseWriter, r *http.Request) {

@@ -21,7 +21,8 @@ var (
 	AgentTokenFile     string
 	AgentStatusFile    string
 	AgentUpdateCache   string
-	HubUpdateCache     string
+	HubUpdateCache       string
+	HubAgentLatestCache  string
 	HubConfig          string
 	AlertsConfig       string
 	DBPath             string
@@ -62,6 +63,7 @@ func initPaths() {
 	AgentStatusFile = filepath.Join(ConfigDir, "agent.status.json")
 	AgentUpdateCache = filepath.Join(ConfigDir, "agent.update.json")
 	HubUpdateCache = filepath.Join(DataDir, "hub.update.json")
+	HubAgentLatestCache = filepath.Join(DataDir, "agent.latest.json")
 	HubConfig = filepath.Join(ConfigDir, "hub.yaml")
 	AlertsConfig = filepath.Join(ConfigDir, "alerts.yaml")
 	DBPath = filepath.Join(DataDir, "metrics.db")
@@ -119,6 +121,7 @@ func OverrideForTest(root string) {
 	AgentStatusFile = filepath.Join(ConfigDir, "agent.status.json")
 	AgentUpdateCache = filepath.Join(ConfigDir, "agent.update.json")
 	HubUpdateCache = filepath.Join(DataDir, "hub.update.json")
+	HubAgentLatestCache = filepath.Join(DataDir, "agent.latest.json")
 	HubConfig = filepath.Join(ConfigDir, "hub.yaml")
 	AlertsConfig = filepath.Join(ConfigDir, "alerts.yaml")
 	DBPath = filepath.Join(DataDir, "metrics.db")

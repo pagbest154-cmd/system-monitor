@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/pagbest154-cmd/system-monitor/internal/collector"
@@ -311,6 +312,7 @@ func (r *Runner) pushOnce() (int, error) {
 	hostname, _ := os.Hostname()
 	report := &protocol.AgentReport{
 		AgentID: r.AgentID, Hostname: hostname, Metrics: metrics,
+		AgentVersion: version.Version, Platform: runtime.GOOS,
 		System: systemInfo, ConfigVersion: r.configVersion, Sensors: sensors,
 	}
 	if err := r.Transport.PushReport(report); err != nil {

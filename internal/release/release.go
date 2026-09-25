@@ -218,6 +218,14 @@ func FetchLatestRelease(userAgent string) (latestVersion, releaseURL, tag string
 
 type AssetNameFunc func(version string) string
 
+func AgentDebAssetName(v string) string {
+	return fmt.Sprintf("system-monitor-agent_%s-1_amd64.deb", NormalizeVersion(v))
+}
+
+func AgentWindowsSetupAssetName(v string) string {
+	return fmt.Sprintf("system-monitor-agent_%s_setup.exe", NormalizeVersion(v))
+}
+
 func CheckReleaseUpdates(currentVersion, cachePath string, force bool, userAgent string, checkInterval int, assetName AssetNameFunc) ReleaseCheckResult {
 	current := NormalizeVersion(currentVersion)
 	now := float64(time.Now().UnixNano()) / 1e9

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -77,6 +78,20 @@ CREATE TABLE IF NOT EXISTS agents (
 );`
 	if _, err := db.Exec(schema); err != nil {
 		return err
+	}
+	return migrateAgentsTable(db)
+}
+
+func migrateAgentsTable(db *sql.DB) error {
+	for _, stmt := range []string{
+		"ALTER TABLE agents ADD COLUMN agent_version TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE agents ADD COLUMN platform TEXT NOT NULL DEFAULT ''",
+	} {
+		if _, err := db.Exec(stmt); err != nil {
+			if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -248,13 +263,15 @@ func (s *MetricStore) Cleanup(retentionDays int) (int64, error) {
 }
 
 type AgentUpsert struct {
-	AgentID  string
-	Name     string
-	Hostname string
-	Status   string
-	LastSeen float64
-	System   map[string]interface{}
-	Sensors  []map[string]interface{}
+	AgentID      string
+	Name         string
+	Hostname     string
+	AgentVersion string
+	Platform     string
+	Status       string
+	LastSeen     float64
+	System       map[string]interface{}
+	Sensors      []map[string]interface{}
 }
 
 func (s *MetricStore) UpsertAgent(u AgentUpsert) error {
@@ -275,16 +292,18 @@ func (s *MetricStore) UpsertAgent(u AgentUpsert) error {
 	}
 	return s.withDB(func(db *sql.DB) error {
 		_, err := db.Exec(`
-INSERT INTO agents (agent_id, name, hostname, status, last_seen, system_json, sensors_json)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO agents (agent_id, name, hostname, agent_version, platform, status, last_seen, system_json, sensors_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(agent_id) DO UPDATE SET
     name = excluded.name,
     hostname = excluded.hostname,
+    agent_version = CASE WHEN excluded.agent_version != '' THEN excluded.agent_version ELSE agents.agent_version END,
+    platform = CASE WHEN excluded.platform != '' THEN excluded.platform ELSE agents.platform END,
     status = excluded.status,
     last_seen = excluded.last_seen,
     system_json = excluded.system_json,
     sensors_json = excluded.sensors_json`,
-			u.AgentID, u.Name, u.Hostname, u.Status, u.LastSeen, systemJSON, sensorsJSON,
+			u.AgentID, u.Name, u.Hostname, u.AgentVersion, u.Platform, u.Status, u.LastSeen, systemJSON, sensorsJSON,
 		)
 		return err
 	})
@@ -301,11 +320,11 @@ func (s *MetricStore) TouchAgent(agentID, status string) error {
 func (s *MetricStore) GetAgent(agentID string) (map[string]interface{}, error) {
 	var record map[string]interface{}
 	err := s.withDB(func(db *sql.DB) error {
-		var name, hostname, status string
+		var name, hostname, agentVersion, platform, status string
 		var lastSeen float64
 		var systemJSON, sensorsJSON sql.NullString
-		err := db.QueryRow(`SELECT agent_id, name, hostname, status, last_seen, system_json, sensors_json FROM agents WHERE agent_id = ?`, agentID).Scan(
-			&agentID, &name, &hostname, &status, &lastSeen, &systemJSON, &sensorsJSON,
+		err := db.QueryRow(`SELECT agent_id, name, hostname, agent_version, platform, status, last_seen, system_json, sensors_json FROM agents WHERE agent_id = ?`, agentID).Scan(
+			&agentID, &name, &hostname, &agentVersion, &platform, &status, &lastSeen, &systemJSON, &sensorsJSON,
 		)
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("not found")
@@ -313,7 +332,7 @@ func (s *MetricStore) GetAgent(agentID string) (map[string]interface{}, error) {
 		if err != nil {
 			return err
 		}
-		record = agentRowToDict(agentID, name, hostname, status, lastSeen, systemJSON, sensorsJSON)
+		record = agentRowToDict(agentID, name, hostname, agentVersion, platform, status, lastSeen, systemJSON, sensorsJSON)
 		return nil
 	})
 	if err != nil {
@@ -329,19 +348,19 @@ func (s *MetricStore) ListAgents() ([]map[string]interface{}, error) {
 	now := float64(time.Now().UnixNano()) / 1e9
 	var agents []map[string]interface{}
 	err := s.withDB(func(db *sql.DB) error {
-		rows, err := db.Query(`SELECT agent_id, name, hostname, status, last_seen, system_json, sensors_json FROM agents ORDER BY name, agent_id`)
+		rows, err := db.Query(`SELECT agent_id, name, hostname, agent_version, platform, status, last_seen, system_json, sensors_json FROM agents ORDER BY name, agent_id`)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var agentID, name, hostname, status string
+			var agentID, name, hostname, agentVersion, platform, status string
 			var lastSeen float64
 			var systemJSON, sensorsJSON sql.NullString
-			if err := rows.Scan(&agentID, &name, &hostname, &status, &lastSeen, &systemJSON, &sensorsJSON); err != nil { //nolint:rowserrcheck
+			if err := rows.Scan(&agentID, &name, &hostname, &agentVersion, &platform, &status, &lastSeen, &systemJSON, &sensorsJSON); err != nil { //nolint:rowserrcheck
 				return err
 			}
-			item := agentRowToDict(agentID, name, hostname, status, lastSeen, systemJSON, sensorsJSON)
+			item := agentRowToDict(agentID, name, hostname, agentVersion, platform, status, lastSeen, systemJSON, sensorsJSON)
 			if now-item["last_seen"].(float64) > AgentOfflineSec {
 				item["status"] = "offline"
 			}
@@ -352,7 +371,7 @@ func (s *MetricStore) ListAgents() ([]map[string]interface{}, error) {
 	return agents, err
 }
 
-func agentRowToDict(agentID, name, hostname, status string, lastSeen float64, systemJSON, sensorsJSON sql.NullString) map[string]interface{} {
+func agentRowToDict(agentID, name, hostname, agentVersion, platform, status string, lastSeen float64, systemJSON, sensorsJSON sql.NullString) map[string]interface{} {
 	var system map[string]interface{}
 	var sensors []interface{}
 	if systemJSON.Valid && systemJSON.String != "" {
@@ -366,12 +385,14 @@ func agentRowToDict(agentID, name, hostname, status string, lastSeen float64, sy
 		displayName = agentID
 	}
 	return map[string]interface{}{
-		"id":        agentID,
-		"name":      displayName,
-		"hostname":  hostname,
-		"status":    status,
-		"last_seen": lastSeen,
-		"system":    system,
-		"sensors":   sensors,
+		"id":            agentID,
+		"name":          displayName,
+		"hostname":      hostname,
+		"agent_version": agentVersion,
+		"platform":      platform,
+		"status":        status,
+		"last_seen":     lastSeen,
+		"system":        system,
+		"sensors":       sensors,
 	}
 }
