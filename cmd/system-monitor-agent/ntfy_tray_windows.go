@@ -111,8 +111,8 @@ func (l *ntfyTrayListener) refresh() {
 	for id, sub := range l.subs {
 		if _, ok := want[id]; !ok {
 			sub.Stop()
-			delete l.subs, id)
-			delete l.cfgKeys, id)
+			delete(l.subs, id)
+			delete(l.cfgKeys, id)
 		}
 	}
 
@@ -191,8 +191,8 @@ func (l *ntfyTrayListener) refreshLegacy(transport *agent.Transport, ownID strin
 	for id, sub := range l.subs {
 		if id != ownID {
 			sub.Stop()
-			delete l.subs, id)
-			delete l.cfgKeys, id)
+			delete(l.subs, id)
+			delete(l.cfgKeys, id)
 		}
 	}
 
@@ -233,7 +233,7 @@ func (l *ntfyTrayListener) stopAll() {
 	defer l.mu.Unlock()
 	for id, sub := range l.subs {
 		sub.Stop()
-		delete l.subs, id)
+		delete(l.subs, id)
 	}
 	l.cfgKeys = map[string]string{}
 }
