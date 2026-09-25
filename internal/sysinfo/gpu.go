@@ -1,6 +1,7 @@
 package sysinfo
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,6 +18,9 @@ var (
 		at   time.Time
 	}
 	nvidiaCacheMu sync.Mutex
+
+	cudaDriverRE  = regexp.MustCompile(`CUDA Version:\s*([0-9.]+)`)
+	cudaToolkitRE = regexp.MustCompile(`release\s+([0-9.]+)`)
 )
 
 func getGPUs() []map[string]interface{} {
@@ -61,7 +65,40 @@ func NvidiaGPUTemperature() *float64 {
 	}
 }
 
+func fetchNvidiaDriverCUDA() string {
+	out, err := hiddenexec.Command("nvidia-smi").Output()
+	if err != nil {
+		return ""
+	}
+	return parseNvidiaSmiCUDA(string(out))
+}
+
+func parseNvidiaSmiCUDA(output string) string {
+	if m := cudaDriverRE.FindStringSubmatch(output); len(m) > 1 {
+		return m[1]
+	}
+	return ""
+}
+
+func fetchCudaToolkitVersion() string {
+	out, err := hiddenexec.Command("nvcc", "--version").Output()
+	if err != nil {
+		return ""
+	}
+	return parseNVCCVersion(string(out))
+}
+
+func parseNVCCVersion(output string) string {
+	if m := cudaToolkitRE.FindStringSubmatch(output); len(m) > 1 {
+		return m[1]
+	}
+	return ""
+}
+
 func fetchNvidiaGPUs() []map[string]interface{} {
+	cudaVersion := fetchNvidiaDriverCUDA()
+	toolkitVersion := fetchCudaToolkitVersion()
+
 	cmd := hiddenexec.Command("nvidia-smi",
 		"--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,driver_version",
 		"--format=csv,noheader,nounits")
@@ -88,12 +125,20 @@ func fetchNvidiaGPUs() []map[string]interface{} {
 		if parts[5] != "N/A" && parts[5] != "[N/A]" {
 			temp = parseFloat(parts[5])
 		}
+		var cuda interface{}
+		if cudaVersion != "" {
+			cuda = cudaVersion
+		}
+		var toolkit interface{}
+		if toolkitVersion != "" && toolkitVersion != cudaVersion {
+			toolkit = toolkitVersion
+		}
 		gpus = append(gpus, map[string]interface{}{
 			"name":                 parts[0],
 			"vendor":               "NVIDIA",
 			"driver_version":       parts[6],
-			"cuda_version":         nil,
-			"cuda_toolkit_version": nil,
+			"cuda_version":         cuda,
+			"cuda_toolkit_version": toolkit,
 			"memory_total_gb":      round1(totalMB / 1024),
 			"memory_used_gb":       round1(usedMB / 1024),
 			"memory_free_gb":       round1(parseFloat(parts[3]) / 1024),
