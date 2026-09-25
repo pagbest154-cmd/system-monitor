@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 )
 
 type NtfySubscriber struct {
@@ -143,7 +144,7 @@ func (s *NtfySubscriber) connectOnce(stopCh chan struct{}) error {
 		title := strings.TrimSpace(msg.Title)
 		body := strings.TrimSpace(msg.Message)
 		if title == "" {
-			title = "system-monitor"
+			title = branding.AgentName
 		}
 		if body == "" {
 			body = title
@@ -162,7 +163,7 @@ func ParseNtfyWSMessage(data []byte) (title, body string, ok bool) {
 	title = strings.TrimSpace(msg.Title)
 	body = strings.TrimSpace(msg.Message)
 	if title == "" {
-		title = "system-monitor"
+		title = branding.AgentName
 	}
 	if body == "" {
 		body = title

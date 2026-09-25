@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 	"golang.org/x/sys/windows"
 )
@@ -15,7 +16,7 @@ import (
 func launchSettings(configPath string) error {
 	exe, err := os.Executable()
 	if err != nil {
-		showError("system-monitor agent", "Не удалось определить путь к программе:\n"+err.Error())
+		showError(branding.AgentName, "Не удалось определить путь к программе:\n"+err.Error())
 		return err
 	}
 	exe, err = filepath.EvalSymlinks(exe)
@@ -41,7 +42,7 @@ func launchSettings(configPath string) error {
 		cmd.Dir = filepath.Dir(exe)
 		if startErr := cmd.Start(); startErr != nil {
 			msg := fmt.Sprintf("Не удалось открыть настройки:\n%v\n%v", err, startErr)
-			showError("system-monitor agent", msg)
+			showError(branding.AgentName, msg)
 			return fmt.Errorf("%s", msg)
 		}
 	}

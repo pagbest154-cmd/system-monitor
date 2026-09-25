@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/hiddenexec"
 )
 
@@ -14,7 +15,7 @@ const toastAppID = "pagbest154.system-monitor.agent"
 
 func showToast(title, message string) {
 	if title == "" {
-		title = "system-monitor"
+		title = branding.AgentName
 	}
 	payload, err := json.Marshal(map[string]string{
 		"title": title,

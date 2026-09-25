@@ -14,7 +14,7 @@
   #define OutputDir "output"
 #endif
 
-#define MyAppName "system-monitor agent"
+#define MyAppName "SysMon agent"
 #define MyAppPublisher "pagbest154-cmd"
 #define MyAppURL "https://github.com/pagbest154-cmd/system-monitor"
 #define MyServiceName "system-monitor-agent"
@@ -29,7 +29,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}/releases
 DefaultDirName={autopf}\system-monitor-agent
-DefaultGroupName=system-monitor
+DefaultGroupName=SysMon agent
 DisableProgramGroupPage=yes
 OutputDir={#OutputDir}
 OutputBaseFilename=system-monitor-agent_{#AppVersion}_setup
@@ -61,13 +61,13 @@ Source: "{#RepoRoot}\packaging\windows\app-icon.ico"; DestDir: "{app}"; Flags: i
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; IconFilename: "{app}\app-icon.ico"
-Name: "{group}\Настройки агента"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--settings"; IconFilename: "{app}\app-icon.ico"
+Name: "{group}\Настройки SysMon agent"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--settings"; IconFilename: "{app}\app-icon.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; Tasks: desktopicon; IconFilename: "{app}\app-icon.ico"
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyServiceName}-tray"; ValueData: """{app}\system-monitor-agent.exe"" --tray"; Flags: uninsdeletevalue; Tasks: trayautostart
-Root: HKCU; Subkey: "Software\Classes\AppUserModelId\pagbest154.system-monitor.agent"; ValueType: string; ValueName: "DisplayName"; ValueData: "system-monitor agent"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\pagbest154.system-monitor.agent"; ValueType: string; ValueName: "DisplayName"; ValueData: "SysMon agent"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\AppUserModelId\pagbest154.system-monitor.agent"; ValueType: string; ValueName: "IconUri"; ValueData: "{app}\app-icon.ico"; Flags: uninsdeletekey
 
 [UninstallRun]

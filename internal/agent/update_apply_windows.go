@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 	"github.com/pagbest154-cmd/system-monitor/internal/release"
 	"golang.org/x/sys/windows"
@@ -123,7 +124,7 @@ try {
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.MessageBox]::Show(
       ('Не удалось установить обновление (код ' + $p.ExitCode + ').' + [Environment]::NewLine + 'Лог: ' + $log),
-      'system-monitor agent',
+      '%s',
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Error
     ) | Out-Null
@@ -138,7 +139,7 @@ try {
 } finally {
   Stop-Transcript | Out-Null
 }
-`, installerPath, logPath, trayExe, updateLog, scriptPathEsc)
+`, installerPath, logPath, trayExe, updateLog, scriptPathEsc, branding.AgentName)
 
 	return os.WriteFile(scriptPath, []byte(script), 0o644)
 }

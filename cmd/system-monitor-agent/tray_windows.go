@@ -23,15 +23,15 @@ func runTray(configPath string) error {
 }
 
 func onTrayReady(configPath string) {
-	systray.SetTitle("system-monitor")
-	systray.SetTooltip("system-monitor agent")
+	systray.SetTitle(branding.AgentShort)
+	systray.SetTooltip(branding.AgentName)
 	systray.SetIcon(trayIcon("idle"))
 
 	mStatus := systray.AddMenuItem(trayStatusText(nil, serviceRunning()), "")
 	mStatus.Disable()
 	systray.AddSeparator()
 
-	mSettings := systray.AddMenuItem("Настройки", "Открыть настройки")
+	mSettings := systray.AddMenuItem("Настройки "+branding.AgentName, "Открыть настройки")
 	mRestart := systray.AddMenuItem("Перезапустить службу", "")
 	mLog := systray.AddMenuItem("Открыть лог", "")
 	mConfig := systray.AddMenuItem("Открыть папку конфигурации", "")
@@ -119,12 +119,12 @@ func trayStatusText(status *agent.Status, running bool) string {
 
 func trayTooltipText(status *agent.Status, running bool) string {
 	if !running {
-		return "system-monitor agent — служба не запущена"
+		return branding.AgentName + " — служба не запущена"
 	}
 	if status == nil {
-		return "system-monitor agent — ожидание данных"
+		return branding.AgentName + " — ожидание данных"
 	}
-	parts := []string{"system-monitor agent"}
+	parts := []string{branding.AgentName}
 	if status.Connected && !status.IsStale() {
 		parts = append(parts, "подключён")
 	} else if status.LastError != nil && *status.LastError != "" {

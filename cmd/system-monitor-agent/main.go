@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 	"github.com/pagbest154-cmd/system-monitor/internal/version"
 )
@@ -51,7 +52,7 @@ func main() {
 		runtime.LockOSThread()
 		if err := runSettings(*configPath); err != nil {
 			fmt.Fprintf(os.Stderr, "settings: %v\n", err)
-			showError("system-monitor agent", "Не удалось открыть настройки:\n"+err.Error())
+			showError(branding.AgentName, "Не удалось открыть настройки:\n"+err.Error())
 			os.Exit(1)
 		}
 		return

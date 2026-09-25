@@ -8,6 +8,7 @@ import (
 
 	"github.com/getlantern/systray"
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/release"
 )
 
@@ -22,7 +23,7 @@ func formatUpdateDialog(result release.ReleaseCheckResult) string {
 }
 
 func showUpdateResult(result release.ReleaseCheckResult, msg string) {
-	title := "system-monitor agent"
+	title := branding.AgentName
 	if result.Error != nil {
 		showError(title, msg)
 		return
@@ -41,7 +42,7 @@ func checkUpdatesFromTray() {
 		return
 	}
 	if !updateMu.TryLock() {
-		showInfo("system-monitor agent", "Обновление уже выполняется")
+		showInfo(branding.AgentName, "Обновление уже выполняется")
 		return
 	}
 	go runBackgroundUpdate(result)
@@ -50,11 +51,11 @@ func checkUpdatesFromTray() {
 func runBackgroundUpdate(result release.ReleaseCheckResult) {
 	defer updateMu.Unlock()
 
-	title := "system-monitor agent"
+	title := branding.AgentName
 	systray.SetTooltip("Загрузка обновления " + result.LatestVersion + "...")
 
 	if err := agent.ApplyUpdate(result); err != nil {
-		systray.SetTooltip("system-monitor agent")
+		systray.SetTooltip(branding.AgentName)
 		msg := "Не удалось установить обновление " + result.LatestVersion + ":\n" + err.Error()
 		showError(title, msg)
 		openUpdateFallback(result)

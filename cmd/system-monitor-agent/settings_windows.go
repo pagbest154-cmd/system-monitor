@@ -11,6 +11,7 @@ import (
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
+	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/config"
 	"github.com/pagbest154-cmd/system-monitor/internal/fleet"
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
@@ -37,59 +38,46 @@ func runSettingsDialog(configPath string) error {
 
 	notifyStatus := fetchNotifyStatus(cfg, token)
 
-	var mw *walk.MainWindow
 	var hubEdit, agentEdit, tokenEdit *walk.LineEdit
 	var intervalEdit *walk.NumberEdit
-	var titleLabel, subtitleLabel, notifyLabel *walk.Label
-	var lblHub, lblAgent, lblToken, lblInterval *walk.Label
-	var saveBtn, cancelBtn *walk.PushButton
+	const dlgW, dlgH = 460, 280
 
-	const dlgW, dlgH = 500, 340
-
-	decl := MainWindow{
-		AssignTo: &mw,
-		Title:    "system-monitor agent",
-		Font:     Font{Family: "Segoe UI", PointSize: 9},
-		Size:       Size{Width: dlgW, Height: dlgH},
-		MinSize:    Size{Width: dlgW, Height: dlgH},
-		MaxSize:    Size{Width: dlgW, Height: dlgH},
-		Layout:     VBox{Margins: Margins{Left: 20, Top: 18, Right: 20, Bottom: 16}, Spacing: 10},
+	window := MainWindow{
+		Title:   "Настройки " + branding.AgentName,
+		Font:    Font{Family: "Segoe UI", PointSize: 9},
+		Size:    Size{Width: dlgW, Height: dlgH},
+		MinSize: Size{Width: dlgW, Height: dlgH},
+		MaxSize: Size{Width: dlgW, Height: dlgH},
+		Layout:  VBox{Margins: Margins{Left: 12, Top: 12, Right: 12, Bottom: 12}},
 		Children: []Widget{
-			Label{AssignTo: &titleLabel, Text: "system-monitor agent"},
-			Label{AssignTo: &subtitleLabel, Text: "Подключение к hub · v" + version.Version},
-			Composite{
-				Layout: VBox{Spacing: 8},
+			Label{Text: branding.AgentName + " · v" + version.Version},
+			GroupBox{
+				Title:  "Подключение",
+				Layout: Grid{Columns: 2, Spacing: 10},
 				Children: []Widget{
-					Composite{
-						Layout: Grid{Columns: 2, Spacing: 10},
-						Children: []Widget{
-							Label{AssignTo: &lblHub, Text: "Hub URL"},
-							LineEdit{AssignTo: &hubEdit, Text: cfg.HubURL},
-							Label{AssignTo: &lblAgent, Text: "Agent ID"},
-							LineEdit{AssignTo: &agentEdit, Text: cfg.AgentID},
-							Label{AssignTo: &lblToken, Text: "Token"},
-							LineEdit{AssignTo: &tokenEdit, Text: token, PasswordMode: true},
-							Label{AssignTo: &lblInterval, Text: "Интервал (сек)"},
-							NumberEdit{AssignTo: &intervalEdit, Value: float64(cfg.IntervalSec), MinValue: 1, MaxValue: 3600},
-						},
-					},
-					Label{AssignTo: &notifyLabel, Text: notifyStatus},
+					Label{Text: "Hub URL:"},
+					LineEdit{AssignTo: &hubEdit, Text: cfg.HubURL},
+					Label{Text: "Agent ID:"},
+					LineEdit{AssignTo: &agentEdit, Text: cfg.AgentID},
+					Label{Text: "Token:"},
+					LineEdit{AssignTo: &tokenEdit, Text: token, PasswordMode: true},
+					Label{Text: "Интервал (сек):"},
+					NumberEdit{AssignTo: &intervalEdit, Value: float64(cfg.IntervalSec), MinValue: 1, MaxValue: 3600},
 				},
 			},
+			Label{Text: notifyStatus},
 			Composite{
 				Layout: HBox{},
 				Children: []Widget{
 					HSpacer{},
 					PushButton{
-						AssignTo:  &cancelBtn,
 						Text:      "Отмена",
-						MinSize:   Size{Width: 96, Height: 32},
+						MaxSize:   Size{Width: 100, Height: 0},
 						OnClicked: func() { walk.App().Exit(0) },
 					},
 					PushButton{
-						AssignTo: &saveBtn,
-						Text:     "Сохранить",
-						MinSize:  Size{Width: 110, Height: 32},
+						Text: "Сохранить",
+						MaxSize: Size{Width: 100, Height: 0},
 						OnClicked: func() {
 							cfg.HubURL = hubEdit.Text()
 							cfg.AgentID = agentEdit.Text()
@@ -104,29 +92,11 @@ func runSettingsDialog(configPath string) error {
 		},
 	}
 
-	if err := decl.Create(); err != nil {
-		logSettingsError("settings UI create: " + err.Error())
+	_, err = window.Run()
+	if err != nil {
+		logSettingsError("settings UI: " + err.Error())
 		return fmt.Errorf("settings UI: %w", err)
 	}
-	if mw != nil {
-		mw.SetBackground(solidBrush(colorBg))
-	}
-
-	styleHeading(titleLabel)
-	styleLabel(subtitleLabel, true)
-	styleLabel(notifyLabel, false)
-	notifyLabel.SetTextColor(notifyStatusColor(notifyStatus))
-	for _, lbl := range []*walk.Label{lblHub, lblAgent, lblToken, lblInterval} {
-		styleLabel(lbl, true)
-	}
-	styleLineEdit(hubEdit)
-	styleLineEdit(agentEdit)
-	styleLineEdit(tokenEdit)
-	styleNumberEdit(intervalEdit)
-	stylePushButton(saveBtn, true)
-	stylePushButton(cancelBtn, false)
-
-	mw.Run()
 	return nil
 }
 
