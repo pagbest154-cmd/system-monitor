@@ -10,7 +10,8 @@
 ### Исправлено
 
 - Windows: автообновление — UAC/RunAs в PowerShell-скрипте, самоповышение прав
-- Windows: push через ntfy — Win10 toast вместо balloon, лог `tray.log`, статус в меню трея
+- Windows: push через ntfy — Win10 toast (PowerShell), лог `tray.log`, статус в меню трея
+- Windows: сборка агента — убрана зависимость gopkg.in/toast.v1
 - Hub: `NTFY_PUBLIC_URL` для агентов при внутреннем docker-адресе ntfy
 
 ### Изменено
