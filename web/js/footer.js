@@ -5,7 +5,7 @@ const FERRUMNST_URL = "https://ferrumnst.ru";
 
 function ferrumnstBrandHtml() {
   return `<a href="${FERRUMNST_URL}" target="_blank" rel="noopener noreferrer" class="footer-brand" title="FerrumNST">
-    <img src="/static/icons/ferrumnst-brand.svg" alt="" class="footer-brand-icon" width="32" height="32">
+    <img src="/static/icons/ferrumnst-brand.svg" alt="" class="footer-brand-icon" width="18" height="18">
     <span class="footer-brand-text">FerrumNST</span>
   </a>`;
 }
@@ -35,24 +35,27 @@ function renderFooter(footer, data) {
   }
 
   footer.innerHTML = `
-    <span class="footer-version">system-monitor <strong>v${version}</strong></span>
-    <span class="footer-sep" aria-hidden="true">·</span>
-    ${statusHtml}
-    <span class="footer-sep" aria-hidden="true">·</span>
     ${ferrumnstBrandHtml()}
+    <div class="footer-main">
+      <span class="footer-version">system-monitor <strong>v${version}</strong></span>
+      <span class="footer-sep" aria-hidden="true">·</span>
+      ${statusHtml}
+    </div>
   `;
 }
 
 export async function initFooter() {
   const footer = ensureFooter();
-  footer.innerHTML = `<span class="footer-muted">${i18n.footer.loading}</span>`;
+  footer.innerHTML = `${ferrumnstBrandHtml()}
+    <div class="footer-main"><span class="footer-muted">${i18n.footer.loading}</span></div>`;
 
   try {
     const data = await fetchJson("/api/version");
     renderFooter(footer, data);
   } catch {
-    footer.innerHTML = `<span class="footer-muted">system-monitor</span>
-      <span class="footer-sep" aria-hidden="true">·</span>
-      ${ferrumnstBrandHtml()}`;
+    footer.innerHTML = `${ferrumnstBrandHtml()}
+      <div class="footer-main">
+        <span class="footer-muted">system-monitor</span>
+      </div>`;
   }
 }
