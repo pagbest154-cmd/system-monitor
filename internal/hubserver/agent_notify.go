@@ -17,7 +17,7 @@ func (s *Server) handleAgentNotify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := protocol.AgentNotifyResponse{
-		NtfyBaseURL: alerts.NtfyBaseURL(),
+		NtfyBaseURL: alerts.NtfyPublicBaseURL(),
 	}
 	cfg, err := config.LoadAlertsConfig("")
 	if err != nil {

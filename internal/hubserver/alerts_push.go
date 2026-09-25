@@ -18,7 +18,7 @@ func (s *Server) handleListAlerts(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"alerts":        cfg.Alerts,
-		"ntfy_base_url": alerts.NtfyBaseURL(),
+		"ntfy_base_url": alerts.NtfyPublicBaseURL(),
 	})
 }
 
@@ -36,7 +36,7 @@ func (s *Server) handleGetAgentAlerts(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"agent_id":      agentID,
 		"config":        agentCfg,
-		"ntfy_base_url": alerts.NtfyBaseURL(),
+		"ntfy_base_url": alerts.NtfyPublicBaseURL(),
 	})
 }
 
@@ -64,7 +64,7 @@ func (s *Server) handlePutAgentAlerts(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"agent_id":      agentID,
 		"config":        agentCfg,
-		"ntfy_base_url": alerts.NtfyBaseURL(),
+		"ntfy_base_url": alerts.NtfyPublicBaseURL(),
 	})
 }
 
@@ -91,6 +91,6 @@ func (s *Server) handleRegenerateNtfyTopic(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"agent_id":      agentID,
 		"config":        agentCfg,
-		"ntfy_base_url": alerts.NtfyBaseURL(),
+		"ntfy_base_url": alerts.NtfyPublicBaseURL(),
 	})
 }

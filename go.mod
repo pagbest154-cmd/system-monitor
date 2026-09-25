@@ -8,6 +8,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/lxn/walk v0.0.0-20210112085537-c389da54e794
+	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 	github.com/shirou/gopsutil/v4 v4.25.1
 	github.com/yusufpapurcu/wmi v1.2.4
 	golang.org/x/sys v0.28.0

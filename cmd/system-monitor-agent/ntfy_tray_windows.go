@@ -3,7 +3,6 @@
 package main
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/pagbest154-cmd/system-monitor/internal/fleet"
 )
 
-const ntfyConfigPollSec = 60
+const ntfyConfigPollSec = 30
 
 type ntfyTrayListener struct {
 	configPath string
@@ -36,30 +35,43 @@ func (l *ntfyTrayListener) run() {
 }
 
 func (l *ntfyTrayListener) refresh() {
+	setPushNotifyStatus("Уведомления: проверка…")
+
 	cfg, err := config.LoadAgentConfig(l.configPath)
 	if err != nil {
+		setPushNotifyStatus("Уведомления: ошибка конфига")
+		trayLog("ntfy: load config: %v", err)
 		return
 	}
 	agentID := fleet.DefaultAgentID(cfg.AgentID)
 	token := config.LoadAgentToken(cfg)
 	if token == "" {
 		l.stopSub()
+		setPushNotifyStatus("Уведомления: нет token")
+		trayLog("ntfy: empty agent token")
 		return
 	}
+
 	transport := agent.NewTransport(cfg.HubURL, token)
 	notify, err := transport.FetchNotifyConfig(agentID)
 	if err != nil {
-		log.Printf("ntfy tray: fetch notify config: %v", err)
+		l.stopSub()
+		setPushNotifyStatus("Уведомления: hub недоступен")
+		trayLog("ntfy: fetch notify config: %v", err)
 		return
 	}
 	if !notify.Enabled || notify.Topic == "" {
 		l.stopSub()
+		setPushNotifyStatus("Уведомления: выкл. на hub")
+		trayLog("ntfy: alerts disabled for %s", agentID)
 		return
 	}
+
 	key := notify.NtfyBaseURL + "|" + notify.Topic + "|" + notify.Token
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if key == l.cfgKey && l.sub != nil {
+		setPushNotifyStatus("Уведомления: подключены")
 		return
 	}
 	l.stopSubLocked()
@@ -69,12 +81,14 @@ func (l *ntfyTrayListener) refresh() {
 		Topic:   notify.Topic,
 		Token:   notify.Token,
 		OnMessage: func(title, body string) {
+			trayLog("ntfy message: %s — %s", title, body)
 			showToast(title, body)
 		},
 	}
 	sub.Start()
 	l.sub = sub
-	log.Printf("ntfy tray: listening on topic %s", notify.Topic)
+	setPushNotifyStatus("Уведомления: подключены")
+	trayLog("ntfy: listening %s via %s", notify.Topic, notify.NtfyBaseURL)
 }
 
 func (l *ntfyTrayListener) stopSub() {
@@ -89,4 +103,29 @@ func (l *ntfyTrayListener) stopSubLocked() {
 		l.sub = nil
 	}
 	l.cfgKey = ""
+}
+
+var (
+	pushStatusMu sync.Mutex
+	pushStatus   = "Уведомления: …"
+	pushMenuItem func(string)
+)
+
+func registerPushNotifyMenu(setTitle func(string)) {
+	pushMenuItem = setTitle
+}
+
+func setPushNotifyStatus(text string) {
+	pushStatusMu.Lock()
+	pushStatus = text
+	pushStatusMu.Unlock()
+	if pushMenuItem != nil {
+		pushMenuItem(text)
+	}
+}
+
+func currentPushNotifyStatus() string {
+	pushStatusMu.Lock()
+	defer pushStatusMu.Unlock()
+	return pushStatus
 }

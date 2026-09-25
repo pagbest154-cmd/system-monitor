@@ -35,6 +35,10 @@ func onTrayReady(configPath string) {
 	mRestart := systray.AddMenuItem("Перезапустить службу", "")
 	mLog := systray.AddMenuItem("Открыть лог", "")
 	mConfig := systray.AddMenuItem("Открыть папку конфигурации", "")
+	mTrayLog := systray.AddMenuItem("Открыть лог трея", "")
+	mPush := systray.AddMenuItem(currentPushNotifyStatus(), "")
+	mPush.Disable()
+	registerPushNotifyMenu(func(title string) { mPush.SetTitle(title) })
 	systray.AddSeparator()
 	systray.AddMenuItem("Версия "+version.Version, "").Disable()
 	mUpdate := systray.AddMenuItem("Проверить обновления", "")
@@ -65,6 +69,8 @@ func onTrayReady(configPath string) {
 				_ = openPath(filepath.Join(paths.ConfigDir, "agent.log"))
 			case <-mConfig.ClickedCh:
 				_ = openPath(paths.ConfigDir)
+			case <-mTrayLog.ClickedCh:
+				_ = openPath(filepath.Join(paths.ConfigDir, "tray.log"))
 			case <-mUpdate.ClickedCh:
 				go checkUpdatesFromTray()
 			case <-mQuit.ClickedCh:

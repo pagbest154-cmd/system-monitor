@@ -23,6 +23,15 @@ func NtfyBaseURL() string {
 	return strings.TrimRight(base, "/")
 }
 
+// URL for clients (agents, phones). Use when NTFY_BASE_URL is internal (docker network).
+func NtfyPublicBaseURL() string {
+	base := strings.TrimSpace(os.Getenv("NTFY_PUBLIC_URL"))
+	if base == "" {
+		return NtfyBaseURL()
+	}
+	return strings.TrimRight(base, "/")
+}
+
 func NewNtfySenderFromEnv() *NtfySender {
 	return &NtfySender{
 		baseURL: NtfyBaseURL(),

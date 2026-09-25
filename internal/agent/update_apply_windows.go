@@ -91,8 +91,8 @@ func writeUpdateScript(scriptPath, installerPath, logPath string) error {
 		programFiles = "C:\\Program Files"
 	}
 	trayExe := strings.ReplaceAll(filepath.Join(programFiles, "system-monitor-agent", "system-monitor-agent.exe"), "'", "''")
-
 	updateLog := strings.ReplaceAll(filepath.Join(filepath.Dir(installerPath), "update.log"), "'", "''")
+	scriptPathEsc := strings.ReplaceAll(scriptPath, "'", "''")
 
 	script := fmt.Sprintf(`$ErrorActionPreference = 'Stop'
 $installer = '%s'
@@ -100,39 +100,45 @@ $log = '%s'
 $tray = '%s'
 $updateLog = '%s'
 
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+  Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',"'%s'") -Verb RunAs
+  exit
+}
+
 Start-Transcript -Path $updateLog -Force | Out-Null
 try {
-Get-Process -Name 'system-monitor-agent' -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Seconds 2
+  Get-Process -Name 'system-monitor-agent' -ErrorAction SilentlyContinue | Stop-Process -Force
+  Start-Sleep -Seconds 2
 
-$setupArgs = @(
-  '/VERYSILENT',
-  '/SUPPRESSMSGBOXES',
-  '/NORESTART',
-  '/CLOSEAPPLICATIONS',
-  ('/LOG=' + $log)
-)
-$p = Start-Process -FilePath $installer -ArgumentList $setupArgs -Wait -PassThru
-if ($p.ExitCode -ne 0) {
-  Add-Type -AssemblyName System.Windows.Forms
-  [System.Windows.Forms.MessageBox]::Show(
-    ('Не удалось установить обновление (код ' + $p.ExitCode + ').' + [Environment]::NewLine + 'Лог: ' + $log),
-    'system-monitor agent',
-    [System.Windows.Forms.MessageBoxButtons]::OK,
-    [System.Windows.Forms.MessageBoxIcon]::Error
-  ) | Out-Null
-  exit $p.ExitCode
-}
+  $setupArgs = @(
+    '/VERYSILENT',
+    '/SUPPRESSMSGBOXES',
+    '/NORESTART',
+    '/CLOSEAPPLICATIONS',
+    ('/LOG=' + $log)
+  )
+  $p = Start-Process -FilePath $installer -ArgumentList $setupArgs -Verb RunAs -Wait -PassThru
+  if ($p.ExitCode -ne 0) {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show(
+      ('Не удалось установить обновление (код ' + $p.ExitCode + ').' + [Environment]::NewLine + 'Лог: ' + $log),
+      'system-monitor agent',
+      [System.Windows.Forms.MessageBoxButtons]::OK,
+      [System.Windows.Forms.MessageBoxIcon]::Error
+    ) | Out-Null
+    exit $p.ExitCode
+  }
 
-if (Test-Path $tray) {
-  $shell = New-Object -ComObject Shell.Application
-  $shell.ShellExecute($tray, '--tray', '', '', 0) | Out-Null
-}
-exit 0
+  if (Test-Path $tray) {
+    $shell = New-Object -ComObject Shell.Application
+    $shell.ShellExecute($tray, '--tray', '', '', 0) | Out-Null
+  }
+  exit 0
 } finally {
-Stop-Transcript | Out-Null
+  Stop-Transcript | Out-Null
 }
-`, installerPath, logPath, trayExe, updateLog)
+`, installerPath, logPath, trayExe, updateLog, scriptPathEsc)
 
 	return os.WriteFile(scriptPath, []byte(script), 0o644)
 }

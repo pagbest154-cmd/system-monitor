@@ -67,6 +67,8 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; 
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyServiceName}-tray"; ValueData: """{app}\system-monitor-agent.exe"" --tray"; Flags: uninsdeletevalue; Tasks: trayautostart
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\pagbest154.system-monitor.agent"; ValueType: string; ValueName: "DisplayName"; ValueData: "system-monitor agent"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\pagbest154.system-monitor.agent"; ValueType: string; ValueName: "IconUri"; ValueData: "{app}\app-icon.ico"; Flags: uninsdeletekey
 
 [UninstallRun]
 Filename: "{app}\nssm\nssm.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden; RunOnceId: "StopService"
