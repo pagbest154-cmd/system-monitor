@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+## [1.0.14] — 2026-09-25
+
+### Добавлено
+
+- Push-уведомления через **ntfy** (без Firebase): пороги по датчикам, offline-хост, cooldown, опциональное восстановление
+- Per-host **ntfy topic** в `config/alerts.yaml` (генерируется при включении алертов)
+- Веб: страница **Хосты** — модалка настроек алертов, topic, копирование и перегенерация
+- API: `GET/PUT /api/alerts/{agentID}`, `POST /api/alerts/{agentID}/ntfy/topic`
+- Docker: опциональный сервис `ntfy` (`docker compose --profile ntfy up`)
+- Env: `NTFY_BASE_URL` (по умолчанию `https://ntfy.sh`)
+
+### Изменено
+
+- Android-приложение SysMon: встроенная подписка на ntfy topic (WebSocket), Firebase удалён
+
 ## [1.0.13] — 2026-09-24
 
 ### Исправлено

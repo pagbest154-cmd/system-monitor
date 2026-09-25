@@ -10,6 +10,7 @@ services:
     environment:
       HUB_NAME: ${HUB_NAME:?Set HUB_NAME in .env}
       HUB_KEY: ${HUB_KEY:?Set HUB_KEY in .env}
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-https://ntfy.sh}
     volumes:
       - ./config:/app/config
       - hub-data:/app/data
@@ -32,7 +33,21 @@ services:
       - hub
     restart: unless-stopped
 
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: system-monitor-ntfy
+    profiles: ["ntfy"]
+    command: serve
+    environment:
+      NTFY_BASE_URL: ${NTFY_PUBLIC_URL:-http://localhost:8090}
+    ports:
+      - "${NTFY_PORT:-8090}:80"
+    volumes:
+      - ntfy-data:/var/lib/ntfy
+    restart: unless-stopped
+
 volumes:
   hub-data:
   caddy-data:
   caddy-config:
+  ntfy-data:

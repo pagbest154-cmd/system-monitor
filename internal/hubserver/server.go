@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/websocket"
 
+	"github.com/pagbest154-cmd/system-monitor/internal/alerts"
 	"github.com/pagbest154-cmd/system-monitor/internal/collector"
 	"github.com/pagbest154-cmd/system-monitor/internal/config"
 	"github.com/pagbest154-cmd/system-monitor/internal/enrich"
@@ -32,6 +33,7 @@ type Server struct {
 	Fleet         *FleetState
 	Collector     *collector.Collector
 	RetentionDays int
+	AlertEngine   *alerts.Engine
 }
 
 func NewServer(mode string) (*Server, error) {
@@ -42,9 +44,14 @@ func NewServer(mode string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	sender := alerts.NewNtfySenderFromEnv()
 	s := &Server{
 		Mode: mode, Store: store, Hub: NewLiveHub(), Fleet: NewFleetState(),
 		RetentionDays: 31,
+		AlertEngine:   alerts.NewEngine(store, sender),
+	}
+	if mode == "hub" {
+		s.AlertEngine.StartOfflineLoop()
 	}
 	if mode == "standalone" {
 		cfg, _ := config.LoadSensorsConfig("")
@@ -110,6 +117,10 @@ func (s *Server) Router() http.Handler {
 	r.Post("/api/auth/login", s.handleLogin)
 	r.Post("/api/auth/logout", s.handleLogout)
 	r.Get("/api/sensor-types", s.handleSensorTypes)
+	r.Get("/api/alerts", s.handleListAlerts)
+	r.Get("/api/alerts/{agentID}", s.handleGetAgentAlerts)
+	r.Put("/api/alerts/{agentID}", s.handlePutAgentAlerts)
+	r.Post("/api/alerts/{agentID}/ntfy/topic", s.handleRegenerateNtfyTopic)
 	r.Get("/ws/live", s.handleLiveWS)
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(paths.WebDir))))
@@ -375,7 +386,42 @@ func (s *Server) handlePushMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.Fleet.UpdateAgent(agentID, latest)
+	s.evaluatePushAlerts(agentID, enriched)
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (s *Server) evaluatePushAlerts(agentID string, report *protocol.AgentReport) {
+	if s.AlertEngine == nil || report == nil {
+		return
+	}
+	agentName := agentID
+	entry := config.FindAgentEntry(agentID, nil)
+	if entry != nil && entry.Name != "" {
+		agentName = entry.Name
+	}
+	sensorNames := map[string]string{}
+	sensorUnits := map[string]string{}
+	for _, sensor := range report.Sensors {
+		sensorNames[sensor.ID] = sensor.Name
+		sensorUnits[sensor.ID] = sensor.Unit
+	}
+	for _, point := range report.Metrics {
+		if point.Value == nil {
+			continue
+		}
+		name := sensorNames[point.SensorID]
+		if name == "" {
+			name = point.SensorID
+		}
+		s.AlertEngine.EvaluateMetric(alerts.MetricInput{
+			AgentID:    agentID,
+			AgentName:  agentName,
+			SensorID:   point.SensorID,
+			SensorName: name,
+			Unit:       sensorUnits[point.SensorID],
+			Value:      *point.Value,
+		})
+	}
 }
 
 func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {

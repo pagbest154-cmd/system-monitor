@@ -43,6 +43,8 @@ Live-обновления по WebSocket, история в SQLite.
 
 **UI:** gauge · линейные графики · столбцы · live WebSocket · страница настроек
 
+**Уведомления:** push через [ntfy](https://ntfy.sh) — пороги по датчикам, offline-хост, один APK для любого self-hosted hub
+
 ---
 
 ## Архитектура
@@ -129,7 +131,57 @@ agents:
 3. На панели hub в выпадающем списке **Хост** выберите агента — без этого графики и блок «Система» пустые (режим «Все хосты» только для списка, не для графиков).
 4. Агентов можно добавлять и в **Настройки → Агенты** в веб-интерфейсе hub.
 
-Конфиг hub монтируется с хоста: `./config/` (в т.ч. `agents.yaml`, `dashboard.yaml`).
+Конфиг hub монтируется с хоста: `./config/` (в т.ч. `agents.yaml`, `dashboard.yaml`, `alerts.yaml`).
+
+### Push-уведомления (ntfy)
+
+Хаб шлёт алерты через HTTP POST на [ntfy](https://docs.ntfy.sh/). **Topic** — секрет подписки (как пароль); у каждого хоста свой topic.
+
+**1. Базовый URL ntfy** в `.env`:
+
+```env
+# публичный ntfy.sh или свой сервер
+NTFY_BASE_URL=https://ntfy.sh
+```
+
+**2. Свой ntfy рядом с hub (опционально):**
+
+```bash
+docker compose --profile ntfy up -d
+# NTFY_BASE_URL=https://ntfy.ваш-домен.ru  (прокси через Caddy)
+```
+
+**3. Включить алерты** на странице **Хосты** (колокольчик) или в Android-приложении SysMon:
+
+- пороги по датчикам (push при переходе ниже → выше порога);
+- «хост недоступен» после N секунд без связи;
+- пауза между повторами (cooldown).
+
+При первом сохранении hub создаёт **topic** автоматически. Его можно скопировать в веб-интерфейсе или подписаться в приложении SysMon (переключатель «Подписка в приложении»).
+
+**4. Подписка без SysMon:** установите [приложение ntfy](https://ntfy.sh) и подпишитесь на topic с веб-панели.
+
+Пример `config/alerts.yaml` (обычно правится через API/UI):
+
+```yaml
+alerts:
+  homepc:
+    enabled: true
+    offline:
+      enabled: true
+      after_sec: 180
+    cooldown_sec: 900
+    notify_recovery: false
+    ntfy:
+      topic: sysmon-homepc-a8f3k2...
+      token: ""   # опционально, если на ntfy включена авторизация
+    sensors:
+      - sensor_id: cpu_percent
+        enabled: true
+        threshold: 85
+```
+
+> Self-hosted hub + свой ntfy = push без Google и без общего Firebase. Один APK SysMon работает с любым hub.
 
 ### Agent — slim-пакет на машинах
 
@@ -367,6 +419,10 @@ panels:
 | GET | `/api/dashboard` | Конфигурация панелей |
 | PUT | `/api/config/sensors` | Обновить датчики |
 | PUT | `/api/config/dashboard` | Обновить панели |
+| GET | `/api/alerts` | Все настройки алертов + `ntfy_base_url` |
+| GET | `/api/alerts/{agentID}` | Алерты хоста |
+| PUT | `/api/alerts/{agentID}` | Сохранить алерты (topic создаётся при `enabled: true`) |
+| POST | `/api/alerts/{agentID}/ntfy/topic` | Перегенерировать ntfy topic |
 | WS | `/ws/live` | Live-обновления |
 
 ---
