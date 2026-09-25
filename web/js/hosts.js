@@ -35,9 +35,23 @@ function platformLabel(platform) {
   return platform || "";
 }
 
+function formatOsName(raw) {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return "";
+  const win = trimmed.match(/^Microsoft\s+Windows\s+(\d+(?:\.\d+)?)/i);
+  if (win) return `Windows ${win[1]}`;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+function osLabel(agent) {
+  const fromSystem = formatOsName(agent.system?.os);
+  if (fromSystem) return fromSystem;
+  return platformLabel(agent.platform);
+}
+
 function renderVersionCell(agent) {
   const ver = agent.agent_version || "";
-  const platform = platformLabel(agent.platform);
+  const platform = osLabel(agent);
   if (!ver) {
     return `<span class="host-version-unknown" title="${i18n.hosts.versionUnknownHint}">—</span>`;
   }
