@@ -9,10 +9,39 @@
   --warn: #f59e0b;
   --critical: #ef4444;
   --border: #2d3a4f;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(139, 156, 179, 0.28);
+  --scrollbar-thumb-hover: rgba(139, 156, 179, 0.48);
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {
@@ -813,6 +842,16 @@ main {
   min-width: 180px;
 }
 
+.form-row label.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--text);
+  cursor: pointer;
+  min-width: auto;
+  padding-top: 1.5rem;
+}
+
 .hint {
   margin: 0 0 0.75rem;
   color: var(--muted);
@@ -825,6 +864,7 @@ main {
 
 .table-wrap {
   overflow-x: auto;
+  scrollbar-gutter: stable;
 }
 
 .actions-row {
@@ -856,18 +896,29 @@ textarea {
   max-height: 120px;
   overflow-y: auto;
   min-width: 160px;
+  padding-right: 0.15rem;
+  scrollbar-gutter: stable;
 }
 
 .sensor-check {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: space-between;
+  gap: 0.75rem;
   font-size: 0.85rem;
   cursor: pointer;
+  padding: 0.2rem 0;
 }
 
-.sensor-check input {
-  width: auto;
+.sensor-check-label {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+#sensors-table td:first-child {
+  width: 3.5rem;
+  text-align: center;
 }
 
 .btn-icon {
@@ -937,8 +988,52 @@ select {
 }
 
 input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 2.75rem;
+  height: 1.5rem;
+  margin: 0;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  vertical-align: middle;
+}
+
+input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.5rem - 6px);
+  height: calc(1.5rem - 6px);
+  border-radius: 50%;
+  background: var(--muted);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+input[type="checkbox"]:checked::after {
+  transform: translateX(1.25rem);
+  background: #fff;
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .btn {
@@ -962,6 +1057,23 @@ input[type="checkbox"] {
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
 }
 
 .message {
@@ -1158,12 +1270,18 @@ input[type="checkbox"] {
   border: 1px solid var(--border);
   border-radius: 1rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  scrollbar-gutter: stable;
 }
 
 .host-alerts-header,
 .host-alerts-footer {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
+}
+
+.host-alerts-header {
+  position: relative;
+  padding-right: 3.25rem;
 }
 
 .host-alerts-footer {
@@ -1189,11 +1307,23 @@ input[type="checkbox"] {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
   border: 0;
+  border-radius: 0.5rem;
   background: transparent;
   color: var(--muted);
-  font-size: 1.5rem;
+  font-size: 1.35rem;
+  line-height: 1;
   cursor: pointer;
+}
+
+.host-alerts-close:hover {
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .host-alerts-body {
@@ -1208,6 +1338,17 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.alert-toggle-row {
+  padding: 0.35rem 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.alert-toggle-row > span {
+  flex: 1;
+  min-width: 0;
 }
 
 .alert-field input[type="number"] {
@@ -1251,21 +1392,45 @@ input[type="checkbox"] {
   vertical-align: middle;
 }
 
+.alert-sensor-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
 .alert-sensor-check {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+  cursor: pointer;
+}
+
+.alert-sensor-meta {
+  min-width: 0;
+}
+
+.alert-sensor-name {
+  display: block;
+  line-height: 1.35;
 }
 
 .alert-sensor-id {
   margin-top: 0.15rem;
   color: var(--muted);
   font-size: 0.75rem;
+  word-break: break-all;
+}
+
+.alert-threshold-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .alert-threshold-input {
   width: 5.5rem;
-  margin-right: 0.35rem;
 }
 
 .alert-ntfy-block {

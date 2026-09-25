@@ -62,22 +62,28 @@ function renderSensorRows(rows) {
       (row) => `
       <tr>
         <td>
-          <label class="alert-sensor-check">
-            <input type="checkbox" data-sensor-enabled="${row.sensor_id}" ${row.enabled ? "checked" : ""} />
-            <span>${row.name}</span>
-          </label>
-          <div class="alert-sensor-id">${row.sensor_id}</div>
+          <div class="alert-sensor-cell">
+            <label class="alert-sensor-check">
+              <input type="checkbox" data-sensor-enabled="${row.sensor_id}" ${row.enabled ? "checked" : ""} />
+            </label>
+            <div class="alert-sensor-meta">
+              <span class="alert-sensor-name">${row.name}</span>
+              <span class="alert-sensor-id">${row.sensor_id}</span>
+            </div>
+          </div>
         </td>
         <td>
-          <input
-            type="number"
-            class="alert-threshold-input"
-            data-sensor-threshold="${row.sensor_id}"
-            value="${row.threshold}"
-            step="any"
-            ${row.enabled ? "" : "disabled"}
-          />
-          ${row.unit ? `<span class="alert-unit">${row.unit}</span>` : ""}
+          <div class="alert-threshold-cell">
+            <input
+              type="number"
+              class="alert-threshold-input"
+              data-sensor-threshold="${row.sensor_id}"
+              value="${row.threshold}"
+              step="any"
+              ${row.enabled ? "" : "disabled"}
+            />
+            ${row.unit ? `<span class="alert-unit">${row.unit}</span>` : ""}
+          </div>
         </td>
       </tr>
     `,

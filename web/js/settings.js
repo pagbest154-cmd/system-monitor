@@ -83,8 +83,8 @@ function sensorCheckboxOptions(selectedIds) {
     .map(
       (sensor) => `
         <label class="sensor-check">
+          <span class="sensor-check-label">${escapeHtml(sensor.name)} <span class="muted">(${sensor.id})</span></span>
           <input type="checkbox" value="${sensor.id}" ${selected.has(sensor.id) ? "checked" : ""}>
-          ${escapeHtml(sensor.name)} <span class="muted">(${sensor.id})</span>
         </label>
       `
     )
