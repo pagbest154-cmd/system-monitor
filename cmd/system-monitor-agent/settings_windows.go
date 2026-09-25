@@ -113,7 +113,7 @@ func runSettingsDialog(configPath string) error {
 	styleHeading(titleLabel)
 	styleLabel(subtitleLabel, true)
 	styleLabel(notifyLabel, false)
-	_ = notifyLabel.SetTextColor(notifyStatusColor(notifyStatus))
+	notifyLabel.SetTextColor(notifyStatusColor(notifyStatus))
 	for _, lbl := range []*walk.Label{lblHub, lblAgent, lblToken, lblInterval} {
 		styleLabel(lbl, true)
 	}
