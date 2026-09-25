@@ -176,8 +176,9 @@ func EnrichAgentReport(report *protocol.AgentReport) *protocol.AgentReport {
 		metrics = append(metrics, p)
 	}
 	return &protocol.AgentReport{
-		AgentID: report.AgentID, Hostname: report.Hostname, Metrics: metrics,
-		System: system, ConfigVersion: report.ConfigVersion, Sensors: sensors,
+		AgentID: report.AgentID, Hostname: report.Hostname,
+		AgentVersion: report.AgentVersion, Platform: report.Platform,
+		Metrics: metrics, System: system, ConfigVersion: report.ConfigVersion, Sensors: sensors,
 	}
 }
 
