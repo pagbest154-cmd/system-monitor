@@ -173,7 +173,7 @@ func runSettingsDialog(configPath string) error {
 		}
 	}
 
-	if _, err := mw.Run(); err != nil {
+	if err := mw.Run(); err != nil {
 		logSettingsError("settings UI: " + err.Error())
 		return fmt.Errorf("settings UI: %w", err)
 	}
