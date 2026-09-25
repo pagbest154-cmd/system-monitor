@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+	"time"
 
-	"github.com/pagbest154-cmd/system-monitor/internal/branding"
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 	"github.com/pagbest154-cmd/system-monitor/internal/release"
 	"golang.org/x/sys/windows"
@@ -30,16 +29,15 @@ func ApplyUpdate(result release.ReleaseCheckResult) error {
 	}
 
 	installerPath := filepath.Join(stagingDir, AgentAssetName(result.LatestVersion))
+	_ = os.Remove(installerPath)
+	if err := release.DownloadFile(*result.DownloadURL, installerPath, "system-monitor-agent"); err != nil {
+		return fmt.Errorf("ошибка загрузки: %w", err)
+	}
 	if err := validateWindowsInstaller(installerPath); err != nil {
-		if err := release.DownloadFile(*result.DownloadURL, installerPath, "system-monitor-agent"); err != nil {
-			return fmt.Errorf("ошибка загрузки: %w", err)
-		}
-		if err := validateWindowsInstaller(installerPath); err != nil {
-			return fmt.Errorf("некорректный установщик: %w", err)
-		}
+		return fmt.Errorf("некорректный установщик: %w", err)
 	}
 
-	return launchStagedInstaller(installerPath)
+	return launchStagedInstaller(installerPath, result.LatestVersion)
 }
 
 func ApplyStagedUpdate(version string) error {
@@ -48,17 +46,29 @@ func ApplyStagedUpdate(version string) error {
 	if err := validateWindowsInstaller(installerPath); err != nil {
 		return fmt.Errorf("скачанный установщик не найден: %w", err)
 	}
-	return launchStagedInstaller(installerPath)
+	return launchStagedInstaller(installerPath, version)
 }
 
-func launchStagedInstaller(installerPath string) error {
+func launchStagedInstaller(installerPath, version string) error {
 	stagingDir := filepath.Dir(installerPath)
 	logPath := filepath.Join(stagingDir, "install.log")
-	scriptPath := filepath.Join(stagingDir, "run-update.ps1")
-	if err := writeUpdateScript(scriptPath, installerPath, logPath); err != nil {
-		return err
+	writeUpdateJournal(stagingDir, "launching "+version+" installer: "+installerPath)
+	return shellExecuteElevated(installerPath, fmt.Sprintf(
+		"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /LOG=\"%s\"",
+		logPath,
+	), stagingDir)
+}
+
+func writeUpdateJournal(stagingDir, line string) {
+	path := filepath.Join(stagingDir, "update-journal.txt")
+	msg := fmt.Sprintf("%s  %s\n", time.Now().Format(time.RFC3339), line)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return
 	}
-	return launchElevatedPowerShell(scriptPath)
+	_, _ = f.WriteString(msg)
+	_ = f.Close()
+	_ = os.WriteFile(filepath.Join(stagingDir, "update-status.txt"), []byte(line), 0o644)
 }
 
 func validateWindowsInstaller(path string) error {
@@ -84,119 +94,25 @@ func validateWindowsInstaller(path string) error {
 	return nil
 }
 
-func writeUpdateScript(scriptPath, installerPath, logPath string) error {
-	installerPath = strings.ReplaceAll(installerPath, "'", "''")
-	logPath = strings.ReplaceAll(logPath, "'", "''")
-	programFiles := os.Getenv("ProgramFiles")
-	if programFiles == "" {
-		programFiles = "C:\\Program Files"
-	}
-	trayExe := strings.ReplaceAll(filepath.Join(programFiles, "system-monitor-agent", "system-monitor-agent.exe"), "'", "''")
-	updateLog := strings.ReplaceAll(filepath.Join(filepath.Dir(installerPath), "update.log"), "'", "''")
-	statusFile := strings.ReplaceAll(filepath.Join(filepath.Dir(installerPath), "update-status.txt"), "'", "''")
-	agentName := strings.ReplaceAll(branding.AgentName, "'", "''")
-
-	script := fmt.Sprintf(`$ErrorActionPreference = 'Stop'
-$scriptPath = $MyInvocation.MyCommand.Path
-$installer = '%s'
-$log = '%s'
-$tray = '%s'
-$updateLog = '%s'
-$statusFile = '%s'
-
-function Write-Status([string]$Value) {
-  try { Set-Content -Path $statusFile -Value $Value -Encoding UTF8 } catch {}
-}
-
-function Show-Error([string]$Message) {
-  Write-Status ('failed: ' + $Message)
-  try {
-    Add-Type -AssemblyName System.Windows.Forms
-    [System.Windows.Forms.MessageBox]::Show(
-      $Message,
-      '%s',
-      [System.Windows.Forms.MessageBoxButtons]::OK,
-      [System.Windows.Forms.MessageBoxIcon]::Error
-    ) | Out-Null
-  } catch {}
-}
-
-function Restart-Tray {
-  if (-not (Test-Path $tray)) { return }
-  try {
-    $shell = New-Object -ComObject Shell.Application
-    $shell.ShellExecute($tray, '--tray', '', '', 0) | Out-Null
-  } catch {}
-}
-
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-  Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',$scriptPath) -Verb RunAs
-  exit 0
-}
-
-Write-Status 'running'
-Start-Transcript -Path $updateLog -Force | Out-Null
-try {
-  & sc.exe stop system-monitor-agent 2>$null | Out-Null
-  Start-Sleep -Seconds 2
-  Get-Process -Name 'system-monitor-agent' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-  Start-Sleep -Seconds 2
-
-  Write-Status 'installing'
-  $setupArgs = @(
-    '/VERYSILENT',
-    '/SUPPRESSMSGBOXES',
-    '/NORESTART',
-    '/CLOSEAPPLICATIONS',
-    ('/LOG=' + $log)
-  )
-  $p = Start-Process -FilePath $installer -ArgumentList $setupArgs -Wait -PassThru
-  if ($null -eq $p) {
-    throw 'Установщик не запущен'
-  }
-  if ($p.ExitCode -ne 0) {
-    throw ('Установщик завершился с кодом ' + $p.ExitCode + '. Лог: ' + $log)
-  }
-
-  Write-Status 'done'
-  exit 0
-} catch {
-  $err = $_.Exception.Message
-  if (-not $err) { $err = $_.ToString() }
-  Show-Error ($err + [Environment]::NewLine + 'Подробности: ' + $updateLog)
-  Restart-Tray
-  exit 1
-} finally {
-  try { Stop-Transcript | Out-Null } catch {}
-}
-`, installerPath, logPath, trayExe, updateLog, statusFile, agentName)
-
-	return os.WriteFile(scriptPath, []byte(script), 0o644)
-}
-
-func launchElevatedPowerShell(scriptPath string) error {
+func shellExecuteElevated(file, parameters, workingDir string) error {
 	verb, err := windows.UTF16PtrFromString("runas")
 	if err != nil {
 		return err
 	}
-	exePtr, err := windows.UTF16PtrFromString("powershell.exe")
+	filePtr, err := windows.UTF16PtrFromString(file)
 	if err != nil {
 		return err
 	}
-	params, err := windows.UTF16PtrFromString(
-		"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + scriptPath + "\"",
-	)
+	paramPtr, err := windows.UTF16PtrFromString(parameters)
 	if err != nil {
 		return err
 	}
-	dirPtr, err := windows.UTF16PtrFromString(filepath.Dir(scriptPath))
+	dirPtr, err := windows.UTF16PtrFromString(workingDir)
 	if err != nil {
 		return err
 	}
-
-	if err := windows.ShellExecute(0, verb, exePtr, params, dirPtr, windows.SW_HIDE); err != nil {
-		return fmt.Errorf("не удалось запустить обновление (отклонён UAC?): %w", err)
+	if err := windows.ShellExecute(0, verb, filePtr, paramPtr, dirPtr, windows.SW_HIDE); err != nil {
+		return fmt.Errorf("не удалось запустить установщик (отклонён UAC?): %w", err)
 	}
 	return nil
 }

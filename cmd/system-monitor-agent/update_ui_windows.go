@@ -53,9 +53,8 @@ func runBackgroundUpdate(result release.ReleaseCheckResult) {
 	title := branding.AgentName
 	showInfo(
 		title,
-		"Сейчас будет загружено и установлено обновление "+result.LatestVersion+".\n\n"+
-			"После загрузки подтвердите запрос UAC.\n"+
-			"Иконка в трее закроется при начале установки.",
+		"Сейчас загрузится и установится "+result.LatestVersion+".\n\n"+
+			"После загрузки появится запрос UAC — подтвердите его.",
 	)
 	systray.SetTooltip("Загрузка обновления " + result.LatestVersion + "...")
 
@@ -68,6 +67,13 @@ func runBackgroundUpdate(result release.ReleaseCheckResult) {
 	}
 
 	systray.SetTooltip("Установка обновления " + result.LatestVersion + "...")
+	showInfo(
+		title,
+		"Подтвердите UAC — запустится установщик "+result.LatestVersion+".\n\n"+
+			"Трей закроется на время установки и появится снова.\n\n"+
+			"Если версия не изменится, смотрите лог:\n"+
+			"%ProgramData%\\system-monitor\\update-staging\\install.log",
+	)
 }
 
 func openUpdateFallback(result release.ReleaseCheckResult) {
