@@ -1,3 +1,9 @@
+system-monitor-agent (1.0.39-1) unstable; urgency=medium
+
+  * Release 1.0.39.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Fri, 25 Sep 2026 19:30:00 +0700
+
 system-monitor-agent (1.0.23-1) unstable; urgency=medium
 
   * Release 1.0.23.

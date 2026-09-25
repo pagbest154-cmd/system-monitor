@@ -28,44 +28,52 @@ case "$1" in
         chown system-monitor-agent:system-monitor-agent /var/lib/system-monitor-agent
         chmod 0750 /var/lib/system-monitor-agent
 
-        hub_url="http://127.0.0.1:8080"
-        agent_id=""
-        token=""
+        # Fresh install only: debconf / env seed agent.yaml and token.
+        # On upgrade preserve /etc/system-monitor/* (see system-monitor-agent.conffiles).
+        if [ -z "$2" ]; then
+            hub_url="http://127.0.0.1:8080"
+            agent_id=""
+            token=""
 
-        if [ -f /usr/share/debconf/confmodule ]; then
-            . /usr/share/debconf/confmodule
-            db_get system-monitor-agent/hub-url || true
-            hub_url="${RET:-http://127.0.0.1:8080}"
-            db_get system-monitor-agent/agent-id || true
-            agent_id="${RET:-}"
-            db_get system-monitor-agent/token || true
-            token="${RET:-}"
-        fi
+            if [ -f /usr/share/debconf/confmodule ]; then
+                . /usr/share/debconf/confmodule
+                db_get system-monitor-agent/hub-url || true
+                hub_url="${RET:-http://127.0.0.1:8080}"
+                db_get system-monitor-agent/agent-id || true
+                agent_id="${RET:-}"
+                db_get system-monitor-agent/token || true
+                token="${RET:-}"
+            fi
 
-        hub_url="${HUB_URL:-$hub_url}"
-        agent_id="${AGENT_ID:-$agent_id}"
-        token="${AGENT_TOKEN:-$token}"
+            hub_url="${HUB_URL:-$hub_url}"
+            agent_id="${AGENT_ID:-$agent_id}"
+            token="${AGENT_TOKEN:-$token}"
 
-        if [ -z "$agent_id" ]; then
-            agent_id="$(hostname)"
-        fi
+            if [ -z "$agent_id" ]; then
+                agent_id="$(hostname)"
+            fi
 
-        write_agent_yaml "$hub_url" "$agent_id" "$TOKEN_FILE"
+            write_agent_yaml "$hub_url" "$agent_id" "$TOKEN_FILE"
 
-        if [ -n "$token" ]; then
-            umask 077
-            printf '%s' "$token" >"$TOKEN_FILE"
-            chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
-            chmod 0600 "$TOKEN_FILE"
+            if [ -n "$token" ]; then
+                umask 077
+                printf '%s' "$token" >"$TOKEN_FILE"
+                chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
+                chmod 0600 "$TOKEN_FILE"
+            elif [ ! -f "$TOKEN_FILE" ]; then
+                touch "$TOKEN_FILE"
+                chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
+                chmod 0600 "$TOKEN_FILE"
+            fi
+
+            if [ ! -s "$TOKEN_FILE" ]; then
+                echo "system-monitor-agent: token не задан — служба не сможет подключиться к hub." >&2
+                echo "Настройка: sudo dpkg-reconfigure system-monitor-agent" >&2
+            fi
         elif [ ! -f "$TOKEN_FILE" ]; then
             touch "$TOKEN_FILE"
             chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
             chmod 0600 "$TOKEN_FILE"
-        fi
-
-        if [ ! -s "$TOKEN_FILE" ]; then
-            echo "system-monitor-agent: token не задан — служба не сможет подключиться к hub." >&2
-            echo "Настройка: sudo dpkg-reconfigure system-monitor-agent" >&2
         fi
         ;;
 esac
