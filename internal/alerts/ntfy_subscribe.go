@@ -121,15 +121,20 @@ func (s *NtfySubscriber) connectOnce(stopCh chan struct{}) error {
 		return err
 	}
 	defer conn.Close()
-	log.Printf("[ntfy] subscribed to %s", s.Topic)
+	log.Printf("[ntfy] subscribed to %s via %s", s.Topic, url)
 	if s.OnConnected != nil {
 		s.OnConnected()
 	}
 
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(3 * time.Minute))
+	})
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Minute))
+
 	pingDone := make(chan struct{})
 	defer close(pingDone)
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(25 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
@@ -138,7 +143,9 @@ func (s *NtfySubscriber) connectOnce(stopCh chan struct{}) error {
 			case <-stopCh:
 				return
 			case <-ticker.C:
-				_ = conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second))
+				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
+					return
+				}
 			}
 		}
 	}()

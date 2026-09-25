@@ -41,7 +41,13 @@ func findToastShortcut() string {
 }
 
 func showToast(title, message string) {
-	_ = runNotificationScript(title, message, false, false)
+	go func() {
+		if err := runNotificationScript(title, message, true, false); err != nil {
+			trayLog("alert notification failed: %v", err)
+			return
+		}
+		trayLog("alert notification shown: %s — %s", title, message)
+	}()
 }
 
 func showTestToast() error {

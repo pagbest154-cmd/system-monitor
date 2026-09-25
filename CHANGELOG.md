@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+## [1.0.31] — 2026-09-25
+
+### Исправлено
+
+- Windows: push-алерты с hub — уведомление показывается так же надёжно, как тест (balloon не исчезал мгновенно)
+- Windows: WebSocket ntfy — keepalive ping/pong, deadline 3 мин
+
 ## [1.0.30] — 2026-09-25
 
 ### Исправлено
