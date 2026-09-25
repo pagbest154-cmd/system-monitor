@@ -12,12 +12,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pagbest154-cmd/system-monitor/internal/fleet"
 )
 
 const sessionCookie = "sm_hub_session"
 const sessionTTL = 7 * 24 * 3600
 
-var agentPathRE = regexp.MustCompile(`^/api/agents/[^/]+/(metrics|heartbeat|config|notify)$`)
+var agentAPIPathRE = regexp.MustCompile(`^/api/agents/([^/]+)/(.+)$`)
 
 func hubCredentials() (string, string, bool) {
 	name := strings.TrimSpace(os.Getenv("HUB_NAME"))
@@ -143,6 +145,37 @@ func IsAuthenticated(r *http.Request) bool {
 	return false
 }
 
+func agentPathInfo(path, method string) (agentID string, ok bool) {
+	m := agentAPIPathRE.FindStringSubmatch(path)
+	if len(m) != 3 {
+		return "", false
+	}
+	switch method {
+	case http.MethodPost:
+		switch m[2] {
+		case "metrics", "heartbeat", "config":
+			return m[1], true
+		}
+	case http.MethodGet:
+		if m[2] == "notify" || strings.HasPrefix(m[2], "notify/") {
+			return m[1], true
+		}
+	}
+	return "", false
+}
+
+func IsAgentAuthenticated(r *http.Request) bool {
+	agentID, ok := agentPathInfo(r.URL.Path, r.Method)
+	if !ok {
+		return false
+	}
+	auth := r.Header.Get("Authorization")
+	if !strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		return false
+	}
+	return fleet.VerifyAgentToken(agentID, strings.TrimSpace(auth[7:]))
+}
+
 func IsPublicPath(path, method string) bool {
 	if strings.HasPrefix(path, "/static/") {
 		return true
@@ -158,14 +191,6 @@ func IsPublicPath(path, method string) bool {
 	}
 	if path == "/api/version" && method == http.MethodGet {
 		return true
-	}
-	if agentPathRE.MatchString(path) {
-		if method == http.MethodPost {
-			return true
-		}
-		if method == http.MethodGet && (strings.HasSuffix(path, "/notify") || strings.HasSuffix(path, "/notify/catalog")) {
-			return true
-		}
 	}
 	return false
 }

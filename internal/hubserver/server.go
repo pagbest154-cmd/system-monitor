@@ -139,7 +139,7 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if IsAuthenticated(r) {
+		if IsAuthenticated(r) || IsAgentAuthenticated(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
