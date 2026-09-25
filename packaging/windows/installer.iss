@@ -102,6 +102,13 @@ begin
   Result := Value;
 end;
 
+function InitializeSetup(): Boolean;
+begin
+  if ConfigExists then
+    StopAgentProcesses;
+  Result := True;
+end;
+
 procedure InitializeWizard;
 begin
   HubUrlPage := CreateInputQueryPage(wpWelcome,

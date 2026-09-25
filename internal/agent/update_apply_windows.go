@@ -61,7 +61,7 @@ func launchStagedInstaller(installerPath, version string) error {
 	logPath := filepath.Join(stagingDir, "install.log")
 	writeUpdateJournal(stagingDir, "launching "+version+" installer: "+installerPath)
 	return shellExecuteElevated(installerPath, fmt.Sprintf(
-		"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /LOG=\"%s\"",
+		"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCLOSEAPPLICATIONS /LOG=\"%s\"",
 		logPath,
 	), stagingDir)
 }
