@@ -40,6 +40,8 @@ func onTrayReady(configPath string) {
 	mUpdate := systray.AddMenuItem("Проверить обновления", "")
 	mQuit := systray.AddMenuItem("Выход", "")
 
+	startNtfyListener(configPath)
+
 	go func() {
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()

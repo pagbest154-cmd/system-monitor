@@ -92,4 +92,29 @@ func (t *Transport) SyncConfig(agentID string, configVersion int) (protocol.Agen
 	return out, nil
 }
 
+func (t *Transport) FetchNotifyConfig(agentID string) (protocol.AgentNotifyResponse, error) {
+	endpoint := fmt.Sprintf("%s/api/agents/%s/notify", t.HubURL, agentID)
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return protocol.AgentNotifyResponse{}, err
+	}
+	for k, v := range t.headers() {
+		req.Header.Set(k, v)
+	}
+	resp, err := t.client.Do(req)
+	if err != nil {
+		return protocol.AgentNotifyResponse{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		data, _ := io.ReadAll(resp.Body)
+		return protocol.AgentNotifyResponse{}, fmt.Errorf("fetch notify config: %s", string(data))
+	}
+	var out protocol.AgentNotifyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return protocol.AgentNotifyResponse{}, err
+	}
+	return out, nil
+}
+
 func (t *Transport) Close() {}

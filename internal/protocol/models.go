@@ -55,3 +55,10 @@ type AgentConfigResponse struct {
 	Version   int              `json:"version"`
 	Overrides []SensorOverride `json:"overrides,omitempty"`
 }
+
+type AgentNotifyResponse struct {
+	Enabled     bool   `json:"enabled"`
+	NtfyBaseURL string `json:"ntfy_base_url"`
+	Topic       string `json:"topic"`
+	Token       string `json:"token"`
+}

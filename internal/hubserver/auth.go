@@ -17,7 +17,7 @@ import (
 const sessionCookie = "sm_hub_session"
 const sessionTTL = 7 * 24 * 3600
 
-var agentPathRE = regexp.MustCompile(`^/api/agents/[^/]+/(metrics|heartbeat|config)$`)
+var agentPathRE = regexp.MustCompile(`^/api/agents/[^/]+/(metrics|heartbeat|config|notify)$`)
 
 func hubCredentials() (string, string, bool) {
 	name := strings.TrimSpace(os.Getenv("HUB_NAME"))
@@ -159,8 +159,13 @@ func IsPublicPath(path, method string) bool {
 	if path == "/api/version" && method == http.MethodGet {
 		return true
 	}
-	if method == http.MethodPost && agentPathRE.MatchString(path) {
-		return true
+	if agentPathRE.MatchString(path) {
+		if method == http.MethodPost {
+			return true
+		}
+		if method == http.MethodGet && strings.HasSuffix(path, "/notify") {
+			return true
+		}
 	}
 	return false
 }
