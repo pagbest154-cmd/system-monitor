@@ -98,6 +98,39 @@ main {
   color: var(--muted);
 }
 
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.footer-brand:hover {
+  color: #fff;
+  text-decoration: none;
+  opacity: 0.92;
+}
+
+.footer-brand-icon {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.footer-brand:hover .footer-brand-icon {
+  transform: scale(1.05);
+}
+
+.footer-brand-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;

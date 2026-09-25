@@ -1,6 +1,15 @@
 import { fetchJson } from "./api.js";
 import { i18n } from "./i18n.js";
 
+const FERRUMNST_URL = "https://ferrumnst.ru";
+
+function ferrumnstBrandHtml() {
+  return `<a href="${FERRUMNST_URL}" target="_blank" rel="noopener noreferrer" class="footer-brand" title="FerrumNST">
+    <img src="/static/icons/ferrumnst-brand.svg" alt="" class="footer-brand-icon" width="32" height="32">
+    <span class="footer-brand-text">FerrumNST</span>
+  </a>`;
+}
+
 function ensureFooter() {
   let footer = document.getElementById("app-footer");
   if (footer) return footer;
@@ -29,6 +38,8 @@ function renderFooter(footer, data) {
     <span class="footer-version">system-monitor <strong>v${version}</strong></span>
     <span class="footer-sep" aria-hidden="true">·</span>
     ${statusHtml}
+    <span class="footer-sep" aria-hidden="true">·</span>
+    ${ferrumnstBrandHtml()}
   `;
 }
 
@@ -40,6 +51,8 @@ export async function initFooter() {
     const data = await fetchJson("/api/version");
     renderFooter(footer, data);
   } catch {
-    footer.innerHTML = `<span class="footer-muted">system-monitor</span>`;
+    footer.innerHTML = `<span class="footer-muted">system-monitor</span>
+      <span class="footer-sep" aria-hidden="true">·</span>
+      ${ferrumnstBrandHtml()}`;
   }
 }
