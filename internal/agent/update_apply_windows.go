@@ -29,13 +29,29 @@ func ApplyUpdate(result release.ReleaseCheckResult) error {
 	}
 
 	installerPath := filepath.Join(stagingDir, AgentAssetName(result.LatestVersion))
-	if err := release.DownloadFile(*result.DownloadURL, installerPath, "system-monitor-agent"); err != nil {
-		return fmt.Errorf("ошибка загрузки: %w", err)
-	}
 	if err := validateWindowsInstaller(installerPath); err != nil {
-		return fmt.Errorf("некорректный установщик: %w", err)
+		if err := release.DownloadFile(*result.DownloadURL, installerPath, "system-monitor-agent"); err != nil {
+			return fmt.Errorf("ошибка загрузки: %w", err)
+		}
+		if err := validateWindowsInstaller(installerPath); err != nil {
+			return fmt.Errorf("некорректный установщик: %w", err)
+		}
 	}
 
+	return launchStagedInstaller(installerPath)
+}
+
+func ApplyStagedUpdate(version string) error {
+	stagingDir := filepath.Join(paths.ConfigDir, updateStagingDir)
+	installerPath := filepath.Join(stagingDir, AgentAssetName(version))
+	if err := validateWindowsInstaller(installerPath); err != nil {
+		return fmt.Errorf("скачанный установщик не найден: %w", err)
+	}
+	return launchStagedInstaller(installerPath)
+}
+
+func launchStagedInstaller(installerPath string) error {
+	stagingDir := filepath.Dir(installerPath)
 	logPath := filepath.Join(stagingDir, "install.log")
 	scriptPath := filepath.Join(stagingDir, "run-update.ps1")
 	if err := writeUpdateScript(scriptPath, installerPath, logPath); err != nil {
@@ -76,22 +92,27 @@ func writeUpdateScript(scriptPath, installerPath, logPath string) error {
 	}
 	trayExe := strings.ReplaceAll(filepath.Join(programFiles, "system-monitor-agent", "system-monitor-agent.exe"), "'", "''")
 
+	updateLog := strings.ReplaceAll(filepath.Join(filepath.Dir(installerPath), "update.log"), "'", "''")
+
 	script := fmt.Sprintf(`$ErrorActionPreference = 'Stop'
 $installer = '%s'
 $log = '%s'
 $tray = '%s'
+$updateLog = '%s'
 
+Start-Transcript -Path $updateLog -Force | Out-Null
+try {
 Get-Process -Name 'system-monitor-agent' -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 2
 
-$args = @(
+$setupArgs = @(
   '/VERYSILENT',
   '/SUPPRESSMSGBOXES',
   '/NORESTART',
   '/CLOSEAPPLICATIONS',
   ('/LOG=' + $log)
 )
-$p = Start-Process -FilePath $installer -ArgumentList $args -Wait -PassThru
+$p = Start-Process -FilePath $installer -ArgumentList $setupArgs -Wait -PassThru
 if ($p.ExitCode -ne 0) {
   Add-Type -AssemblyName System.Windows.Forms
   [System.Windows.Forms.MessageBox]::Show(
@@ -108,7 +129,10 @@ if (Test-Path $tray) {
   $shell.ShellExecute($tray, '--tray', '', '', 0) | Out-Null
 }
 exit 0
-`, installerPath, logPath, trayExe)
+} finally {
+Stop-Transcript | Out-Null
+}
+`, installerPath, logPath, trayExe, updateLog)
 
 	return os.WriteFile(scriptPath, []byte(script), 0o644)
 }

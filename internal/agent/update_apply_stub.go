@@ -11,3 +11,7 @@ import (
 func ApplyUpdate(result release.ReleaseCheckResult) error {
 	return fmt.Errorf("автоустановка обновлений не поддерживается на %s", "этой платформе")
 }
+
+func ApplyStagedUpdate(version string) error {
+	return fmt.Errorf("автоустановка обновлений не поддерживается на %s", "этой платформе")
+}
