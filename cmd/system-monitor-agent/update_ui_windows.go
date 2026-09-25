@@ -4,7 +4,6 @@ package main
 
 import (
 	"sync"
-	"time"
 
 	"github.com/getlantern/systray"
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
@@ -52,6 +51,12 @@ func runBackgroundUpdate(result release.ReleaseCheckResult) {
 	defer updateMu.Unlock()
 
 	title := branding.AgentName
+	showInfo(
+		title,
+		"Сейчас будет загружено и установлено обновление "+result.LatestVersion+".\n\n"+
+			"После загрузки подтвердите запрос UAC.\n"+
+			"Иконка в трее закроется при начале установки.",
+	)
 	systray.SetTooltip("Загрузка обновления " + result.LatestVersion + "...")
 
 	if err := agent.ApplyUpdate(result); err != nil {
@@ -63,8 +68,6 @@ func runBackgroundUpdate(result release.ReleaseCheckResult) {
 	}
 
 	systray.SetTooltip("Установка обновления " + result.LatestVersion + "...")
-	// Обновление идёт в отдельном elevated-скрипте; закрываем трей, чтобы не блокировать exe.
-	time.AfterFunc(800*time.Millisecond, func() { systray.Quit() })
 }
 
 func openUpdateFallback(result release.ReleaseCheckResult) {

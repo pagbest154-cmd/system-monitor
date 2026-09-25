@@ -93,25 +93,57 @@ func writeUpdateScript(scriptPath, installerPath, logPath string) error {
 	}
 	trayExe := strings.ReplaceAll(filepath.Join(programFiles, "system-monitor-agent", "system-monitor-agent.exe"), "'", "''")
 	updateLog := strings.ReplaceAll(filepath.Join(filepath.Dir(installerPath), "update.log"), "'", "''")
-	scriptPathEsc := strings.ReplaceAll(scriptPath, "'", "''")
+	statusFile := strings.ReplaceAll(filepath.Join(filepath.Dir(installerPath), "update-status.txt"), "'", "''")
+	agentName := strings.ReplaceAll(branding.AgentName, "'", "''")
 
 	script := fmt.Sprintf(`$ErrorActionPreference = 'Stop'
+$scriptPath = $MyInvocation.MyCommand.Path
 $installer = '%s'
 $log = '%s'
 $tray = '%s'
 $updateLog = '%s'
+$statusFile = '%s'
+
+function Write-Status([string]$Value) {
+  try { Set-Content -Path $statusFile -Value $Value -Encoding UTF8 } catch {}
+}
+
+function Show-Error([string]$Message) {
+  Write-Status ('failed: ' + $Message)
+  try {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show(
+      $Message,
+      '%s',
+      [System.Windows.Forms.MessageBoxButtons]::OK,
+      [System.Windows.Forms.MessageBoxIcon]::Error
+    ) | Out-Null
+  } catch {}
+}
+
+function Restart-Tray {
+  if (-not (Test-Path $tray)) { return }
+  try {
+    $shell = New-Object -ComObject Shell.Application
+    $shell.ShellExecute($tray, '--tray', '', '', 0) | Out-Null
+  } catch {}
+}
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-  Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',"'%s'") -Verb RunAs
-  exit
+  Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',$scriptPath) -Verb RunAs
+  exit 0
 }
 
+Write-Status 'running'
 Start-Transcript -Path $updateLog -Force | Out-Null
 try {
-  Get-Process -Name 'system-monitor-agent' -ErrorAction SilentlyContinue | Stop-Process -Force
+  & sc.exe stop system-monitor-agent 2>$null | Out-Null
+  Start-Sleep -Seconds 2
+  Get-Process -Name 'system-monitor-agent' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 2
 
+  Write-Status 'installing'
   $setupArgs = @(
     '/VERYSILENT',
     '/SUPPRESSMSGBOXES',
@@ -119,27 +151,26 @@ try {
     '/CLOSEAPPLICATIONS',
     ('/LOG=' + $log)
   )
-  $p = Start-Process -FilePath $installer -ArgumentList $setupArgs -Verb RunAs -Wait -PassThru
+  $p = Start-Process -FilePath $installer -ArgumentList $setupArgs -Wait -PassThru
+  if ($null -eq $p) {
+    throw 'Установщик не запущен'
+  }
   if ($p.ExitCode -ne 0) {
-    Add-Type -AssemblyName System.Windows.Forms
-    [System.Windows.Forms.MessageBox]::Show(
-      ('Не удалось установить обновление (код ' + $p.ExitCode + ').' + [Environment]::NewLine + 'Лог: ' + $log),
-      '%s',
-      [System.Windows.Forms.MessageBoxButtons]::OK,
-      [System.Windows.Forms.MessageBoxIcon]::Error
-    ) | Out-Null
-    exit $p.ExitCode
+    throw ('Установщик завершился с кодом ' + $p.ExitCode + '. Лог: ' + $log)
   }
 
-  if (Test-Path $tray) {
-    $shell = New-Object -ComObject Shell.Application
-    $shell.ShellExecute($tray, '--tray', '', '', 0) | Out-Null
-  }
+  Write-Status 'done'
   exit 0
+} catch {
+  $err = $_.Exception.Message
+  if (-not $err) { $err = $_.ToString() }
+  Show-Error ($err + [Environment]::NewLine + 'Подробности: ' + $updateLog)
+  Restart-Tray
+  exit 1
 } finally {
-  Stop-Transcript | Out-Null
+  try { Stop-Transcript | Out-Null } catch {}
 }
-`, installerPath, logPath, trayExe, updateLog, scriptPathEsc, branding.AgentName)
+`, installerPath, logPath, trayExe, updateLog, statusFile, agentName)
 
 	return os.WriteFile(scriptPath, []byte(script), 0o644)
 }
