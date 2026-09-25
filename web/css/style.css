@@ -889,31 +889,95 @@ textarea {
   padding: 0.4rem 0.5rem;
 }
 
-.sensor-checks {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  max-height: 120px;
-  overflow-y: auto;
-  min-width: 160px;
-  padding-right: 0.15rem;
-  scrollbar-gutter: stable;
+.panel-row-main td {
+  border-bottom: none;
+  padding-bottom: 0.35rem;
 }
 
-.sensor-check {
+.panel-row-sensors td {
+  padding-top: 0;
+  padding-bottom: 0.85rem;
+}
+
+.panel-row-sensors + .panel-row-main td {
+  padding-top: 0.85rem;
+}
+
+.panel-sensors-line {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 0.75rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 0.2rem 0;
+  padding: 0.15rem 0 0.15rem 0.5rem;
 }
 
-.sensor-check-label {
+.panel-sensors-label {
+  flex-shrink: 0;
+  padding-top: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  min-width: 4.5rem;
+}
+
+.sensor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.45rem;
   flex: 1;
   min-width: 0;
-  line-height: 1.35;
+}
+
+.sensor-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 7.5rem;
+  max-width: 10.5rem;
+  padding: 0.45rem 0.55rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sensor-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
+}
+
+.sensor-chip:has(input:checked) {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.sensor-chip input[type="checkbox"] {
+  align-self: flex-end;
+  transform: scale(0.92);
+  transform-origin: right center;
+}
+
+.sensor-chip-name {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sensor-chip-id {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 #sensors-table td:first-child {

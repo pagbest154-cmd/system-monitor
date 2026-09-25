@@ -71,7 +71,7 @@ function typeOptions(selected) {
     .join("");
 }
 
-function sensorCheckboxOptions(selectedIds) {
+function sensorChipOptions(selectedIds) {
   const selected = new Set(selectedIds || []);
   const optionsById = new Map(availableSensors.map((sensor) => [sensor.id, sensor]));
   for (const id of selected) {
@@ -82,9 +82,10 @@ function sensorCheckboxOptions(selectedIds) {
   return Array.from(optionsById.values())
     .map(
       (sensor) => `
-        <label class="sensor-check">
-          <span class="sensor-check-label">${escapeHtml(sensor.name)} <span class="muted">(${sensor.id})</span></span>
+        <label class="sensor-chip">
           <input type="checkbox" value="${sensor.id}" ${selected.has(sensor.id) ? "checked" : ""}>
+          <span class="sensor-chip-name">${escapeHtml(sensor.name)}</span>
+          <span class="sensor-chip-id">${escapeHtml(sensor.id)}</span>
         </label>
       `
     )
@@ -152,10 +153,13 @@ function renderPanelsTable() {
   const tbody = document.querySelector("#panels-table tbody");
   tbody.innerHTML = "";
 
+  const panelColCount = 7;
+
   panels.forEach((panel, index) => {
-    const row = document.createElement("tr");
-    row.dataset.index = String(index);
-    row.innerHTML = `
+    const mainRow = document.createElement("tr");
+    mainRow.className = "panel-row-main";
+    mainRow.dataset.index = String(index);
+    mainRow.innerHTML = `
       <td><input type="text" data-field="title" value="${escapeHtml(panel.title || "")}"></td>
       <td>
         <div class="type-cell">
@@ -166,11 +170,6 @@ function renderPanelsTable() {
             <option value="bar" ${panel.type === "bar" ? "selected" : ""}>Столбцы</option>
             <option value="status" ${panel.type === "status" ? "selected" : ""}>Статус</option>
           </select>
-        </div>
-      </td>
-      <td>
-        <div class="sensor-checks" data-field="sensors">
-          ${sensorCheckboxOptions(panel.sensors)}
         </div>
       </td>
       <td>
@@ -197,7 +196,23 @@ function renderPanelsTable() {
       </td>
       <td><button type="button" class="btn-icon btn-danger" data-action="delete-panel" title="${t.delete}"></button></td>
     `;
-    tbody.appendChild(row);
+
+    const sensorsRow = document.createElement("tr");
+    sensorsRow.className = "panel-row-sensors";
+    sensorsRow.dataset.index = String(index);
+    sensorsRow.innerHTML = `
+      <td colspan="${panelColCount}">
+        <div class="panel-sensors-line">
+          <span class="panel-sensors-label">${t.sensors}</span>
+          <div class="sensor-chips" data-field="sensors">
+            ${sensorChipOptions(panel.sensors)}
+          </div>
+        </div>
+      </td>
+    `;
+
+    tbody.appendChild(mainRow);
+    tbody.appendChild(sensorsRow);
   });
 
   tbody.querySelectorAll(".panel-type-icon").forEach((el) => {
@@ -260,22 +275,13 @@ function stripMeta(sensor) {
 }
 
 function readPanelsFromTable() {
-  const rows = document.querySelectorAll("#panels-table tbody tr");
+  const rows = document.querySelectorAll("#panels-table tbody tr.panel-row-main");
   return Array.from(rows).map((row) => {
     const index = Number(row.dataset.index);
     const panel = { ...panels[index] };
     row.querySelectorAll("[data-field]").forEach((input) => {
       const field = input.dataset.field;
-      if (field === "sensors") {
-        const checked = Array.from(input.querySelectorAll('input[type="checkbox"]:checked')).map(
-          (el) => el.value
-        );
-        const checkboxes = input.querySelectorAll('input[type="checkbox"]');
-        panel.sensors =
-          checked.length || checkboxes.length
-            ? checked
-            : panel.sensors || [];
-      } else if (field === "span") {
+      if (field === "span") {
         panel.span = normalizeSpan(input.value);
       } else if (["row", "col"].includes(field)) {
         panel[field] = Number(input.value);
@@ -283,6 +289,18 @@ function readPanelsFromTable() {
         panel[field] = input.value;
       }
     });
+
+    const sensorsRow = row.nextElementSibling;
+    const sensorsEl = sensorsRow?.querySelector('[data-field="sensors"]');
+    if (sensorsEl) {
+      const checked = Array.from(sensorsEl.querySelectorAll('input[type="checkbox"]:checked')).map(
+        (el) => el.value
+      );
+      const checkboxes = sensorsEl.querySelectorAll('input[type="checkbox"]');
+      panel.sensors =
+        checked.length || checkboxes.length ? checked : panel.sensors || [];
+    }
+
     return panel;
   });
 }
