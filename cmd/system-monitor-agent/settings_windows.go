@@ -47,10 +47,9 @@ func runSettingsDialog(configPath string) error {
 	const dlgW, dlgH = 500, 340
 
 	decl := MainWindow{
-		AssignTo:   &mw,
-		Title:      "system-monitor agent",
-		Background: solidBrush(colorBg),
-		Font:       Font{Family: "Segoe UI", PointSize: 9},
+		AssignTo: &mw,
+		Title:    "system-monitor agent",
+		Font:     Font{Family: "Segoe UI", PointSize: 9},
 		Size:       Size{Width: dlgW, Height: dlgH},
 		MinSize:    Size{Width: dlgW, Height: dlgH},
 		MaxSize:    Size{Width: dlgW, Height: dlgH},
@@ -109,6 +108,9 @@ func runSettingsDialog(configPath string) error {
 		logSettingsError("settings UI create: " + err.Error())
 		return fmt.Errorf("settings UI: %w", err)
 	}
+	if mw != nil {
+		mw.SetBackground(solidBrush(colorBg))
+	}
 
 	styleHeading(titleLabel)
 	styleLabel(subtitleLabel, true)
@@ -124,11 +126,7 @@ func runSettingsDialog(configPath string) error {
 	stylePushButton(saveBtn, true)
 	stylePushButton(cancelBtn, false)
 
-	_, err = mw.Run()
-	if err != nil {
-		logSettingsError("settings UI: " + err.Error())
-		return fmt.Errorf("settings UI: %w", err)
-	}
+	mw.Run()
 	return nil
 }
 

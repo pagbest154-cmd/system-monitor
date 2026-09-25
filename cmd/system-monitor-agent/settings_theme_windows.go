@@ -67,15 +67,12 @@ func styleNumberEdit(ne *walk.NumberEdit) {
 	ne.SetFont(font)
 }
 
-func stylePushButton(pb *walk.PushButton, primary bool) {
+func stylePushButton(pb *walk.PushButton, _ bool) {
 	if pb == nil {
 		return
 	}
 	font, _ := walk.NewFont("Segoe UI", 9, walk.FontBold)
 	pb.SetFont(font)
-	if primary {
-		pb.SetTextColor(colorText)
-	}
 }
 
 func notifyStatusColor(text string) walk.Color {
