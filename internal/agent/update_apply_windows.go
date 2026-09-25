@@ -95,7 +95,7 @@ $p = Start-Process -FilePath $installer -ArgumentList $args -Wait -PassThru
 if ($p.ExitCode -ne 0) {
   Add-Type -AssemblyName System.Windows.Forms
   [System.Windows.Forms.MessageBox]::Show(
-    "Не удалось установить обновление (код $($p.ExitCode)).`nЛог: $log",
+    ('Не удалось установить обновление (код ' + $p.ExitCode + ').' + [Environment]::NewLine + 'Лог: ' + $log),
     'system-monitor agent',
     [System.Windows.Forms.MessageBoxButtons]::OK,
     [System.Windows.Forms.MessageBoxIcon]::Error
