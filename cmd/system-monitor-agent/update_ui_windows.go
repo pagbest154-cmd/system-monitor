@@ -3,9 +3,14 @@
 package main
 
 import (
+	"sync"
+
+	"github.com/getlantern/systray"
 	"github.com/pagbest154-cmd/system-monitor/internal/agent"
 	"github.com/pagbest154-cmd/system-monitor/internal/release"
 )
+
+var updateMu sync.Mutex
 
 func formatUpdateDialog(result release.ReleaseCheckResult) string {
 	msg := agent.FormatUpdateMessage(result)
@@ -22,19 +27,48 @@ func showUpdateResult(result release.ReleaseCheckResult, msg string) {
 		return
 	}
 	showInfo(title, msg)
-	if result.UpdateAvailable {
-		url := result.ReleaseURL
-		if result.DownloadURL != nil && *result.DownloadURL != "" {
-			url = *result.DownloadURL
-		}
-		if url != "" {
-			_ = agent.OpenUpdatePage(url)
-		}
-	}
 }
 
 func checkUpdatesFromTray() {
 	result := agent.CheckForUpdates(true)
-	msg := formatUpdateDialog(result)
-	showUpdateResult(result, msg)
+	if result.Error != nil {
+		showUpdateResult(result, formatUpdateDialog(result))
+		return
+	}
+	if !result.UpdateAvailable {
+		showUpdateResult(result, formatUpdateDialog(result))
+		return
+	}
+	if !updateMu.TryLock() {
+		showInfo("system-monitor agent", "Обновление уже выполняется")
+		return
+	}
+	go runBackgroundUpdate(result)
+}
+
+func runBackgroundUpdate(result release.ReleaseCheckResult) {
+	defer updateMu.Unlock()
+
+	title := "system-monitor agent"
+	systray.SetTooltip("Загрузка обновления " + result.LatestVersion + "...")
+
+	if err := agent.ApplyUpdate(result); err != nil {
+		systray.SetTooltip("system-monitor agent")
+		msg := "Не удалось установить обновление " + result.LatestVersion + ":\n" + err.Error()
+		showError(title, msg)
+		openUpdateFallback(result)
+		return
+	}
+
+	systray.SetTooltip("Установка обновления " + result.LatestVersion + "...")
+}
+
+func openUpdateFallback(result release.ReleaseCheckResult) {
+	url := result.ReleaseURL
+	if result.DownloadURL != nil && *result.DownloadURL != "" {
+		url = *result.DownloadURL
+	}
+	if url != "" {
+		_ = agent.OpenUpdatePage(url)
+	}
 }
