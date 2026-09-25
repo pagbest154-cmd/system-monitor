@@ -17,9 +17,10 @@ const (
 	GitHubRepo              = "pagbest154-cmd/system-monitor"
 	ReleasesLatestPage      = "https://github.com/" + GitHubRepo + "/releases/latest"
 	ReleasesAPI             = "https://api.github.com/repos/" + GitHubRepo + "/releases?per_page=100"
-	DefaultCheckInterval    = 24 * 60 * 60
-	HubVersionCheckInterval = 60 * 60 // hub footer: refresh at most once per hour
-	UpToDateRecheckInterval = 60 * 60 // re-check GitHub if cache claims "up to date"
+	DefaultCheckInterval          = 24 * 60 * 60
+	HubVersionCheckInterval       = 60 * 60  // hub footer: refresh at most once per hour
+	HubAgentVersionCheckInterval  = 10 * 60  // hosts page: agent latest version
+	UpToDateRecheckInterval       = 60 * 60  // re-check GitHub even when cache looks up to date
 )
 
 type ReleaseCheckResult struct {
@@ -247,8 +248,13 @@ func CheckReleaseUpdates(currentVersion, cachePath string, force bool, userAgent
 		if cachedAtVersion != current {
 			needsRefresh = true
 		}
-		// Cache may say "up to date" while new releases were published after the last check.
-		if !needsRefresh && !cached.UpdateAvailable && age >= float64(UpToDateRecheckInterval) {
+		// Running version is newer than cached latest (release published after last check).
+		if current != "" && current != "0.0.0" && cached.LatestVersion != "" &&
+			IsNewerVersion(current, cached.LatestVersion) {
+			needsRefresh = true
+		}
+		// Cache may be stale while new releases were published after the last check.
+		if !needsRefresh && age >= float64(UpToDateRecheckInterval) {
 			needsRefresh = true
 		}
 		if !needsRefresh {

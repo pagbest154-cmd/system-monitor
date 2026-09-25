@@ -326,11 +326,11 @@ func (s *Server) handleSystem(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListAgents(w http.ResponseWriter, r *http.Request) {
 	agents, _ := s.Store.ListAgents()
 	agentRelease := release.CheckReleaseUpdates(
-		"0.0.0",
+		version.Version,
 		paths.HubAgentLatestCache,
 		false,
 		"system-monitor-hub",
-		release.HubVersionCheckInterval,
+		release.HubAgentVersionCheckInterval,
 		nil,
 	)
 	latest := agentRelease.LatestVersion
