@@ -38,6 +38,7 @@ func onTrayReady(configPath string) {
 	mTrayLog := systray.AddMenuItem("Открыть лог трея", "")
 	mPush := systray.AddMenuItem(currentPushNotifyStatus(), "")
 	mPush.Disable()
+	mPushTest := systray.AddMenuItem("Тестовое уведомление", "Проверить Windows toast")
 	registerPushNotifyMenu(func(title string) { mPush.SetTitle(title) })
 	systray.AddSeparator()
 	systray.AddMenuItem("Версия "+version.Version, "").Disable()
@@ -71,6 +72,12 @@ func onTrayReady(configPath string) {
 				_ = openPath(paths.ConfigDir)
 			case <-mTrayLog.ClickedCh:
 				_ = openPath(filepath.Join(paths.ConfigDir, "tray.log"))
+			case <-mPushTest.ClickedCh:
+				go func() {
+					if err := showTestToast(); err != nil {
+						showError(branding.AgentName, "Не удалось показать уведомление:\n"+err.Error()+"\n\nПроверьте tray.log и ярлык в меню Пуск.")
+					}
+				}()
 			case <-mUpdate.ClickedCh:
 				go checkUpdatesFromTray()
 			case <-mQuit.ClickedCh:

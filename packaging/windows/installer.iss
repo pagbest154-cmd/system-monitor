@@ -60,10 +60,10 @@ Source: "third_party\nssm\win64\nssm.exe"; DestDir: "{app}\nssm"; Flags: ignorev
 Source: "{#RepoRoot}\packaging\windows\app-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; IconFilename: "{app}\app-icon.ico"
-Name: "{group}\Настройки SysMon agent"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--settings"; IconFilename: "{app}\app-icon.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; IconFilename: "{app}\app-icon.ico"; AppUserModelID: "pagbest154.system-monitor.agent"
+Name: "{group}\Настройки SysMon agent"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--settings"; IconFilename: "{app}\app-icon.ico"; AppUserModelID: "pagbest154.system-monitor.agent"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; Tasks: desktopicon; IconFilename: "{app}\app-icon.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\system-monitor-agent.exe"; Parameters: "--tray"; Tasks: desktopicon; IconFilename: "{app}\app-icon.ico"; AppUserModelID: "pagbest154.system-monitor.agent"
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyServiceName}-tray"; ValueData: """{app}\system-monitor-agent.exe"" --tray"; Flags: uninsdeletevalue; Tasks: trayautostart

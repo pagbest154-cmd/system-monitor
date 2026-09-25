@@ -71,7 +71,6 @@ func (l *ntfyTrayListener) refresh() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if key == l.cfgKey && l.sub != nil {
-		setPushNotifyStatus("Уведомления: подключены")
 		return
 	}
 	l.stopSubLocked()
@@ -80,6 +79,14 @@ func (l *ntfyTrayListener) refresh() {
 		BaseURL: notify.NtfyBaseURL,
 		Topic:   notify.Topic,
 		Token:   notify.Token,
+		OnConnected: func() {
+			setPushNotifyStatus("Уведомления: подключены")
+			trayLog("ntfy: websocket connected to %s", notify.Topic)
+		},
+		OnError: func(err error) {
+			setPushNotifyStatus("Уведомления: переподключение…")
+			trayLog("ntfy: websocket error: %v", err)
+		},
 		OnMessage: func(title, body string) {
 			trayLog("ntfy message: %s — %s", title, body)
 			showToast(title, body)
@@ -87,7 +94,7 @@ func (l *ntfyTrayListener) refresh() {
 	}
 	sub.Start()
 	l.sub = sub
-	setPushNotifyStatus("Уведомления: подключены")
+	setPushNotifyStatus("Уведомления: подключение…")
 	trayLog("ntfy: listening %s via %s", notify.Topic, notify.NtfyBaseURL)
 }
 

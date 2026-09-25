@@ -14,10 +14,12 @@ import (
 )
 
 type NtfySubscriber struct {
-	BaseURL   string
-	Topic     string
-	Token     string
-	OnMessage func(title, body string)
+	BaseURL     string
+	Topic       string
+	Token       string
+	OnMessage   func(title, body string)
+	OnConnected func()
+	OnError     func(error)
 
 	mu     sync.Mutex
 	stopCh chan struct{}
@@ -86,6 +88,9 @@ func (s *NtfySubscriber) run() {
 		}
 		if err != nil {
 			log.Printf("[ntfy] subscribe error: %v", err)
+			if s.OnError != nil {
+				s.OnError(err)
+			}
 		}
 		select {
 		case <-stopCh:
@@ -117,6 +122,9 @@ func (s *NtfySubscriber) connectOnce(stopCh chan struct{}) error {
 	}
 	defer conn.Close()
 	log.Printf("[ntfy] subscribed to %s", s.Topic)
+	if s.OnConnected != nil {
+		s.OnConnected()
+	}
 
 	for {
 		select {
@@ -124,7 +132,8 @@ func (s *NtfySubscriber) connectOnce(stopCh chan struct{}) error {
 			return nil
 		default:
 		}
-		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		// ntfy keepalive defaults to 45s; shorter deadlines drop the socket constantly.
+		_ = conn.SetReadDeadline(time.Now().Add(90 * time.Second))
 		_, data, err := conn.ReadMessage()
 		if err != nil {
 			select {
@@ -138,7 +147,12 @@ func (s *NtfySubscriber) connectOnce(stopCh chan struct{}) error {
 		if err := json.Unmarshal(data, &msg); err != nil {
 			continue
 		}
-		if msg.Event != "message" {
+		switch msg.Event {
+		case "open", "keepalive", "poll_request":
+			continue
+		case "message":
+			// handled below
+		default:
 			continue
 		}
 		title := strings.TrimSpace(msg.Title)

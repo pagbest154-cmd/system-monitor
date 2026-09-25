@@ -40,7 +40,7 @@ func runSettingsDialog(configPath string) error {
 
 	var hubEdit, agentEdit, tokenEdit *walk.LineEdit
 	var intervalEdit *walk.NumberEdit
-	const dlgW, dlgH = 460, 280
+	const dlgW, dlgH = 460, 320
 
 	window := MainWindow{
 		Title:   "Настройки " + branding.AgentName,
@@ -66,6 +66,20 @@ func runSettingsDialog(configPath string) error {
 				},
 			},
 			Label{Text: notifyStatus},
+			Composite{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{
+						Text: "Тест уведомления",
+						OnClicked: func() {
+							if err := showTestToast(); err != nil {
+								showError(branding.AgentName, "Не удалось показать уведомление:\n"+err.Error())
+							}
+						},
+					},
+					HSpacer{},
+				},
+			},
 			Composite{
 				Layout: HBox{},
 				Children: []Widget{
