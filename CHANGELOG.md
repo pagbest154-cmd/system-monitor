@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+## [1.0.28] — 2026-09-25
+
+### Добавлено
+
+- Агент: расширенное логирование в `agent.log` — старт, hub connect/disconnect, DNS/HTTP ошибки, config sync, обновления
+
 ### Исправлено
 
 - Windows: уведомления — balloon fallback, автосоздание ярлыка для toast; WebSocket ntfy без read timeout

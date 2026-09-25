@@ -21,6 +21,7 @@ func main() {
 	checkUpdate := flag.Bool("check-update", false, "check for updates")
 	showVersion := flag.Bool("version", false, "print version")
 	flag.Parse()
+	agent.InitLogging()
 
 	if *showVersion {
 		fmt.Println(version.Version)

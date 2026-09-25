@@ -12,6 +12,7 @@ import (
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 	"github.com/pagbest154-cmd/system-monitor/internal/protocol"
 	"github.com/pagbest154-cmd/system-monitor/internal/sysinfo"
+	"github.com/pagbest154-cmd/system-monitor/internal/version"
 )
 
 type Runner struct {
@@ -24,9 +25,14 @@ type Runner struct {
 	sensorsMTime   time.Time
 	lastUpdateCheck float64
 	collector      *collector.Collector
-	stop           chan struct{}
-	done           chan struct{}
-	status         Status
+	stop            chan struct{}
+	done            chan struct{}
+	status          Status
+	wasConnected    bool
+	pushErrorCount  int
+	lastPushError   string
+	syncErrorCount  int
+	lastSyncError   string
 }
 
 func NewRunner(configPath string) (*Runner, error) {
@@ -72,9 +78,15 @@ func (r *Runner) Stop() {
 
 func (r *Runner) run() {
 	defer close(r.done)
+	AgentLogf(
+		"starting v%s agent_id=%s hub=%s interval=%ds config=%s",
+		version.Version, r.AgentID, r.Config.HubURL, r.Config.IntervalSec, r.ConfigPath,
+	)
 	r.ensureCollector()
 	if err := r.reloadCollector(); err != nil {
-		fmt.Printf("system-monitor-agent: начальная синхронизация config: %v\n", err)
+		r.logSyncError("initial config sync", err)
+	} else {
+		AgentLogf("config synced version=%d", r.configVersion)
 	}
 	r.writeStatus(map[string]interface{}{"connected": false})
 	r.maybeCheckUpdates(time.Now().Unix())
@@ -91,22 +103,33 @@ func (r *Runner) run() {
 		r.maybeCheckUpdates(now)
 		if now-lastConfigSync > 60 {
 			if err := r.reloadCollector(); err != nil {
-				fmt.Printf("system-monitor-agent: ошибка SyncConfig: %v\n", err)
+				r.logSyncError("periodic config sync", err)
 				errStr := err.Error()
 				r.writeStatus(map[string]interface{}{
 					"connected": false, "last_error": errStr, "last_error_ts": float64(now),
 				})
+			} else {
+				r.syncErrorCount = 0
+				r.lastSyncError = ""
+				AgentLogf("config synced version=%d", r.configVersion)
 			}
 			lastConfigSync = now
 		}
 		count, err := r.pushOnce()
 		if err != nil {
-			fmt.Printf("system-monitor-agent: ошибка отправки метрик: %v\n", err)
+			r.logPushError(err)
 			errStr := err.Error()
 			r.writeStatus(map[string]interface{}{
 				"connected": false, "last_error": errStr, "last_error_ts": float64(now),
 			})
+			r.wasConnected = false
 		} else {
+			if !r.wasConnected {
+				AgentLogf("hub connected, pushed %d metrics to %s", count, r.Config.HubURL)
+			}
+			r.wasConnected = true
+			r.pushErrorCount = 0
+			r.lastPushError = ""
 			r.writeStatus(map[string]interface{}{
 				"connected": true, "last_success_ts": float64(time.Now().Unix()),
 				"last_error": nil, "last_error_ts": nil, "metrics_count": count,
@@ -162,7 +185,7 @@ func (r *Runner) maybeReloadConfig() {
 	r.configMTime = info.ModTime()
 	cfg, err := config.LoadAgentConfig(r.ConfigPath)
 	if err != nil {
-		fmt.Printf("system-monitor-agent: ошибка перезагрузки config: %v\n", err)
+		AgentLogf("config reload failed: %v", err)
 		return
 	}
 	token := config.LoadAgentToken(cfg)
@@ -178,7 +201,7 @@ func (r *Runner) maybeReloadConfig() {
 	r.Transport = NewTransport(cfg.HubURL, token)
 	r.status.AgentID = agentID
 	r.status.HubURL = cfg.HubURL
-	fmt.Printf("system-monitor-agent: config reloaded for %s\n", agentID)
+	AgentLogf("config reloaded agent_id=%s hub=%s interval=%ds", agentID, cfg.HubURL, cfg.IntervalSec)
 }
 
 func (r *Runner) maybeReloadSensors() {
@@ -188,10 +211,10 @@ func (r *Runner) maybeReloadSensors() {
 	}
 	r.sensorsMTime = info.ModTime()
 	if err := r.reloadCollector(); err != nil {
-		fmt.Printf("system-monitor-agent: ошибка перезагрузки датчиков: %v\n", err)
+		AgentLogf("sensor reload failed: %v", err)
 		return
 	}
-	fmt.Println("system-monitor-agent: agent_sensors.yaml reloaded")
+	AgentLogf("agent_sensors.yaml reloaded")
 }
 
 func (r *Runner) maybeCheckUpdates(now int64) {
@@ -200,9 +223,10 @@ func (r *Runner) maybeCheckUpdates(now int64) {
 	}
 	r.lastUpdateCheck = float64(now)
 	result := CheckForUpdates(false)
-	if result.UpdateAvailable {
-		fmt.Printf("system-monitor-agent: доступно обновление %s (установлена %s)\n",
-			result.LatestVersion, result.CurrentVersion)
+	if result.Error != nil && *result.Error != "" {
+		AgentLogf("update check failed: %s", *result.Error)
+	} else if result.UpdateAvailable {
+		AgentLogf("update available: %s (current %s)", result.LatestVersion, result.CurrentVersion)
 	}
 	r.writeStatus(map[string]interface{}{
 		"update_available": result.UpdateAvailable,
@@ -364,6 +388,26 @@ func addDiskSnapshot(snapshot map[string]map[string]interface{}, part map[string
 	snapshot[sensorID] = map[string]interface{}{
 		"sensor_id": sensorID, "value": percent, "status": "ok", "ts": now, "unit": "%",
 	}
+}
+
+func (r *Runner) logPushError(err error) {
+	r.pushErrorCount++
+	msg := err.Error()
+	if msg == r.lastPushError && r.pushErrorCount%12 != 1 {
+		return
+	}
+	r.lastPushError = msg
+	AgentLogf("metrics push failed (attempt %d): %v", r.pushErrorCount, err)
+}
+
+func (r *Runner) logSyncError(stage string, err error) {
+	r.syncErrorCount++
+	msg := err.Error()
+	if msg == r.lastSyncError && r.syncErrorCount%3 != 1 {
+		return
+	}
+	r.lastSyncError = msg
+	AgentLogf("%s failed (attempt %d): %v", stage, r.syncErrorCount, err)
 }
 
 func metricValue(item map[string]interface{}) *float64 {

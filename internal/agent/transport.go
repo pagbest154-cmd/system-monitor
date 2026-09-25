@@ -14,9 +14,9 @@ import (
 )
 
 type Transport struct {
-	HubURL  string
-	Token   string
-	client  *http.Client
+	HubURL string
+	Token  string
+	client *http.Client
 }
 
 func NewTransport(hubURL, token string) *Transport {
@@ -36,12 +36,12 @@ func (t *Transport) headers() map[string]string {
 }
 
 func (t *Transport) PushReport(report *protocol.AgentReport) error {
-	url := fmt.Sprintf("%s/api/agents/%s/metrics", t.HubURL, report.AgentID)
+	endpoint := fmt.Sprintf("%s/api/agents/%s/metrics", t.HubURL, report.AgentID)
 	body, err := json.Marshal(report)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -50,12 +50,12 @@ func (t *Transport) PushReport(report *protocol.AgentReport) error {
 	}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		return err
+		return WrapRequestError("push metrics", endpoint, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		data, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("push metrics: %s", string(data))
+		return WrapHTTPError("push metrics", endpoint, resp.StatusCode, string(data))
 	}
 	return nil
 }
@@ -78,16 +78,16 @@ func (t *Transport) SyncConfig(agentID string, configVersion int) (protocol.Agen
 	}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		return protocol.AgentConfigResponse{}, err
+		return protocol.AgentConfigResponse{}, WrapRequestError("sync config", u.String(), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		data, _ := io.ReadAll(resp.Body)
-		return protocol.AgentConfigResponse{}, fmt.Errorf("sync config: %s", string(data))
+		return protocol.AgentConfigResponse{}, WrapHTTPError("sync config", u.String(), resp.StatusCode, string(data))
 	}
 	var out protocol.AgentConfigResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return protocol.AgentConfigResponse{}, err
+		return protocol.AgentConfigResponse{}, fmt.Errorf("sync config decode: %w", err)
 	}
 	return out, nil
 }
@@ -103,16 +103,16 @@ func (t *Transport) FetchNotifyConfig(agentID string) (protocol.AgentNotifyRespo
 	}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		return protocol.AgentNotifyResponse{}, err
+		return protocol.AgentNotifyResponse{}, WrapRequestError("fetch notify", endpoint, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		data, _ := io.ReadAll(resp.Body)
-		return protocol.AgentNotifyResponse{}, fmt.Errorf("fetch notify config: %s", string(data))
+		return protocol.AgentNotifyResponse{}, WrapHTTPError("fetch notify", endpoint, resp.StatusCode, string(data))
 	}
 	var out protocol.AgentNotifyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return protocol.AgentNotifyResponse{}, err
+		return protocol.AgentNotifyResponse{}, fmt.Errorf("fetch notify decode: %w", err)
 	}
 	return out, nil
 }

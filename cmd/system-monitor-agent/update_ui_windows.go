@@ -57,8 +57,10 @@ func runBackgroundUpdate(result release.ReleaseCheckResult) {
 			"После загрузки появится запрос UAC — подтвердите его.",
 	)
 	systray.SetTooltip("Загрузка обновления " + result.LatestVersion + "...")
+	trayLog("update: starting %s", result.LatestVersion)
 
 	if err := agent.ApplyUpdate(result); err != nil {
+		trayLog("update: failed: %v", err)
 		systray.SetTooltip(branding.AgentName)
 		msg := "Не удалось установить обновление " + result.LatestVersion + ":\n" + err.Error()
 		showError(title, msg)
@@ -67,6 +69,7 @@ func runBackgroundUpdate(result release.ReleaseCheckResult) {
 	}
 
 	systray.SetTooltip("Установка обновления " + result.LatestVersion + "...")
+	trayLog("update: installer started for %s", result.LatestVersion)
 	showInfo(
 		title,
 		"Подтвердите UAC — запустится установщик "+result.LatestVersion+".\n\n"+

@@ -57,13 +57,13 @@ func (l *ntfyTrayListener) refresh() {
 	if err != nil {
 		l.stopSub()
 		setPushNotifyStatus("Уведомления: hub недоступен")
-		trayLog("ntfy: fetch notify config: %v", err)
+		trayLog("ntfy: fetch notify config from %s: %v", cfg.HubURL, err)
 		return
 	}
 	if !notify.Enabled || notify.Topic == "" {
 		l.stopSub()
 		setPushNotifyStatus("Уведомления: выкл. на hub")
-		trayLog("ntfy: alerts disabled for %s", agentID)
+		trayLog("ntfy: alerts disabled for %s (enabled=%v topic=%q)", agentID, notify.Enabled, notify.Topic)
 		return
 	}
 

@@ -29,12 +29,19 @@ func ApplyUpdate(result release.ReleaseCheckResult) error {
 	}
 
 	installerPath := filepath.Join(stagingDir, AgentAssetName(result.LatestVersion))
+	AgentLogf("update: downloading %s from %s", result.LatestVersion, *result.DownloadURL)
 	_ = os.Remove(installerPath)
 	if err := release.DownloadFile(*result.DownloadURL, installerPath, "system-monitor-agent"); err != nil {
+		AgentLogf("update: download failed: %v", err)
 		return fmt.Errorf("ошибка загрузки: %w", err)
 	}
 	if err := validateWindowsInstaller(installerPath); err != nil {
+		AgentLogf("update: installer validation failed: %v", err)
 		return fmt.Errorf("некорректный установщик: %w", err)
+	}
+	info, _ := os.Stat(installerPath)
+	if info != nil {
+		AgentLogf("update: downloaded %s (%d bytes)", installerPath, info.Size())
 	}
 
 	return launchStagedInstaller(installerPath, result.LatestVersion)
@@ -112,7 +119,9 @@ func shellExecuteElevated(file, parameters, workingDir string) error {
 		return err
 	}
 	if err := windows.ShellExecute(0, verb, filePtr, paramPtr, dirPtr, windows.SW_HIDE); err != nil {
+		AgentLogf("update: installer launch failed: %v", err)
 		return fmt.Errorf("не удалось запустить установщик (отклонён UAC?): %w", err)
 	}
+	AgentLogf("update: installer launched %s", file)
 	return nil
 }
