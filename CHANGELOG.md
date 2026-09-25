@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Исправлено
+
+- Windows: уведомления — balloon fallback, автосоздание ярлыка для toast; WebSocket ntfy без read timeout
+
 ## [1.0.27] — 2026-09-25
 
 ### Исправлено

@@ -126,14 +126,29 @@ func (s *NtfySubscriber) connectOnce(stopCh chan struct{}) error {
 		s.OnConnected()
 	}
 
+	pingDone := make(chan struct{})
+	defer close(pingDone)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-pingDone:
+				return
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				_ = conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second))
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-stopCh:
 			return nil
 		default:
 		}
-		// ntfy keepalive defaults to 45s; shorter deadlines drop the socket constantly.
-		_ = conn.SetReadDeadline(time.Now().Add(90 * time.Second))
 		_, data, err := conn.ReadMessage()
 		if err != nil {
 			select {

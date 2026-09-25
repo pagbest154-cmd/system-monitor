@@ -26,6 +26,11 @@ func onTrayReady(configPath string) {
 	systray.SetTitle(branding.AgentShort)
 	systray.SetTooltip(branding.AgentName)
 	systray.SetIcon(trayIcon("idle"))
+	go func() {
+		if path := ensureToastShortcut(); path != "" {
+			trayLog("toast shortcut: %s", path)
+		}
+	}()
 
 	mStatus := systray.AddMenuItem(trayStatusText(nil, serviceRunning()), "")
 	mStatus.Disable()
@@ -73,11 +78,7 @@ func onTrayReady(configPath string) {
 			case <-mTrayLog.ClickedCh:
 				_ = openPath(filepath.Join(paths.ConfigDir, "tray.log"))
 			case <-mPushTest.ClickedCh:
-				go func() {
-					if err := showTestToast(); err != nil {
-						showError(branding.AgentName, "Не удалось показать уведомление:\n"+err.Error()+"\n\nПроверьте tray.log и ярлык в меню Пуск.")
-					}
-				}()
+				go func() { _ = showTestToast() }()
 			case <-mUpdate.ClickedCh:
 				go checkUpdatesFromTray()
 			case <-mQuit.ClickedCh:
