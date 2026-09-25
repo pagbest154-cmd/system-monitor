@@ -84,6 +84,12 @@ func (f *FleetState) GetAgentSnapshot(agentID string) map[string]map[string]inte
 	return out
 }
 
+func (f *FleetState) RemoveAgent(agentID string) {
+	f.mu.Lock()
+	delete(f.latestByAgent, agentID)
+	f.mu.Unlock()
+}
+
 func (f *FleetState) GetCombinedSnapshot() map[string]map[string]interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -248,6 +248,33 @@ func (s *MetricStore) GetLatest(sensorID string) (map[string]interface{}, error)
 	return result, nil
 }
 
+func (s *MetricStore) DeleteAgent(agentID string) (bool, int64, error) {
+	prefix := agentID + ":%"
+	var found bool
+	var metricsDeleted int64
+	err := s.withDB(func(db *sql.DB) error {
+		var count int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM agents WHERE agent_id = ?`, agentID).Scan(&count); err != nil {
+			return err
+		}
+		found = count > 0
+		res, err := db.Exec(`DELETE FROM metrics WHERE sensor_id LIKE ?`, prefix+"%")
+		if err != nil {
+			return err
+		}
+		metricsDeleted, _ = res.RowsAffected()
+		if err := s.initAlertStateSchema(db); err != nil {
+			return err
+		}
+		if _, err := db.Exec(`DELETE FROM alert_state WHERE agent_id = ?`, agentID); err != nil {
+			return err
+		}
+		_, err = db.Exec(`DELETE FROM agents WHERE agent_id = ?`, agentID)
+		return err
+	})
+	return found, metricsDeleted, err
+}
+
 func (s *MetricStore) Cleanup(retentionDays int) (int64, error) {
 	cutoff := float64(time.Now().UnixNano())/1e9 - float64(retentionDays*24*60*60)
 	var count int64

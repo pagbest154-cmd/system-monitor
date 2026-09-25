@@ -443,9 +443,14 @@ export async function initHostsPage() {
           <td>${renderVersionCell(agent)}</td>
           <td>${agent.last_seen ? formatTime(agent.last_seen) : "—"}</td>
           <td>
-            <button type="button" class="host-alerts-btn" data-agent-id="${agent.id}" title="${i18n.hosts.alertsTitle}">
-              ${icon("bell", "icon-xs")}
-            </button>
+            <div class="host-actions-cell">
+              <button type="button" class="host-alerts-btn" data-agent-id="${agent.id}" title="${i18n.hosts.alertsTitle}">
+                ${icon("bell", "icon-xs")}
+              </button>
+              <button type="button" class="host-delete-btn" data-agent-id="${agent.id}" title="${i18n.hosts.delete}">
+                ${icon("trash2", "icon-xs")}
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -463,7 +468,7 @@ export async function initHostsPage() {
           <th><span class="th-icon">${icon("memoryStick", "icon-xs")}RAM</span></th>
           <th>${i18n.hosts.version}</th>
           <th><span class="th-icon">${icon("clock", "icon-xs")}${i18n.hosts.lastSeen}</span></th>
-          <th><span class="th-icon">${icon("bell", "icon-xs")}${i18n.hosts.alertsColumn}</span></th>
+          <th><span class="th-icon">${icon("settings", "icon-xs")}${i18n.hosts.actionsColumn}</span></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -480,6 +485,24 @@ export async function initHostsPage() {
     button.addEventListener("click", () => {
       const agent = agents.find((item) => item.id === button.dataset.agentId);
       if (agent) openUpdateModal(agent, listMeta);
+    });
+  });
+  wrap.querySelectorAll(".host-delete-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const agent = agents.find((item) => item.id === button.dataset.agentId);
+      if (!agent) return;
+      const name = agent.name || agent.id;
+      const message = i18n.hosts.deleteConfirm.replace("{name}", name);
+      if (!window.confirm(message)) return;
+      try {
+        await fetchJson(`/api/agents/${encodeURIComponent(agent.id)}`, { method: "DELETE" });
+        if (getSavedAgent() === agent.id) {
+          saveAgent("");
+        }
+        await initHostsPage();
+      } catch (err) {
+        window.alert(err.message || i18n.hosts.deleteFailed);
+      }
     });
   });
 }

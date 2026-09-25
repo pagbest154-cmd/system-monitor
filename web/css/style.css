@@ -1405,7 +1405,14 @@ input[type="checkbox"]:disabled {
   }
 }
 
-.host-alerts-btn {
+.host-actions-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.host-alerts-btn,
+.host-delete-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1414,12 +1421,23 @@ input[type="checkbox"]:disabled {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--surface);
-  color: var(--accent);
   cursor: pointer;
+}
+
+.host-alerts-btn {
+  color: var(--accent);
 }
 
 .host-alerts-btn:hover {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.host-delete-btn {
+  color: var(--danger, #e5484d);
+}
+
+.host-delete-btn:hover {
+  background: color-mix(in srgb, var(--danger, #e5484d) 12%, var(--surface));
 }
 
 .host-alerts-modal {

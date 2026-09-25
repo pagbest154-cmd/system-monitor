@@ -100,6 +100,7 @@ func (s *Server) Router() http.Handler {
 	r.Get("/api/metrics/*", s.handleMetrics)
 	r.Get("/api/system", s.handleSystem)
 	r.Get("/api/agents", s.handleListAgents)
+	r.Delete("/api/agents/{agentID}", s.handleDeleteAgent)
 	r.Get("/api/agents/{agentID}", s.handleGetAgent)
 	r.Get("/api/agents/{agentID}/system", s.handleAgentSystem)
 	r.Post("/api/agents/{agentID}/metrics", s.handlePushMetrics)
@@ -362,6 +363,39 @@ func (s *Server) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, record)
+}
+
+func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
+	agentID := chi.URLParam(r, "agentID")
+	found, metricsDeleted, err := s.Store.DeleteAgent(agentID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": err.Error()})
+		return
+	}
+	if !found {
+		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Агент не найден"})
+		return
+	}
+	s.Fleet.RemoveAgent(agentID)
+	if alertsCfg, err := config.LoadAlertsConfig(""); err == nil && alertsCfg.Alerts != nil {
+		delete(alertsCfg.Alerts, agentID)
+		_ = config.SaveAlertsConfig(alertsCfg, "")
+	}
+	if agentsCfg, err := config.LoadAgentsConfig(""); err == nil {
+		filtered := make([]config.AgentEntry, 0, len(agentsCfg.Agents))
+		for _, entry := range agentsCfg.Agents {
+			if entry.ID != agentID {
+				filtered = append(filtered, entry)
+			}
+		}
+		agentsCfg.Agents = filtered
+		_ = config.SaveAgentsConfig(agentsCfg, "")
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":          "ok",
+		"agent_id":        agentID,
+		"metrics_deleted": metricsDeleted,
+	})
 }
 
 func (s *Server) handleAgentSystem(w http.ResponseWriter, r *http.Request) {
