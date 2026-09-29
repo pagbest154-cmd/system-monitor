@@ -26,6 +26,11 @@ class SetupViewModel(
         _uiState.update { it.copy(hubUrl = url, error = null) }
     }
 
+    fun applyScannedUrl(raw: String) {
+        val url = raw.trim().removeSuffix("/")
+        _uiState.update { it.copy(hubUrl = url, error = null) }
+    }
+
     fun save(onSuccess: () -> Unit) {
         val url = _uiState.value.hubUrl.trim()
         if (url.isBlank()) {

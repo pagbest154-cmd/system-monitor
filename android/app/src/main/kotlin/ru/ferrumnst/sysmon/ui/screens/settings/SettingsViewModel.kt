@@ -32,6 +32,10 @@ data class SettingsUiState(
     val appUpdateMessage: String? = null,
     val mode: String = "hub",
     val hubVersion: String = "",
+    val hubUpdateAvailable: Boolean = false,
+    val hubLatestVersion: String? = null,
+    val hubUpdateHint: String? = null,
+    val hubReleaseUrl: String? = null,
     val retentionDays: Int = 31,
     val defaultIntervalSec: Int = 5,
     val dashboardTitle: String = "",
@@ -103,6 +107,10 @@ class SettingsViewModel(
                         isLoading = false,
                         mode = mode,
                         hubVersion = version,
+                        hubUpdateAvailable = versionInfo.updateAvailable,
+                        hubLatestVersion = versionInfo.latestVersion,
+                        hubUpdateHint = versionInfo.updateHint,
+                        hubReleaseUrl = versionInfo.releaseUrl,
                         retentionDays = sensors.settings?.retentionDays ?: 31,
                         defaultIntervalSec = sensors.settings?.defaultIntervalSec ?: 5,
                         dashboardTitle = dashboard.dashboard?.title ?: "Мониторинг системы",
@@ -134,6 +142,48 @@ class SettingsViewModel(
     fun onDashboardRefreshChange(value: String) {
         value.toIntOrNull()?.let { sec ->
             _uiState.update { it.copy(dashboardRefreshSec = sec, message = null) }
+        }
+    }
+
+    fun updatePanel(
+        index: Int,
+        id: String? = null,
+        title: String? = null,
+        type: String? = null,
+        sensors: List<String>? = null,
+    ) {
+        _uiState.update { state ->
+            val updated = state.panels.toMutableList()
+            if (index !in updated.indices) return@update state
+            val current = updated[index]
+            updated[index] = current.copy(
+                id = id ?: current.id,
+                title = title ?: current.title,
+                type = type ?: current.type,
+                sensors = sensors ?: current.sensors,
+            )
+            state.copy(panels = updated, panelCount = updated.size, message = null)
+        }
+    }
+
+    fun addPanel() {
+        _uiState.update { state ->
+            val panel = DashboardPanel(
+                id = "panel_${System.currentTimeMillis()}",
+                title = "Новая панель",
+                type = "chart",
+                sensors = emptyList(),
+            )
+            val panels = state.panels + panel
+            state.copy(panels = panels, panelCount = panels.size, message = null)
+        }
+    }
+
+    fun removePanel(index: Int) {
+        _uiState.update { state ->
+            if (index !in state.panels.indices) return@update state
+            val panels = state.panels.filterIndexed { i, _ -> i != index }
+            state.copy(panels = panels, panelCount = panels.size, message = null)
         }
     }
 
@@ -199,7 +249,9 @@ class SettingsViewModel(
                     ),
                     panels = state.panels,
                 )
-                _uiState.update { it.copy(isSaving = false, message = "Сохранено") }
+                _uiState.update {
+                    it.copy(isSaving = false, message = "Сохранено", panelCount = state.panels.size)
+                }
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(isSaving = false, error = HubErrors.userMessage(error, "Ошибка сохранения"))

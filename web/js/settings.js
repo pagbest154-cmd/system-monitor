@@ -1,3 +1,4 @@
+import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 import { fetchJson } from "./api.js";
 import { i18n } from "./i18n.js";
 import { icon, sensorIcon, panelIcon, setIcon } from "./icons.js";
@@ -402,6 +403,31 @@ function updateHubUrlPreview() {
   if (copyBtn) {
     copyBtn.hidden = !resolved;
   }
+  updateHubUrlQr(resolved);
+}
+
+function updateHubUrlQr(url) {
+  const wrap = document.getElementById("hub-url-qr");
+  const canvas = document.getElementById("hub-url-qr-canvas");
+  const hint = document.getElementById("hub-url-qr-hint");
+  if (!wrap || !canvas) return;
+  if (!url) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  if (hint) {
+    hint.textContent = t.hubQrHint;
+  }
+  QRCode.toCanvas(canvas, url, {
+    width: 200,
+    margin: 2,
+    errorCorrectionLevel: "M",
+    color: { dark: "#0f1419ff", light: "#ffffffff" },
+  }).catch((err) => {
+    console.error("hub QR render failed", err);
+    wrap.hidden = true;
+  });
 }
 
 function initHubDomainSection() {

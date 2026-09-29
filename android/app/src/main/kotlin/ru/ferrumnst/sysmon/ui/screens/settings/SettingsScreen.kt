@@ -36,8 +36,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import android.app.Application
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import ru.ferrumnst.sysmon.SysMonApplication
 import ru.ferrumnst.sysmon.data.repository.HubRepository
+import ru.ferrumnst.sysmon.data.session.AppPreferencesStore
 import ru.ferrumnst.sysmon.ui.components.DashboardCard
 import ru.ferrumnst.sysmon.ui.components.SysMonBottomBarClearance
 import kotlinx.coroutines.launch
@@ -45,6 +49,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     repository: HubRepository,
+    appPreferencesStore: AppPreferencesStore,
     onLogout: () -> Unit,
     onResetHub: () -> Unit,
 ) {
@@ -55,8 +60,12 @@ fun SettingsScreen(
     )
     val state by vm.uiState.collectAsState()
     val session by repository.session.collectAsState(initial = ru.ferrumnst.sysmon.data.session.HubSession())
+    val appPrefs by appPreferencesStore.preferences.collectAsState(
+        initial = ru.ferrumnst.sysmon.data.session.AppPreferences(),
+    )
     val scope = rememberCoroutineScope()
-    val activity = LocalContext.current as? Activity
+    val context = LocalContext.current
+    val activity = context as? Activity
 
     Column(
         modifier = Modifier
@@ -84,6 +93,43 @@ fun SettingsScreen(
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
 
+        DashboardCard(title = "Интерфейс") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Тёмная тема")
+                Switch(
+                    checked = appPrefs.useDarkTheme,
+                    onCheckedChange = { enabled ->
+                        scope.launch { appPreferencesStore.setUseDarkTheme(enabled) }
+                    },
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Биометрическая блокировка")
+                Switch(
+                    checked = appPrefs.biometricLockEnabled,
+                    onCheckedChange = { enabled ->
+                        scope.launch { appPreferencesStore.setBiometricLockEnabled(enabled) }
+                    },
+                )
+            }
+            Text(
+                "При включении потребуется отпечаток или PIN перед открытием приложения",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
         DashboardCard(title = "Подключение приложения") {
             Text("URL: ${session.hubUrl.ifBlank { "—" }}", style = MaterialTheme.typography.bodyMedium)
             if (session.hasCredentials) {
@@ -95,6 +141,34 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            if (state.hubUpdateAvailable) {
+                Text(
+                    "Доступно обновление hub: ${state.hubLatestVersion ?: "—"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                state.hubUpdateHint?.let { hint ->
+                    Text(
+                        hint,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        val text = state.hubUpdateHint ?: state.hubReleaseUrl ?: return@OutlinedButton
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("hub update", text))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                ) {
+                    Text("Скопировать команду обновления")
+                }
+            }
             if (session.hasCredentials) {
                 OutlinedButton(
                     onClick = {
@@ -245,12 +319,61 @@ fun SettingsScreen(
                     .padding(top = 8.dp),
                 singleLine = true,
             )
-            Text(
-                "Панелей на dashboard: ${state.panelCount}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            state.panels.forEachIndexed { index, panel ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Панель ${index + 1}", style = MaterialTheme.typography.labelMedium)
+                        IconButton(onClick = { vm.removePanel(index) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Удалить панель")
+                        }
+                    }
+                    OutlinedTextField(
+                        value = panel.title,
+                        onValueChange = { vm.updatePanel(index, title = it) },
+                        label = { Text("Заголовок") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = panel.type,
+                        onValueChange = { vm.updatePanel(index, type = it) },
+                        label = { Text("Тип") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = panel.sensors.joinToString(", "),
+                        onValueChange = { raw ->
+                            val sensors = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                            vm.updatePanel(index, sensors = sensors)
+                        },
+                        label = { Text("Датчики (через запятую)") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
+                        singleLine = false,
+                    )
+                }
+            }
+            OutlinedButton(
+                onClick = vm::addPanel,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Text("Добавить панель", modifier = Modifier.padding(start = 8.dp))
+            }
             Button(
                 onClick = vm::saveDashboard,
                 enabled = !state.isSaving,

@@ -2,6 +2,8 @@ package ru.ferrumnst.sysmon
 
 import android.app.Application
 import ru.ferrumnst.sysmon.data.repository.HubRepository
+import ru.ferrumnst.sysmon.data.session.AppPreferencesStore
+import ru.ferrumnst.sysmon.data.session.OfflineCacheStore
 import ru.ferrumnst.sysmon.data.session.SessionStore
 import ru.ferrumnst.sysmon.data.websocket.LiveWebSocketClient
 import ru.ferrumnst.sysmon.notifications.NotificationHelper
@@ -21,12 +23,17 @@ class SysMonApplication : Application() {
     lateinit var appUpdateManager: AppUpdateManager
         private set
 
+    lateinit var appPreferencesStore: AppPreferencesStore
+        private set
+
     override fun onCreate() {
         super.onCreate()
         NotificationHelper.ensureChannel(this)
         val sessionStore = SessionStore(this)
+        appPreferencesStore = AppPreferencesStore(this)
+        val offlineCache = OfflineCacheStore(this)
         val liveClient = LiveWebSocketClient(appScope)
-        repository = HubRepository(sessionStore, liveClient)
+        repository = HubRepository(sessionStore, offlineCache, liveClient)
         appUpdateManager = AppUpdateManager(this)
         WidgetUpdateWorker.schedule(this)
         AppUpdateWorker.schedule(this)

@@ -20,6 +20,7 @@ import ru.ferrumnst.sysmon.data.models.AgentSystemInfo
 import ru.ferrumnst.sysmon.data.models.VersionResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.POST
@@ -42,6 +43,9 @@ interface HubApi {
 
     @GET("api/agents")
     suspend fun agents(): AgentsResponse
+
+    @DELETE("api/agents/{agentId}")
+    suspend fun deleteAgent(@Path("agentId") agentId: String): Response<Unit>
 
     @GET("api/sensors")
     suspend fun sensors(@Query("agent") agentId: String? = null): SensorsResponse

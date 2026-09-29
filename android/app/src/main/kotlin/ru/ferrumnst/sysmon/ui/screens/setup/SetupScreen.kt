@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import ru.ferrumnst.sysmon.data.repository.HubRepository
 
 @Composable
@@ -31,6 +35,9 @@ fun SetupScreen(
 ) {
     val vm: SetupViewModel = viewModel(factory = SetupViewModel.Factory(repository))
     val state by vm.uiState.collectAsState()
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let { vm.applyScannedUrl(it) }
+    }
 
     Scaffold { padding ->
         Column(
@@ -69,7 +76,23 @@ fun SetupScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = {
+                    scanLauncher.launch(
+                        ScanOptions().apply {
+                            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            setPrompt("Наведите на QR с URL хаба")
+                            setBeepEnabled(false)
+                        },
+                    )
+                },
+                enabled = !state.isLoading,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Сканировать QR")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { vm.save(onComplete) },
                 enabled = !state.isLoading,

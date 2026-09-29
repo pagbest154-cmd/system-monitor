@@ -99,6 +99,7 @@ object NotificationHelper {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_OPEN_SETTINGS_UPDATE, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -118,4 +119,5 @@ object NotificationHelper {
     }
 
     const val EXTRA_AGENT_ID = "agent_id"
+    const val EXTRA_OPEN_SETTINGS_UPDATE = "open_settings_update"
 }

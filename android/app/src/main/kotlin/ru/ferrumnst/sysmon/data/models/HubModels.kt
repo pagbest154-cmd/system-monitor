@@ -30,6 +30,11 @@ data class ModeResponse(
 @Serializable
 data class AgentsResponse(
     val agents: List<AgentInfo> = emptyList(),
+    @SerialName("latest_agent_version") val latestAgentVersion: String? = null,
+    @SerialName("agent_release_url") val agentReleaseUrl: String? = null,
+    @SerialName("agent_apt_command") val agentAptCommand: String? = null,
+    @SerialName("agent_deb_url") val agentDebUrl: String? = null,
+    @SerialName("agent_windows_url") val agentWindowsUrl: String? = null,
 )
 
 @Serializable
@@ -236,4 +241,7 @@ data class VersionResponse(
     @SerialName("current_version") val currentVersion: String? = null,
     @SerialName("latest_version") val latestVersion: String? = null,
     @SerialName("update_available") val updateAvailable: Boolean = false,
+    @SerialName("release_url") val releaseUrl: String? = null,
+    @SerialName("update_hint") val updateHint: String? = null,
+    val error: String? = null,
 )

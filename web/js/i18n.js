@@ -58,6 +58,7 @@ export const i18n = {
     hubUrlForAgents: "URL для агентов",
     copyHubUrl: "Копировать URL",
     hubUrlCopied: "URL hub скопирован",
+    hubQrHint: "Отсканируйте в приложении SysMon: экран подключения к хабу → «Сканировать QR»",
   },
   noData: "Нет данных",
   periodLabel: "Период графиков",

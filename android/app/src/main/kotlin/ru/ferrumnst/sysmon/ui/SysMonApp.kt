@@ -21,7 +21,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import android.net.Uri
 import ru.ferrumnst.sysmon.data.repository.HubRepository
+import ru.ferrumnst.sysmon.data.session.AppPreferencesStore
+import ru.ferrumnst.sysmon.ui.security.BiometricGate
 import ru.ferrumnst.sysmon.ui.components.SysMonBottomBar
 import ru.ferrumnst.sysmon.ui.components.SysMonBottomTabs
 import ru.ferrumnst.sysmon.ui.navigation.Routes
@@ -38,8 +41,11 @@ import ru.ferrumnst.sysmon.ui.viewmodel.AppViewModel
 @Composable
 fun SysMonApp(
     repository: HubRepository,
+    appPreferencesStore: AppPreferencesStore,
     launchAgentId: String? = null,
+    openSettingsUpdate: Boolean = false,
     onLaunchAgentHandled: () -> Unit = {},
+    onOpenSettingsUpdateHandled: () -> Unit = {},
 ) {
     val app = LocalContext.current.applicationContext as Application
     val appViewModel: AppViewModel = viewModel(factory = AppViewModel.Factory(app, repository))
@@ -74,13 +80,24 @@ fun SysMonApp(
             )
         }
         AppStartDestination.Main -> {
-            MainScreen(
-                repository = repository,
-                launchAgentId = launchAgentId,
-                onLaunchAgentHandled = onLaunchAgentHandled,
-                onLogout = appViewModel::onLogout,
-                onResetHub = appViewModel::resolveStartDestination,
+            val prefs by appPreferencesStore.preferences.collectAsState(
+                initial = ru.ferrumnst.sysmon.data.session.AppPreferences(),
             )
+            val session by repository.session.collectAsState(
+                initial = ru.ferrumnst.sysmon.data.session.HubSession(),
+            )
+            BiometricGate(enabled = prefs.biometricLockEnabled && session.hasCredentials) {
+                MainScreen(
+                    repository = repository,
+                    appPreferencesStore = appPreferencesStore,
+                    launchAgentId = launchAgentId,
+                    openSettingsUpdate = openSettingsUpdate,
+                    onLaunchAgentHandled = onLaunchAgentHandled,
+                    onOpenSettingsUpdateHandled = onOpenSettingsUpdateHandled,
+                    onLogout = appViewModel::onLogout,
+                    onResetHub = appViewModel::resolveStartDestination,
+                )
+            }
         }
     }
 }
@@ -88,8 +105,11 @@ fun SysMonApp(
 @Composable
 private fun MainScreen(
     repository: HubRepository,
+    appPreferencesStore: AppPreferencesStore,
     launchAgentId: String?,
+    openSettingsUpdate: Boolean,
     onLaunchAgentHandled: () -> Unit,
+    onOpenSettingsUpdateHandled: () -> Unit,
     onLogout: () -> Unit,
     onResetHub: () -> Unit,
 ) {
@@ -107,6 +127,18 @@ private fun MainScreen(
             restoreState = false
         }
         onLaunchAgentHandled()
+    }
+
+    LaunchedEffect(openSettingsUpdate) {
+        if (!openSettingsUpdate) return@LaunchedEffect
+        navController.navigate(Routes.Settings) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+        onOpenSettingsUpdateHandled()
     }
 
     val tabs = listOf(
@@ -132,25 +164,31 @@ private fun MainScreen(
                 HostsScreen(
                     repository = repository,
                     onOpenAlerts = { agentId, agentName ->
-                        navController.navigate(Routes.hostAlerts(agentId))
+                        navController.navigate(Routes.hostAlerts(agentId, agentName))
                     },
                 )
             }
             composable(
                 route = Routes.HostAlerts,
-                arguments = listOf(navArgument("agentId") { type = NavType.StringType }),
+                arguments = listOf(
+                    navArgument("agentId") { type = NavType.StringType },
+                    navArgument("agentName") { type = NavType.StringType },
+                ),
             ) { entry ->
                 val agentId = entry.arguments?.getString("agentId") ?: return@composable
+                val agentName = Uri.decode(entry.arguments?.getString("agentName").orEmpty())
+                    .ifBlank { agentId }
                 HostAlertsScreen(
                     repository = repository,
                     agentId = agentId,
-                    agentName = agentId,
+                    agentName = agentName,
                     onBack = { navController.popBackStack() },
                 )
             }
             composable(Routes.Settings) {
                 SettingsScreen(
                     repository = repository,
+                    appPreferencesStore = appPreferencesStore,
                     onLogout = onLogout,
                     onResetHub = onResetHub,
                 )

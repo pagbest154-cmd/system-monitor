@@ -80,6 +80,10 @@
       <p class="hint">URL для агентов: <code id="hub-url-preview">—</code>
         <button type="button" id="copy-hub-url" class="btn btn-secondary btn-sm" title="Копировать URL" hidden>Копировать</button>
       </p>
+      <div id="hub-url-qr" class="hub-url-qr" hidden>
+        <p class="hint hub-url-qr-hint" id="hub-url-qr-hint"></p>
+        <canvas id="hub-url-qr-canvas" width="200" height="200" role="img" aria-labelledby="hub-url-qr-hint"></canvas>
+      </div>
       <div class="actions-row">
         <button id="save-hub-domain" class="btn"><span data-icon="checkCircle"></span>Сохранить домен</button>
       </div>

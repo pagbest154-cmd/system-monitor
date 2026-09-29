@@ -7,6 +7,7 @@ import ru.ferrumnst.sysmon.data.models.AgentAlertConfig
 import ru.ferrumnst.sysmon.data.models.AgentAlertsResponse
 import ru.ferrumnst.sysmon.data.models.AgentConfigEntry
 import ru.ferrumnst.sysmon.data.models.AgentInfo
+import ru.ferrumnst.sysmon.data.models.AgentsResponse
 import ru.ferrumnst.sysmon.data.models.AgentsConfigUpdateRequest
 import ru.ferrumnst.sysmon.data.models.AuthStatus
 import ru.ferrumnst.sysmon.data.models.DashboardConfig
@@ -24,6 +25,7 @@ import ru.ferrumnst.sysmon.data.models.SensorInfo
 import ru.ferrumnst.sysmon.data.models.SensorsResponse
 import ru.ferrumnst.sysmon.data.models.VersionResponse
 import ru.ferrumnst.sysmon.data.session.HubSession
+import ru.ferrumnst.sysmon.data.session.OfflineCacheStore
 import ru.ferrumnst.sysmon.data.session.SessionStore
 import ru.ferrumnst.sysmon.data.websocket.LiveWebSocketClient
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +35,7 @@ import retrofit2.HttpException
 
 class HubRepository(
     private val sessionStore: SessionStore,
+    private val offlineCache: OfflineCacheStore,
     private val liveClient: LiveWebSocketClient,
 ) {
     val session: Flow<HubSession> = sessionStore.session
@@ -71,6 +74,7 @@ class HubRepository(
     suspend fun clearAll() {
         liveClient.disconnect()
         invalidateClient()
+        offlineCache.clear()
         sessionStore.clearAll()
     }
 
@@ -111,8 +115,29 @@ class HubRepository(
         return apiFor(session).mode().mode
     }
 
+    suspend fun getAgentsResponse(session: HubSession): AgentsResponse {
+        val response = apiFor(session).agents()
+        offlineCache.saveAgents(response.agents)
+        return response
+    }
+
     suspend fun getAgents(session: HubSession): List<AgentInfo> {
-        return apiFor(session).agents().agents
+        return getAgentsResponse(session).agents
+    }
+
+    suspend fun getCachedAgents(): List<AgentInfo>? = offlineCache.getCachedAgents()
+
+    suspend fun getCachedAgentsAtMillis(): Long? = offlineCache.cachedAtMillis()
+
+    suspend fun deleteAgent(session: HubSession, agentId: String) {
+        val response = apiFor(session).deleteAgent(agentId)
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
+        val cached = offlineCache.getCachedAgents()
+        if (cached != null) {
+            offlineCache.saveAgents(cached.filter { it.id != agentId })
+        }
     }
 
     suspend fun getSensors(session: HubSession, agentId: String?): List<SensorInfo> {

@@ -18,8 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,11 +31,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +58,7 @@ import ru.ferrumnst.sysmon.ui.util.formatGbRange
 import ru.ferrumnst.sysmon.ui.util.memoryTotalGb
 import ru.ferrumnst.sysmon.ui.util.memoryUsedGb
 import ru.ferrumnst.sysmon.ui.util.ramPercent
+import ru.ferrumnst.sysmon.ui.screens.hosts.AgentUpdateHints
 import ru.ferrumnst.sysmon.ui.util.versionAndOsText
 
 @Composable
@@ -56,6 +68,45 @@ fun HostsScreen(
 ) {
     val vm: HostsViewModel = viewModel(factory = HostsViewModel.Factory(repository))
     val state by vm.uiState.collectAsState()
+    val context = LocalContext.current
+    var agentToDelete by remember { mutableStateOf<ru.ferrumnst.sysmon.data.models.AgentInfo?>(null) }
+    var showUpdateHints by remember { mutableStateOf(false) }
+
+    agentToDelete?.let { agent ->
+        AlertDialog(
+            onDismissRequest = { agentToDelete = null },
+            title = { Text("Удалить хост?") },
+            text = {
+                Text("Будут удалены метрики и конфигурация агента «${agent.name ?: agent.id}» на hub.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.deleteAgent(agent.id)
+                        agentToDelete = null
+                    },
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { agentToDelete = null }) {
+                    Text("Отмена")
+                }
+            },
+        )
+    }
+
+    if (showUpdateHints) {
+        AgentUpdateDialog(
+            hints = state.agentUpdateHints,
+            onDismiss = { showUpdateHints = false },
+            onCopy = { text ->
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("agent update", text))
+            },
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -76,6 +127,15 @@ fun HostsScreen(
             IconButton(onClick = vm::refresh) {
                 Icon(Icons.Default.Refresh, contentDescription = "Обновить")
             }
+        }
+
+        state.message?.let { msg ->
+            Text(
+                text = msg,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
 
         when {
@@ -115,10 +175,13 @@ fun HostsScreen(
                         HostCard(
                             agent = agent,
                             isSelected = agent.id == state.selectedAgentId,
+                            isDeleting = state.deletingAgentId == agent.id,
                             onSelect = { vm.selectAgent(agent.id) },
                             onOpenAlerts = {
                                 onOpenAlerts(agent.id, agent.name ?: agent.id)
                             },
+                            onDelete = { agentToDelete = agent },
+                            onShowUpdate = { showUpdateHints = true },
                         )
                     }
                 }
@@ -128,11 +191,55 @@ fun HostsScreen(
 }
 
 @Composable
+private fun AgentUpdateDialog(
+    hints: AgentUpdateHints,
+    onDismiss: () -> Unit,
+    onCopy: (String) -> Unit,
+) {
+    val body = buildString {
+        hints.latestVersion?.let { append("Версия: $it\n\n") }
+        hints.aptCommand?.let { append("Linux (apt):\n$it\n\n") }
+        hints.debUrl?.let { append("deb: $it\n\n") }
+        hints.windowsUrl?.let { append("Windows: $it\n\n") }
+        hints.releaseUrl?.let { append("Release: $it") }
+    }.trim()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Обновление агента") },
+        text = {
+            Text(
+                if (body.isNotBlank()) body else "Команда обновления недоступна",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    hints.aptCommand?.let(onCopy)
+                    onDismiss()
+                },
+                enabled = !hints.aptCommand.isNullOrBlank(),
+            ) {
+                Text("Скопировать apt")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрыть")
+            }
+        },
+    )
+}
+
+@Composable
 private fun HostCard(
     agent: ru.ferrumnst.sysmon.data.models.AgentInfo,
     isSelected: Boolean,
+    isDeleting: Boolean,
     onSelect: () -> Unit,
     onOpenAlerts: () -> Unit,
+    onDelete: () -> Unit,
+    onShowUpdate: () -> Unit,
 ) {
     val cpu = agent.cpuPercent()
     val ram = agent.ramPercent()
@@ -202,11 +309,27 @@ private fun HostCard(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (agent.updateAvailable) {
+                        IconButton(onClick = onShowUpdate) {
+                            Icon(
+                                Icons.Default.SystemUpdate,
+                                contentDescription = "Обновить агента",
+                                tint = SysMonColors.Warn,
+                            )
+                        }
+                    }
                     IconButton(onClick = onOpenAlerts) {
                         Icon(
                             Icons.Default.Notifications,
                             contentDescription = "Уведомления",
                             tint = SysMonColors.Accent,
+                        )
+                    }
+                    IconButton(onClick = onDelete, enabled = !isDeleting) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Удалить хост",
+                            tint = MaterialTheme.colorScheme.error,
                         )
                     }
                     if (isSelected) {
