@@ -9,6 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import android.app.Application
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +37,7 @@ import ru.ferrumnst.sysmon.ui.screens.hosts.HostsScreen
 import ru.ferrumnst.sysmon.ui.screens.hubunavailable.HubUnavailableScreen
 import ru.ferrumnst.sysmon.ui.screens.login.LoginScreen
 import ru.ferrumnst.sysmon.ui.screens.settings.SettingsScreen
+import ru.ferrumnst.sysmon.ui.screens.settings.SettingsTab
 import ru.ferrumnst.sysmon.ui.screens.setup.SetupScreen
 import ru.ferrumnst.sysmon.ui.viewmodel.AppStartDestination
 import ru.ferrumnst.sysmon.ui.viewmodel.AppViewModel
@@ -116,6 +120,7 @@ private fun MainScreen(
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: Routes.Dashboard
+    var settingsInitialTab by remember { mutableStateOf(SettingsTab.App) }
 
     LaunchedEffect(launchAgentId) {
         val agentId = launchAgentId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
@@ -131,6 +136,7 @@ private fun MainScreen(
 
     LaunchedEffect(openSettingsUpdate) {
         if (!openSettingsUpdate) return@LaunchedEffect
+        settingsInitialTab = SettingsTab.App
         navController.navigate(Routes.Settings) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = true
@@ -189,6 +195,7 @@ private fun MainScreen(
                 SettingsScreen(
                     repository = repository,
                     appPreferencesStore = appPreferencesStore,
+                    initialTab = settingsInitialTab,
                     onLogout = onLogout,
                     onResetHub = onResetHub,
                 )
