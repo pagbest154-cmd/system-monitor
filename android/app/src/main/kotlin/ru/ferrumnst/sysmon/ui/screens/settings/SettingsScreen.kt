@@ -66,7 +66,11 @@ fun SettingsScreen(
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp + SysMonBottomBarClearance),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Настройки", style = MaterialTheme.typography.titleLarge)
+        Text(
+            "Настройки",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
 
         if (state.isLoading) {
             CircularProgressIndicator(modifier = Modifier.padding(24.dp))

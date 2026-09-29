@@ -309,7 +309,11 @@ private fun DashboardHeader(
                 label = if (state.isLive) "Live" else "Offline",
             )
             IconButton(onClick = onRefresh) {
-                Icon(Icons.Default.Refresh, contentDescription = "Обновить")
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = "Обновить",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
 
