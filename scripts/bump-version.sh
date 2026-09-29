@@ -18,4 +18,10 @@ else
   echo "warning: scripts/sync-deb-version.sh not found" >&2
 fi
 
-echo "Updated internal/version/version.go and debian/changelog"
+if [[ -x "$root/scripts/sync-android-version.sh" ]]; then
+  "$root/scripts/sync-android-version.sh" "$version"
+else
+  echo "warning: scripts/sync-android-version.sh not found" >&2
+fi
+
+echo "Updated internal/version/version.go, debian/changelog, and android/gradle.properties"

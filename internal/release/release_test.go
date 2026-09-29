@@ -23,6 +23,14 @@ func TestIsNewerVersion(t *testing.T) {
 	}
 }
 
+func TestSysmonApkAssetName(t *testing.T) {
+	got := SysmonApkAssetName("1.0.43")
+	want := "sysmon-1.0.43.apk"
+	if got != want {
+		t.Fatalf("SysmonApkAssetName(%q) = %q, want %q", "1.0.43", got, want)
+	}
+}
+
 func TestPickLatestRelease(t *testing.T) {
 	releases := []ghRelease{
 		{TagName: "v0.0.18", HTMLURL: "https://example/0.0.18"},

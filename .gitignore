@@ -32,3 +32,9 @@ packaging/windows/third_party/
 packaging/windows/output/
 packaging/linux/build/
 packaging/linux/dist/
+android/.gradle/
+android/local.properties
+android/**/build/
+android/**/*.apk
+android/**/*.aab
+android/.kotlin/

@@ -3,8 +3,9 @@
 #   hub     — Docker-образ hub (только при изменениях hub-кода)
 #   windows — Windows installer (.exe)
 #   deb     — Linux agent (.deb) и APT repo
+#   android — SysMon Android APK
 #
-# .deb и .exe всегда собираются вместе на каждом релизе.
+# .deb, .exe и APK всегда собираются вместе на каждом релизе.
 set -euo pipefail
 
 CURRENT="${1:-${GITHUB_REF_NAME:-HEAD}}"
@@ -13,6 +14,7 @@ PREV="$(git tag --sort=-v:refname | awk -v c="$CURRENT" '$0==c {getline; print; 
 hub=false
 windows=true
 deb=true
+android=true
 
 classify_file() {
   local file="$1"
@@ -41,7 +43,7 @@ else
   done < <(git diff --name-only "$PREV" HEAD)
 
   $hub && echo "Hub (Docker) build required"
-  echo "Agent (.deb + Windows .exe) build required (always on release)"
+  echo "Agent (.deb + Windows .exe + Android APK) build required (always on release)"
   if ! $hub; then
     echo "Hub unchanged — Docker image will not be rebuilt"
   fi
@@ -51,8 +53,10 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   echo "hub=$hub" >> "$GITHUB_OUTPUT"
   echo "windows=$windows" >> "$GITHUB_OUTPUT"
   echo "deb=$deb" >> "$GITHUB_OUTPUT"
+  echo "android=$android" >> "$GITHUB_OUTPUT"
 else
   echo "hub=$hub"
   echo "windows=$windows"
   echo "deb=$deb"
+  echo "android=$android"
 fi

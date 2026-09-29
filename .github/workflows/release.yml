@@ -18,6 +18,7 @@ jobs:
       hub: ${{ steps.detect.outputs.hub }}
       windows: ${{ steps.detect.outputs.windows }}
       deb: ${{ steps.detect.outputs.deb }}
+      android: ${{ steps.detect.outputs.android }}
       version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
@@ -89,6 +90,46 @@ jobs:
           name: windows-agent
           path: packaging/windows/output/*.exe
 
+  build-android:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync Android version from tag
+        run: |
+          chmod +x scripts/sync-android-version.sh
+          ./scripts/sync-android-version.sh "${{ needs.detect-changes.outputs.version }}"
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Package APK
+        run: |
+          mkdir -p dist/android
+          cp "android/app/build/outputs/apk/release/app-release.apk" \
+            "dist/android/sysmon-${{ needs.detect-changes.outputs.version }}.apk"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: dist/android/sysmon-*.apk
+
   build-deb:
     needs: detect-changes
     runs-on: ubuntu-24.04
@@ -139,12 +180,13 @@ jobs:
           path: dist/
 
   release:
-    needs: [detect-changes, build-docker, build-deb, build-windows]
+    needs: [detect-changes, build-docker, build-deb, build-windows, build-android]
     if: >-
       always() && !cancelled() &&
       (needs.build-docker.result == 'success' || needs.build-docker.result == 'skipped') &&
       (needs.build-deb.result == 'success' || needs.build-deb.result == 'skipped') &&
-      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped')
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
+      (needs.build-android.result == 'success' || needs.build-android.result == 'skipped')
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -162,6 +204,12 @@ jobs:
           name: windows-agent
           path: dist/windows
 
+      - name: Download Android APK
+        uses: actions/download-artifact@v7
+        with:
+          name: android-apk
+          path: dist/android
+
       - name: Remove existing release (clean re-tag)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -173,6 +221,7 @@ jobs:
           HUB_BUILT: ${{ needs.detect-changes.outputs.hub == 'true' && needs.build-docker.result == 'success' }}
           DEB_BUILT: ${{ needs.build-deb.result == 'success' }}
           WINDOWS_BUILT: ${{ needs.build-windows.result == 'success' }}
+          ANDROID_BUILT: ${{ needs.build-android.result == 'success' }}
         run: |
           chmod +x scripts/extract-release-notes.sh
           ./scripts/extract-release-notes.sh "$VERSION" dist/RELEASE_NOTES.md
@@ -193,6 +242,11 @@ jobs:
               echo "- **Agent (Windows)** — собран"
             else
               echo "- **Agent (Windows)** — ошибка сборки"
+            fi
+            if [ "$ANDROID_BUILT" = "true" ]; then
+              echo "- **SysMon (Android APK)** — собран"
+            else
+              echo "- **SysMon (Android APK)** — ошибка сборки"
             fi
             echo
             if [ "$HUB_BUILT" = "true" ]; then
@@ -215,6 +269,11 @@ jobs:
               echo "Скачайте \`system-monitor-agent_${VERSION}_setup.exe\`, запустите установщик."
               echo "Конфиг: \`%ProgramData%\\system-monitor\\agent.yaml\`"
             fi
+            if [ "$ANDROID_BUILT" = "true" ]; then
+              echo
+              echo "### SysMon (Android)"
+              echo "Скачайте \`sysmon-${VERSION}.apk\` и установите на устройство (разрешите установку из неизвестных источников)."
+            fi
           } >> dist/RELEASE_NOTES.md
 
       - name: Create GitHub Release
@@ -229,6 +288,7 @@ jobs:
             dist/apt-repo/dists/**/*
             dist/apt-repo/README.txt
             dist/windows/system-monitor-agent_*_setup.exe
+            dist/android/sysmon-*.apk
 
   publish-apt-pages:
     needs: [release, build-deb]

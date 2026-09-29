@@ -234,6 +234,15 @@ sudo apt install system-monitor-agent
 | Hub | Docker | `./config/` + volume `hub-data` |
 | Agent (Linux) | apt | `/etc/system-monitor/agent.yaml` |
 | Agent (Windows) | setup.exe | `%ProgramData%\system-monitor\agent.yaml` |
+| SysMon (Android) | APK из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases) | DataStore в приложении |
+
+**Android (SysMon):**
+
+1. Скачайте `sysmon-{version}.apk` из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
+2. Установите на устройство (разрешите установку из неизвестных источников).
+3. Укажите URL хаба и при необходимости `HUB_NAME` / `HUB_KEY`.
+
+Исходники и локальная сборка: каталог [`android/`](android/).
 
 **Windows — трей и настройки:**
 
