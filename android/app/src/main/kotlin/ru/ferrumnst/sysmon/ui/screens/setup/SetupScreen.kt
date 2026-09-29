@@ -25,7 +25,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import ru.ferrumnst.sysmon.data.repository.HubRepository
 
 @Composable
@@ -79,13 +78,7 @@ fun SetupScreen(
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
                 onClick = {
-                    scanLauncher.launch(
-                        ScanOptions().apply {
-                            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                            setPrompt("Наведите на QR из настроек hub")
-                            setBeepEnabled(false)
-                        },
-                    )
+                    scanLauncher.launch(hubQrScanOptions())
                 },
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth(),

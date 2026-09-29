@@ -17,7 +17,35 @@
     </nav>
   </header>
 
-  <main class="settings-layout">
+  <main class="settings-layout is-loading" id="settings-main">
+    <div class="settings-skeleton" id="settings-skeleton" aria-busy="true" aria-label="Загрузка настроек">
+      <div class="skeleton-block section">
+        <div class="skeleton-line skeleton-line--title"></div>
+        <div class="skeleton-row">
+          <div class="skeleton-field"></div>
+          <div class="skeleton-field"></div>
+        </div>
+      </div>
+      <div class="skeleton-block section">
+        <div class="skeleton-line skeleton-line--title"></div>
+        <div class="skeleton-line skeleton-line--hint"></div>
+        <div class="skeleton-table"></div>
+        <div class="skeleton-row skeleton-row--actions">
+          <div class="skeleton-btn"></div>
+          <div class="skeleton-btn skeleton-btn--primary"></div>
+        </div>
+      </div>
+      <div class="skeleton-block section">
+        <div class="skeleton-line skeleton-line--title"></div>
+        <div class="skeleton-row">
+          <div class="skeleton-field"></div>
+          <div class="skeleton-field"></div>
+        </div>
+        <div class="skeleton-table skeleton-table--short"></div>
+      </div>
+    </div>
+
+    <div class="settings-sections" id="settings-sections" hidden>
     <section class="section">
       <h2><span data-icon="sliders"></span>Общие настройки</h2>
       <div class="form-row">
@@ -86,10 +114,15 @@
             <button id="save-hub-domain" class="btn"><span data-icon="checkCircle"></span>Сохранить домен</button>
           </div>
         </div>
-        <aside id="hub-url-qr" class="hub-url-qr" hidden aria-labelledby="hub-url-qr-title">
-          <p class="hub-url-qr-title" id="hub-url-qr-title">Подключение SysMon</p>
-          <p class="hint hub-url-qr-hint" id="hub-url-qr-hint"></p>
-          <canvas id="hub-url-qr-canvas" width="200" height="200" role="img" aria-labelledby="hub-url-qr-hint"></canvas>
+        <aside class="hub-domain-qr-col" id="hub-url-qr-wrap" aria-labelledby="hub-url-qr-title">
+          <div class="hub-url-qr" id="hub-url-qr">
+            <p class="hub-url-qr-title" id="hub-url-qr-title">Подключение SysMon</p>
+            <p class="hint hub-url-qr-hint" id="hub-url-qr-hint"></p>
+            <div class="hub-url-qr-canvas-wrap">
+              <div class="hub-url-qr-skeleton" id="hub-url-qr-skeleton" aria-hidden="true"></div>
+              <canvas id="hub-url-qr-canvas" width="200" height="200" role="img" aria-labelledby="hub-url-qr-hint" hidden></canvas>
+            </div>
+          </div>
         </aside>
       </div>
     </section>
@@ -150,6 +183,7 @@
       </div>
       <div id="save-message" class="message"></div>
     </section>
+    </div>
   </main>
 
   <script type="module">

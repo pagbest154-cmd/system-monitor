@@ -439,25 +439,35 @@ function updateHubUrlQr(url) {
   const wrap = document.getElementById("hub-url-qr");
   const canvas = document.getElementById("hub-url-qr-canvas");
   const hint = document.getElementById("hub-url-qr-hint");
+  const skeleton = document.getElementById("hub-url-qr-skeleton");
   if (!wrap || !canvas) return;
   if (!url) {
-    wrap.hidden = true;
+    if (hint) hint.textContent = "";
+    canvas.hidden = true;
+    if (skeleton) skeleton.hidden = false;
     return;
   }
-  wrap.hidden = false;
   if (hint) {
     hint.textContent = hubAppPairing?.auth_required ? t.hubQrHintPairing : t.hubQrHint;
   }
+  if (skeleton) skeleton.hidden = false;
+  canvas.hidden = true;
   const qrPayload = buildAppPairingQrPayload(url, hubAppPairing);
   QRCode.toCanvas(canvas, qrPayload, {
     width: 200,
     margin: 2,
     errorCorrectionLevel: "M",
     color: { dark: "#0f1419ff", light: "#ffffffff" },
-  }).catch((err) => {
-    console.error("hub QR render failed", err);
-    wrap.hidden = true;
-  });
+  })
+    .then(() => {
+      canvas.hidden = false;
+      if (skeleton) skeleton.hidden = true;
+    })
+    .catch((err) => {
+      console.error("hub QR render failed", err);
+      canvas.hidden = true;
+      if (skeleton) skeleton.hidden = false;
+    });
 }
 
 function initHubDomainSection() {
@@ -532,52 +542,68 @@ function addSensor() {
   renderSensorsTable();
 }
 
-export async function initSettings() {
-  const modeData = await fetchJson("/api/mode");
-  appMode = modeData.mode || "standalone";
-
-  const typesData = await fetchJson("/api/sensor-types");
-  sensorTypes = typesData.types || [];
-
-  const sensorsData = await fetchJson("/api/sensors");
-  const dashboardData = await fetchJson("/api/dashboard");
-
-  allSensors = sensorsData.sensors.map((s) => ({ ...s, _existing: true }));
-  availableSensors = allSensors.filter((s) => s.supported);
-  panels = dashboardData.panels || [];
-
-  const sensorsSection = document.querySelector(".section:nth-of-type(2)");
-  const agentsSection = document.getElementById("agents-section");
-  if (appMode === "hub") {
-    availableSensors = HUB_PANEL_SENSOR_OPTIONS;
-    if (sensorsSection) sensorsSection.hidden = true;
-    if (agentsSection) agentsSection.hidden = false;
-    const hubData = await fetchJson("/api/config/hub");
-    const hub = hubData.hub || {};
-    document.getElementById("hub-domain").value = hub.domain || "";
-    document.getElementById("hub-public-url").value = hub.public_url || "";
-    document.getElementById("hub-use-https").checked = hub.use_https !== false;
-    await refreshHubAppPairing();
-    updateHubUrlPreview();
-    initHubDomainSection();
-    const agentsData = await fetchJson("/api/config/agents");
-    agents = (agentsData.agents || []).map((agent) => ({
-      ...agent,
-      token: agent.token && agent.token !== "change-me" ? agent.token : generateAgentToken(),
-    }));
-    renderAgentsTable();
+function finishSettingsLoading() {
+  const main = document.getElementById("settings-main");
+  const sections = document.getElementById("settings-sections");
+  const skeleton = document.getElementById("settings-skeleton");
+  main?.classList.remove("is-loading");
+  if (sections) sections.hidden = false;
+  if (skeleton) {
+    skeleton.hidden = true;
+    skeleton.setAttribute("aria-busy", "false");
   }
+}
 
-  document.getElementById("retention-days").value = sensorsData.settings?.retention_days ?? 31;
-  document.getElementById("default-interval-sec").value =
-    sensorsData.settings?.default_interval_sec ?? 5;
-  document.getElementById("dashboard-title").value =
-    dashboardData.dashboard?.title || i18n.appTitle;
-  document.getElementById("refresh-sec").value =
-    dashboardData.dashboard?.refresh_sec || 3;
+export async function initSettings() {
+  try {
+    const [modeData, typesData, sensorsData, dashboardData] = await Promise.all([
+      fetchJson("/api/mode"),
+      fetchJson("/api/sensor-types"),
+      fetchJson("/api/sensors"),
+      fetchJson("/api/dashboard"),
+    ]);
+    appMode = modeData.mode || "standalone";
 
-  renderSensorsTable();
-  renderPanelsTable();
+    sensorTypes = typesData.types || [];
+
+    allSensors = sensorsData.sensors.map((s) => ({ ...s, _existing: true }));
+    availableSensors = allSensors.filter((s) => s.supported);
+    panels = dashboardData.panels || [];
+
+    const sensorsSection = document.querySelector(".section:nth-of-type(2)");
+    const agentsSection = document.getElementById("agents-section");
+    if (appMode === "hub") {
+      availableSensors = HUB_PANEL_SENSOR_OPTIONS;
+      if (sensorsSection) sensorsSection.hidden = true;
+      if (agentsSection) agentsSection.hidden = false;
+      const [hubData, agentsData] = await Promise.all([
+        fetchJson("/api/config/hub"),
+        fetchJson("/api/config/agents"),
+      ]);
+      const hub = hubData.hub || {};
+      document.getElementById("hub-domain").value = hub.domain || "";
+      document.getElementById("hub-public-url").value = hub.public_url || "";
+      document.getElementById("hub-use-https").checked = hub.use_https !== false;
+      await refreshHubAppPairing();
+      updateHubUrlPreview();
+      initHubDomainSection();
+      agents = (agentsData.agents || []).map((agent) => ({
+        ...agent,
+        token: agent.token && agent.token !== "change-me" ? agent.token : generateAgentToken(),
+      }));
+      renderAgentsTable();
+    }
+
+    document.getElementById("retention-days").value = sensorsData.settings?.retention_days ?? 31;
+    document.getElementById("default-interval-sec").value =
+      sensorsData.settings?.default_interval_sec ?? 5;
+    document.getElementById("dashboard-title").value =
+      dashboardData.dashboard?.title || i18n.appTitle;
+    document.getElementById("refresh-sec").value =
+      dashboardData.dashboard?.refresh_sec || 3;
+
+    renderSensorsTable();
+    renderPanelsTable();
 
   document.getElementById("add-sensor").addEventListener("click", addSensor);
 
@@ -668,4 +694,7 @@ export async function initSettings() {
       showMessage(err.message || t.saveError, true);
     }
   });
+  } finally {
+    finishSettingsLoading();
+  }
 }
