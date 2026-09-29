@@ -570,7 +570,7 @@ export async function initSettings() {
     availableSensors = allSensors.filter((s) => s.supported);
     panels = dashboardData.panels || [];
 
-    const sensorsSection = document.querySelector(".section:nth-of-type(2)");
+    const sensorsSection = document.getElementById("sensors-section");
     const agentsSection = document.getElementById("agents-section");
     if (appMode === "hub") {
       availableSensors = HUB_PANEL_SENSOR_OPTIONS;
