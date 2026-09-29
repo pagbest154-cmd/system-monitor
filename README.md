@@ -6,13 +6,14 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.23%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](#установка)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Android-lightgrey)](#установка)
 [![Release](https://img.shields.io/github/v/release/pagbest154-cmd/system-monitor?label=release)](https://github.com/pagbest154-cmd/system-monitor/releases)
 
 Датчики, графики и пороги — через YAML или веб-интерфейс.  
 Live-обновления по WebSocket, история в SQLite.
 
 [Установка](#установка) ·
+[Android (SysMon)](#android-sysmon) ·
 [Возможности](#возможности) ·
 [Скриншот](#интерфейс) ·
 [API](#api) ·
@@ -43,6 +44,8 @@ Live-обновления по WebSocket, история в SQLite.
 
 **UI:** gauge · линейные графики · столбцы · live WebSocket · страница настроек
 
+**Android-клиент SysMon:** панель и список хостов на телефоне · live-метрики · виджет на рабочий стол · настройка ntfy-алертов · автообновление с GitHub Releases
+
 **Уведомления:** push через [ntfy](https://ntfy.sh) — пороги по датчикам, offline-хост, один APK для любого self-hosted hub
 
 ---
@@ -62,10 +65,12 @@ flowchart TB
         DB[(SQLite)]
         UI[Dashboard]
     end
+    MOB[SysMon Android]
     A1 -->|HTTP push| API
     A2 --> API
     API --> DB
     DB --> UI
+    MOB -->|REST + WS| API
 ```
 
 **Standalone (одна машина):**
@@ -114,7 +119,7 @@ docker compose up -d
 Конкретная версия: `VERSION=0.0.20 docker compose pull && docker compose up -d`  
 В футере веб-интерфейса — установленная версия и статус обновления с GitHub.
 
-> На каждом релизе собираются **оба агента** — `.deb` (Linux) и `.exe` (Windows). Docker-образ hub пересобирается только при изменениях hub-кода. Смотрите блок «Сборка релиза» в [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
+> На каждом релизе собираются **агенты** (`.deb`, `.exe`), **Android APK** (`sysmon-{version}.apk`) и при изменениях hub-кода — Docker-образ. Смотрите блок «Сборка релиза» в [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
 
 ### Подключение агентов к hub
 
@@ -236,13 +241,40 @@ sudo apt install system-monitor-agent
 | Agent (Windows) | setup.exe | `%ProgramData%\system-monitor\agent.yaml` |
 | SysMon (Android) | APK из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases) | DataStore в приложении |
 
-**Android (SysMon):**
+### Android (SysMon)
+
+Мобильный клиент на **Kotlin + Jetpack Compose** для вашего self-hosted hub. Один APK подходит к любому инстансу `system-monitor` — укажите URL и войдите теми же `HUB_NAME` / `HUB_KEY`, что и в веб-панели.
+
+**Установка:**
 
 1. Скачайте `sysmon-{version}.apk` из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
-2. Установите на устройство (разрешите установку из неизвестных источников).
-3. Укажите URL хаба и при необходимости `HUB_NAME` / `HUB_KEY`.
+2. Установите на устройство (Android 8+, API 26+) — разрешите установку из неизвестных источников.
+3. При первом запуске укажите URL хаба (`https://monitor.example.com` или `http://192.168.1.10:8080`).
+4. Если на hub включена авторизация — введите имя и ключ.
 
-Исходники и локальная сборка: каталог [`android/`](android/).
+**Возможности приложения:**
+
+| Вкладка / раздел | Что делает |
+|------------------|------------|
+| **Панель** | Gauge, графики, GPU/RAM/диски, live по WebSocket, выбор хоста и периода (1ч–1н) |
+| **Хосты** | Список агентов, CPU/RAM, статус online/offline, переход к алертам |
+| **Настройки** | Выход, смена hub, обновление приложения, конфиг dashboard/agents (как в веб-UI) |
+| **Виджет** | До 6 датчиков выбранного хоста на рабочем столе (обновление ~15 мин) |
+| **Алерты** | Пороги по датчикам и offline-хост, подписка на ntfy topic прямо в приложении |
+
+**Автообновление:** при запуске, раз в час в фоне (с уведомлением) и вручную в **Настройки → Обновление приложения**. APK качается с GitHub Releases и открывается системный установщик.
+
+> Обновление поверх установленной версии возможно только при **одинаковой подписи APK**. Если Android пишет «Приложение не установлено» — удалите SysMon и установите APK из релиза заново (обычно после смены ключа подписи в CI).
+
+**Сборка из исходников:**
+
+```bash
+cd android
+./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease  # как в CI
+```
+
+Подробнее: [`android/README.md`](android/README.md) (архитектура, API, подпись для CI).
 
 **Windows — трей и настройки:**
 
@@ -334,6 +366,9 @@ Standalone без fleet: `go run ./cmd/system-monitor --mode standalone --host 0
 | Linux: `pydantic_core._pydantic_core` missing (status 1) | Обновите deb до **0.0.25+** (автономный бинарник) |
 | Linux: служба не стартует после обновления | `journalctl -u system-monitor-agent -f` |
 | Служба не стартует после обновления | Логи: `%ProgramData%\system-monitor\agent.log` |
+| SysMon: «Приложение не установлено» при OTA | Разная подпись APK — удалите приложение, установите APK из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases) |
+| SysMon: «Хаб недоступен» | Сеть или hub выключен; сессия сохраняется — **Повторить** или **Сменить хаб** |
+| SysMon: нет push-алертов | Включите «Подписка в приложении» на странице алертов хоста; разрешите уведомления Android |
 
 **Быстрая проверка API** (с cookie сессии или Basic Auth `HUB_NAME:HUB_KEY`):
 
