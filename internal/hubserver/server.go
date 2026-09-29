@@ -117,6 +117,7 @@ func (s *Server) Router() http.Handler {
 	r.Put("/api/config/hub", s.handleUpdateHubConfig)
 	r.Get("/api/hub/info", s.handleHubInfo)
 	r.Get("/api/auth/status", s.handleAuthStatus)
+	r.Get("/api/auth/app-pairing", s.handleAppPairing)
 	r.Post("/api/auth/login", s.handleLogin)
 	r.Post("/api/auth/logout", s.handleLogout)
 	r.Get("/api/sensor-types", s.handleSensorTypes)
@@ -677,6 +678,32 @@ func (s *Server) handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 		"hub_name":      HubName(),
 		"authenticated": IsAuthenticated(r),
 	})
+}
+
+func (s *Server) handleAppPairing(w http.ResponseWriter, r *http.Request) {
+	if s.Mode != "hub" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Доступно только в режиме hub"})
+		return
+	}
+	if !IsAuthenticated(r) {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Требуется авторизация"})
+		return
+	}
+	cfg, _ := config.LoadHubConfig("")
+	publicURL := config.ResolvePublicURL(cfg.Hub)
+	enabled := HubAuthEnabled()
+	out := map[string]interface{}{
+		"url":           publicURL,
+		"auth_required": enabled,
+	}
+	if enabled {
+		name, key, ok := hubCredentials()
+		if ok {
+			out["hub_name"] = name
+			out["hub_key"] = key
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {

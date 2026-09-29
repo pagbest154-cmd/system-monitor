@@ -99,7 +99,7 @@ fun SysMonApp(
                     onLaunchAgentHandled = onLaunchAgentHandled,
                     onOpenSettingsUpdateHandled = onOpenSettingsUpdateHandled,
                     onLogout = appViewModel::onLogout,
-                    onResetHub = appViewModel::resolveStartDestination,
+                    onResetHub = appViewModel::onChangeHub,
                 )
             }
         }

@@ -60,32 +60,37 @@
       </div>
     </section>
 
-    <section class="section" id="hub-domain-section" hidden>
+    <section class="section hub-domain-section" id="hub-domain-section" hidden>
       <h2><span data-icon="globe"></span>Домен hub</h2>
       <p class="hint">Укажите домен для доступа к hub. Агентам указывайте «Публичный URL» как hub-url.</p>
-      <div class="form-row">
-        <label>
-          Домен
-          <input type="text" id="hub-domain" placeholder="monitor.example.com">
-        </label>
-        <label>
-          Публичный URL (опционально)
-          <input type="text" id="hub-public-url" placeholder="https://monitor.example.com">
-        </label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="hub-use-https" checked>
-          HTTPS
-        </label>
-      </div>
-      <p class="hint">URL для агентов: <code id="hub-url-preview">—</code>
-        <button type="button" id="copy-hub-url" class="btn btn-secondary btn-sm" title="Копировать URL" hidden>Копировать</button>
-      </p>
-      <div id="hub-url-qr" class="hub-url-qr" hidden>
-        <p class="hint hub-url-qr-hint" id="hub-url-qr-hint"></p>
-        <canvas id="hub-url-qr-canvas" width="200" height="200" role="img" aria-labelledby="hub-url-qr-hint"></canvas>
-      </div>
-      <div class="actions-row">
-        <button id="save-hub-domain" class="btn"><span data-icon="checkCircle"></span>Сохранить домен</button>
+      <div class="hub-domain-layout">
+        <div class="hub-domain-main">
+          <div class="form-row">
+            <label>
+              Домен
+              <input type="text" id="hub-domain" placeholder="monitor.example.com">
+            </label>
+            <label>
+              Публичный URL (опционально)
+              <input type="text" id="hub-public-url" placeholder="https://monitor.example.com">
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="hub-use-https" checked>
+              HTTPS
+            </label>
+          </div>
+          <p class="hint hub-url-preview-row">URL для агентов: <code id="hub-url-preview">—</code>
+            <button type="button" id="copy-hub-url" class="btn btn-secondary btn-sm" title="Копировать URL" hidden>Копировать</button>
+          </p>
+          <div class="actions-row">
+            <button id="save-hub-domain" class="btn"><span data-icon="checkCircle"></span>Сохранить домен</button>
+          </div>
+        </div>
+        <aside id="hub-url-qr" class="hub-url-qr" hidden aria-labelledby="hub-url-qr-title">
+          <p class="hub-url-qr-title" id="hub-url-qr-title">Подключение SysMon</p>
+          <p class="hint hub-url-qr-hint" id="hub-url-qr-hint"></p>
+          <canvas id="hub-url-qr-canvas" width="200" height="200" role="img" aria-labelledby="hub-url-qr-hint"></canvas>
+        </aside>
       </div>
     </section>
 

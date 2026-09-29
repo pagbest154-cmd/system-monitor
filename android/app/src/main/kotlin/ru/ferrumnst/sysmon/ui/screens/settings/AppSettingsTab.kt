@@ -104,12 +104,7 @@ fun AppSettingsTab(
                 }
             }
             Button(
-                onClick = {
-                    scope.launch {
-                        repository.clearAll()
-                        onResetHub()
-                    }
-                },
+                onClick = onResetHub,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp),

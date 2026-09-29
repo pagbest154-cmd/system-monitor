@@ -36,7 +36,7 @@ fun SetupScreen(
     val vm: SetupViewModel = viewModel(factory = SetupViewModel.Factory(repository))
     val state by vm.uiState.collectAsState()
     val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
-        result.contents?.let { vm.applyScannedUrl(it) }
+        result.contents?.let { vm.applyScannedPayload(it, onComplete) }
     }
 
     Scaffold { padding ->
@@ -82,7 +82,7 @@ fun SetupScreen(
                     scanLauncher.launch(
                         ScanOptions().apply {
                             setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                            setPrompt("Наведите на QR с URL хаба")
+                            setPrompt("Наведите на QR из настроек hub")
                             setBeepEnabled(false)
                         },
                     )

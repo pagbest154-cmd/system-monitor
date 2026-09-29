@@ -14,6 +14,8 @@ data class SetupUiState(
     val hubUrl: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
+    val pairingName: String? = null,
+    val pairingKey: String? = null,
 )
 
 class SetupViewModel(
@@ -23,16 +25,29 @@ class SetupViewModel(
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
     fun onUrlChange(url: String) {
-        _uiState.update { it.copy(hubUrl = url, error = null) }
+        _uiState.update {
+            it.copy(hubUrl = url, error = null, pairingName = null, pairingKey = null)
+        }
     }
 
-    fun applyScannedUrl(raw: String) {
-        val url = raw.trim().removeSuffix("/")
-        _uiState.update { it.copy(hubUrl = url, error = null) }
+    fun applyScannedPayload(raw: String, onAutoConnect: (() -> Unit)? = null) {
+        val scan = parseHubPairingScan(raw)
+        _uiState.update {
+            it.copy(
+                hubUrl = scan.hubUrl,
+                error = null,
+                pairingName = scan.hubName,
+                pairingKey = scan.hubKey,
+            )
+        }
+        if (scan.includesCredentials && onAutoConnect != null) {
+            save(onAutoConnect)
+        }
     }
 
     fun save(onSuccess: () -> Unit) {
-        val url = _uiState.value.hubUrl.trim()
+        val state = _uiState.value
+        val url = state.hubUrl.trim()
         if (url.isBlank()) {
             _uiState.update { it.copy(error = "Укажите URL хаба") }
             return
@@ -43,9 +58,16 @@ class SetupViewModel(
             runCatching {
                 repository.saveHubUrl(url)
                 val session = repository.getSessionOnce()
-                repository.checkAuth(session)
+                val status = repository.checkAuth(session)
+                val name = state.pairingName?.trim().orEmpty()
+                val key = state.pairingKey.orEmpty()
+                if (status.authRequired && name.isNotBlank() && key.isNotBlank()) {
+                    repository.login(session, name, key).getOrThrow()
+                }
             }.onSuccess {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update {
+                    it.copy(isLoading = false, pairingName = null, pairingKey = null)
+                }
                 onSuccess()
             }.onFailure { error ->
                 _uiState.update {

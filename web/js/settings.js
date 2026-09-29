@@ -391,6 +391,35 @@ function resolveHubPublicUrl(domain, publicUrl, useHttps) {
   return `${useHttps ? "https" : "http"}://${host}`;
 }
 
+/** @type {null | { auth_required?: boolean, hub_name?: string, hub_key?: string }} */
+let hubAppPairing = null;
+
+function buildAppPairingQrPayload(publicUrl, pairing) {
+  const url = String(publicUrl || "").trim().replace(/\/$/, "");
+  if (!url) return "";
+  if (pairing?.auth_required && pairing.hub_name && pairing.hub_key) {
+    const params = new URLSearchParams({
+      url,
+      name: pairing.hub_name,
+      key: pairing.hub_key,
+    });
+    return `sysmon://pair?${params.toString()}`;
+  }
+  return url;
+}
+
+async function refreshHubAppPairing() {
+  if (appMode !== "hub") {
+    hubAppPairing = null;
+    return;
+  }
+  try {
+    hubAppPairing = await fetchJson("/api/auth/app-pairing");
+  } catch {
+    hubAppPairing = null;
+  }
+}
+
 function updateHubUrlPreview() {
   const preview = document.getElementById("hub-url-preview");
   const copyBtn = document.getElementById("copy-hub-url");
@@ -417,9 +446,10 @@ function updateHubUrlQr(url) {
   }
   wrap.hidden = false;
   if (hint) {
-    hint.textContent = t.hubQrHint;
+    hint.textContent = hubAppPairing?.auth_required ? t.hubQrHintPairing : t.hubQrHint;
   }
-  QRCode.toCanvas(canvas, url, {
+  const qrPayload = buildAppPairingQrPayload(url, hubAppPairing);
+  QRCode.toCanvas(canvas, qrPayload, {
     width: 200,
     margin: 2,
     errorCorrectionLevel: "M",
@@ -474,6 +504,7 @@ function initHubDomainSection() {
       if (resolved) {
         document.getElementById("hub-public-url").value = resolved;
       }
+      await refreshHubAppPairing();
       updateHubUrlPreview();
       showMessage(t.saved);
     } catch (err) {
@@ -526,6 +557,7 @@ export async function initSettings() {
     document.getElementById("hub-domain").value = hub.domain || "";
     document.getElementById("hub-public-url").value = hub.public_url || "";
     document.getElementById("hub-use-https").checked = hub.use_https !== false;
+    await refreshHubAppPairing();
     updateHubUrlPreview();
     initHubDomainSection();
     const agentsData = await fetchJson("/api/config/agents");

@@ -73,6 +73,7 @@ class AppViewModel(
 
     fun onChangeHub() {
         viewModelScope.launch {
+            NtfySubscriptionManager.clearAll(getApplication())
             repository.clearAll()
             _startDestination.value = AppStartDestination.Setup
         }
