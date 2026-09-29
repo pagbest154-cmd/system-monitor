@@ -124,13 +124,19 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                state.mode == "hub" && state.selectedAgentId.isBlank() -> {
-                    Text(
-                        text = "Выберите хост на вкладке «Хосты»",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                state.mode == "hub" && state.agents.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Нет зарегистрированных хостов",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 else -> {
                     LazyColumn(

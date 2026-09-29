@@ -909,10 +909,36 @@ async function renderDashboard(latest = {}) {
   }
 }
 
+function resolveSelectedAgent(agents, preferred) {
+  const ids = new Set(agents.map((a) => a.id));
+  if (preferred && ids.has(preferred)) return preferred;
+  return agents[0]?.id || "";
+}
+
+function showDashboardNoAgents() {
+  const grid = document.getElementById("dashboard-grid");
+  const system = document.getElementById("system-info");
+  resizeObservers.forEach((observer) => observer.disconnect());
+  resizeObservers.clear();
+  charts.forEach((chart) => chart.dispose());
+  charts.clear();
+  dashboardPanels = [];
+  latestSnapshot = {};
+  if (grid) {
+    grid.innerHTML = `<p class="sys-empty dashboard-no-hosts">${i18n.hosts.dashboardNoHosts}</p>`;
+  }
+  if (system) {
+    system.innerHTML = "";
+  }
+}
+
 function connectLive() {
   if (liveSocket) {
     liveSocket.close();
     liveSocket = null;
+  }
+  if (appMode === "hub" && !selectedAgent) {
+    return;
   }
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const agentPart = selectedAgent ? `?agent=${encodeURIComponent(selectedAgent)}` : "";
@@ -969,10 +995,6 @@ function observePanelChart(panel, chartDom) {
 async function refreshSystemInfo() {
   try {
     if (appMode === "hub" && !selectedAgent) {
-      const container = document.getElementById("system-info");
-      if (container) {
-        container.innerHTML = `<p class="sys-empty">${i18n.hosts.selectHost} — блок «Система» показывает данные выбранного агента.</p>`;
-      }
       return;
     }
     const url = selectedAgent
@@ -992,21 +1014,26 @@ async function initHostSelector() {
 
   const params = new URLSearchParams(location.search);
   const fromUrl = params.get("agent") || "";
-  selectedAgent = fromUrl || getSavedAgent();
 
   const data = await fetchJson("/api/agents");
   const agents = data.agents || [];
-  control.hidden = false;
 
-  select.innerHTML = "";
-  const allOption = document.createElement("option");
-  allOption.value = "";
-  allOption.textContent = i18n.hosts.allHosts;
-  select.appendChild(allOption);
-
-  if (!selectedAgent && agents.length === 1) {
-    selectedAgent = agents[0].id;
+  const preferred = fromUrl || getSavedAgent();
+  selectedAgent = resolveSelectedAgent(agents, preferred);
+  if (selectedAgent) {
+    saveAgent(selectedAgent);
+  } else {
+    saveAgent("");
   }
+
+  if (!agents.length) {
+    control.hidden = true;
+    select.innerHTML = "";
+    return;
+  }
+
+  control.hidden = false;
+  select.innerHTML = "";
 
   agents.forEach((agent) => {
     const option = document.createElement("option");
@@ -1036,6 +1063,11 @@ export async function initDashboard() {
 
   initGlobalPeriodSelector((period) => setGlobalPeriod(period));
   await initHostSelector();
+
+  if (appMode === "hub" && !selectedAgent) {
+    showDashboardNoAgents();
+    return;
+  }
 
   await refreshSystemInfo();
 

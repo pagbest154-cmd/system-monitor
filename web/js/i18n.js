@@ -132,7 +132,7 @@ export const i18n = {
     updateCopy: "Копировать",
     updateCopied: "Скопировано",
     empty: "Агенты ещё не подключались",
-    allHosts: "Все хосты",
+    dashboardNoHosts: "Нет зарегистрированных хостов",
     selectHost: "Хост",
     actionsColumn: "Действия",
     delete: "Удалить",

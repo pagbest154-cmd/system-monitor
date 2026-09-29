@@ -162,11 +162,11 @@ class DashboardViewModel(
                 val agents = repository.getAgents(session)
                 val agentOptions = agents.map { it.id to (it.name ?: it.id) }
                 val selectedId = when {
+                    agents.isEmpty() -> ""
                     session.selectedAgentId.isNotBlank() &&
                         agents.any { it.id == session.selectedAgentId } ->
                         session.selectedAgentId
-                    agents.size == 1 -> agents.first().id
-                    else -> session.selectedAgentId
+                    else -> agents.first().id
                 }
                 val selectedName = agents.find { it.id == selectedId }?.name ?: selectedId
                 val selectedAgentOnline = when {
