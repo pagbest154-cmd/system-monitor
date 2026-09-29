@@ -8,7 +8,7 @@ system-monitor.exe
 system-monitor-agent.exe
 packaging/linux/system-monitor-agent
 packaging/windows/dist/
-data/
+/data/
 *.db
 .env
 .DS_Store
