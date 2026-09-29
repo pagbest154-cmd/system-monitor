@@ -105,7 +105,10 @@ jobs:
           distribution: "temurin"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          # v3 default includes deprecated "tools" package (removed from Google SDK repo).
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
 
       - name: Sync Android version from tag
         run: |
