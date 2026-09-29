@@ -6,6 +6,7 @@ import ru.ferrumnst.sysmon.data.session.SessionStore
 import ru.ferrumnst.sysmon.data.websocket.LiveWebSocketClient
 import ru.ferrumnst.sysmon.notifications.NotificationHelper
 import ru.ferrumnst.sysmon.update.AppUpdateManager
+import ru.ferrumnst.sysmon.update.AppUpdateWorker
 import ru.ferrumnst.sysmon.widget.WidgetUpdateWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +29,7 @@ class SysMonApplication : Application() {
         repository = HubRepository(sessionStore, liveClient)
         appUpdateManager = AppUpdateManager(this)
         WidgetUpdateWorker.schedule(this)
+        AppUpdateWorker.schedule(this)
         appScope.launch {
             WidgetUpdateWorker.refreshNow(this@SysMonApplication)
             appUpdateManager.checkForUpdate()

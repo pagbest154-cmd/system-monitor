@@ -14,6 +14,8 @@ import ru.ferrumnst.sysmon.R
 object NotificationHelper {
     const val CHANNEL_ID = "sysmon_alerts"
     const val LISTENER_CHANNEL_ID = "sysmon_ntfy_listener_min"
+    const val UPDATE_CHANNEL_ID = "sysmon_app_updates"
+    private const val APP_UPDATE_NOTIFICATION_ID = 9001
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -33,8 +35,16 @@ object NotificationHelper {
             description = "Поддержка подписки на уведомления в фоне"
             setShowBadge(false)
         }
+        val updates = NotificationChannel(
+            UPDATE_CHANNEL_ID,
+            "Обновления приложения",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = "Доступна новая версия SysMon"
+        }
         manager.createNotificationChannel(alerts)
         manager.createNotificationChannel(listener)
+        manager.createNotificationChannel(updates)
     }
 
     fun buildListenerNotification(context: Context): android.app.Notification {
@@ -81,6 +91,30 @@ object NotificationHelper {
             .setContentIntent(pendingIntent)
             .build()
         NotificationManagerCompat.from(context).notify(notificationId, notification)
+    }
+
+    fun showAppUpdateAvailable(context: Context, latestVersion: String) {
+        ensureChannel(context)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            APP_UPDATE_NOTIFICATION_ID,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(context, UPDATE_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Доступно обновление SysMon")
+            .setContentText("Версия $latestVersion — откройте Настройки")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+        NotificationManagerCompat.from(context).notify(APP_UPDATE_NOTIFICATION_ID, notification)
     }
 
     const val EXTRA_AGENT_ID = "agent_id"
