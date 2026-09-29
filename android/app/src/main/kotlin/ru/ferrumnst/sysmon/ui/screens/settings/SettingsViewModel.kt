@@ -303,7 +303,7 @@ class SettingsViewModel(
                 val apkFile = appUpdateManager.downloadApk(downloadUrl, fileName) { progress ->
                     _uiState.update { state -> state.copy(appUpdateProgress = progress) }
                 }
-                appUpdateManager.installApk(apkFile)
+                appUpdateManager.installApk(apkFile, activity)
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(appUpdateMessage = error.message ?: "Ошибка загрузки обновления")

@@ -21,6 +21,21 @@ android {
         versionName = appVersion
     }
 
+    signingConfigs {
+        val releaseKeystore = rootProject.file("release.keystore")
+        if (releaseKeystore.exists()) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                    ?: providers.gradleProperty("RELEASE_STORE_PASSWORD").orNull
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                    ?: providers.gradleProperty("RELEASE_KEY_ALIAS").orNull
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                    ?: providers.gradleProperty("RELEASE_KEY_PASSWORD").orNull
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -28,8 +43,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Debug signing for GitHub Releases until a release keystore is configured in CI.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 

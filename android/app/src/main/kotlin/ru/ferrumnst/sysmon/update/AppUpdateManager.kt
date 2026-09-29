@@ -154,7 +154,7 @@ class AppUpdateManager(
         activity.startActivity(intent)
     }
 
-    fun installApk(apkFile: File) {
+    fun installApk(apkFile: File, activity: Activity? = null) {
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -162,9 +162,12 @@ class AppUpdateManager(
         )
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (activity == null) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
         }
-        context.startActivity(intent)
+        (activity ?: context).startActivity(intent)
     }
 
     companion object {

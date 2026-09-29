@@ -110,6 +110,20 @@ jobs:
           # v3 default includes deprecated "tools" package (removed from Google SDK repo).
           packages: platform-tools platforms;android-35 build-tools;35.0.0
 
+      # Ephemeral runners generate a new debug.keystore each job — OTA updates then fail
+      # with "Приложение не установлено". Cache keeps one debug key; prefer release.keystore secrets.
+      - name: Cache Android debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: sysmon-android-debug-keystore-v1
+
+      - name: Set up release keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
+
       - name: Sync Android version from tag
         run: |
           chmod +x scripts/sync-android-version.sh
@@ -117,6 +131,10 @@ jobs:
 
       - name: Build release APK
         working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon

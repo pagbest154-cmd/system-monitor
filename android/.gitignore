@@ -13,3 +13,6 @@
 *.aab
 app/release/
 app/google-services.json
+release.keystore
+sysmon-release.jks
+keystore.properties

@@ -191,6 +191,12 @@ fun SettingsScreen(
             ) {
                 Text("Проверить обновления")
             }
+            Text(
+                "Если установка пишет «Приложение не установлено» — удалите SysMon и установите APK из релиза заново (разная подпись старой сборки).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
 
         DashboardCard(title = "Виджеты") {
