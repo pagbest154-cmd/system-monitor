@@ -29,9 +29,25 @@ func round1(v float64) float64 {
 	return float64(int(v*10+0.5)) / 10
 }
 
+func virtualMemoryStat() *mem.VirtualMemoryStat {
+	vm, err := mem.VirtualMemory()
+	if err != nil || vm == nil {
+		return &mem.VirtualMemoryStat{}
+	}
+	return vm
+}
+
+func swapMemoryStat() *mem.SwapMemoryStat {
+	swap, err := mem.SwapMemory()
+	if err != nil || swap == nil {
+		return &mem.SwapMemoryStat{}
+	}
+	return swap
+}
+
 func GetSystemInfo() map[string]interface{} {
-	vm, _ := mem.VirtualMemory()
-	swap, _ := mem.SwapMemory()
+	vm := virtualMemoryStat()
+	swap := swapMemoryStat()
 	partitions := getPartitions()
 	bootTime, _ := host.BootTime()
 	hostname, _ := os.Hostname()

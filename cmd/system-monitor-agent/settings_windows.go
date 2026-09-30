@@ -124,8 +124,10 @@ func runSettingsDialog(configPath string) error {
 							cfg.HubURL = hubEdit.Text()
 							cfg.AgentID = agentEdit.Text()
 							cfg.IntervalSec = int(intervalEdit.Value())
-							_ = config.SaveAgentConfig(cfg, configPath)
-							_ = config.SaveAgentToken(tokenEdit.Text(), "")
+							if err := config.SaveAgentSettings(cfg, configPath, tokenEdit.Text()); err != nil {
+								showError(branding.AgentName, "Не удалось сохранить настройки:\n"+err.Error())
+								return
+							}
 							ids := make([]string, 0, len(notifyChecks))
 							for id, cb := range notifyChecks {
 								if cb.Checked() {

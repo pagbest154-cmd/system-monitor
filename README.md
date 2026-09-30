@@ -190,35 +190,7 @@ alerts:
 
 ### Agent — slim-пакет на машинах
 
-**Linux (.deb):**
-
-```bash
-sudo apt install ./system-monitor-agent_*_amd64.deb
-```
-
-Автономный бинарник — **Python на машине не нужен**.  
-При установке debconf спросит **Hub URL**, **Agent ID** и **token** (по одному вопросу).  
-На hub добавьте агента в [`config/agents.yaml`](config/agents.yaml) с тем же token.
-
-Если вопросы не появились (узкий терминал, повторная установка):
-
-```bash
-sudo dpkg-reconfigure system-monitor-agent
-```
-
-Без интерактива:
-
-```bash
-sudo DEBIAN_FRONTEND=noninteractive \
-  HUB_URL=https://monitor.example.com \
-  AGENT_ID=my-laptop \
-  AGENT_TOKEN=your-secret-token \
-  apt install ./system-monitor-agent_*_amd64.deb
-```
-
-После установки: `sudo systemctl status system-monitor-agent` · логи: `journalctl -u system-monitor-agent -f`
-
-APT-репозиторий (GitHub Pages при релизе):
+**Linux (APT-репозиторий):**
 
 ```bash
 echo "deb [trusted=yes] https://pagbest154-cmd.github.io/system-monitor/apt stable main" \
@@ -226,6 +198,34 @@ echo "deb [trusted=yes] https://pagbest154-cmd.github.io/system-monitor/apt stab
 sudo apt update
 sudo apt install system-monitor-agent
 ```
+
+Автономный бинарник — **Python на машине не нужен**.  
+При первой установке debconf спросит **Hub URL**, **Agent ID** и **token**.  
+На hub добавьте агента в [`config/agents.yaml`](config/agents.yaml) с тем же token.
+
+**Файлы настроек на Linux:**
+
+| Файл | Назначение |
+|------|------------|
+| `/etc/system-monitor/agent.yaml` | Hub URL, agent id, интервал, `token` / `token_file` |
+| `/etc/system-monitor/agent.token` | Токен (если в `agent.yaml` задан `token_file`) |
+| `/etc/system-monitor/agent_sensors.yaml` | Доп. датчики агента |
+
+Пример для разработки в репозитории: [`config/agent.yaml`](config/agent.yaml).
+
+После изменения `agent.yaml` или `agent.token` перезапустите службу:
+
+```bash
+sudo systemctl restart system-monitor-agent
+```
+
+Если debconf-вопросы не появились (узкий терминал, повторная настройка):
+
+```bash
+sudo dpkg-reconfigure system-monitor-agent
+```
+
+Проверка: `sudo systemctl status system-monitor-agent` · логи: `journalctl -u system-monitor-agent -f`
 
 **Windows (установщик):**
 

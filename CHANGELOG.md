@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+## [1.0.54] — 2026-09-30
+
+### Исправлено
+
+- Agent (Windows): GUI «Настройки» сохраняет token в `agent.yaml` и в `agent.token` (раньше в yaml оставался пустой `token`)
+- Agent: `GetSystemInfo` не падает с nil pointer, если gopsutil не вернул swap/memory (типично на Windows)
+
+### Изменено
+
+- README: установка Linux-агента только через APT-репозиторий; пути конфигов и `systemctl restart` после правок
+
 ## [1.0.53] — 2026-09-30
 
 ### Исправлено

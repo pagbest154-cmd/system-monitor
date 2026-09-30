@@ -31,7 +31,10 @@ func (s cpuPercentSensor) Read() SensorReading {
 type memoryPercentSensor struct{ baseSensor }
 
 func (s memoryPercentSensor) Read() SensorReading {
-	vm, _ := mem.VirtualMemory()
+	vm, err := mem.VirtualMemory()
+	if err != nil || vm == nil {
+		return SensorReading{SensorID: s.ID(), Status: "error", Error: "memory stats unavailable"}
+	}
 	value := math.Round(vm.UsedPercent*100) / 100
 	return SensorReading{SensorID: s.ID(), Value: &value, Status: evaluateStatus(s.cfg, &value)}
 }

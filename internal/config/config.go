@@ -424,6 +424,23 @@ func SaveAgentToken(token string, path string) error {
 	return os.WriteFile(path, []byte(strings.TrimSpace(token)), 0o600)
 }
 
+// SaveAgentSettings writes agent.yaml and the token file (token_file or default).
+func SaveAgentSettings(cfg *AgentFileConfig, configPath string, token string) error {
+	if cfg == nil {
+		return fmt.Errorf("agent config is nil")
+	}
+	token = strings.TrimSpace(token)
+	cfg.Token = token
+	if err := SaveAgentConfig(cfg, configPath); err != nil {
+		return err
+	}
+	tokenPath := strings.TrimSpace(cfg.TokenFile)
+	if tokenPath == "" {
+		tokenPath = paths.AgentTokenFile
+	}
+	return SaveAgentToken(token, tokenPath)
+}
+
 func LoadAgentSensorsConfig(path string) (*SensorsFile, error) {
 	if path == "" {
 		path = paths.AgentSensorsConfig
