@@ -333,6 +333,17 @@ jobs:
             dist/windows/system-monitor-agent_*_setup.exe
             dist/android/sysmon-*.apk
 
+      - name: Notify TaskMCP (chat)
+        env:
+          TASKMCP_NOTIFY_TOKEN: ${{ secrets.TASKMCP_NOTIFY_TOKEN }}
+          TASKMCP_PROJECT_SLUG: sysmon
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+        run: |
+          chmod +x scripts/notify-taskmcp-release.sh
+          ./scripts/notify-taskmcp-release.sh "${{ needs.detect-changes.outputs.version }}" \
+            || echo "TaskMCP notify failed (release already published)"
+
   publish-apt-pages:
     needs: [release, build-deb]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.build-deb.result == 'success'
