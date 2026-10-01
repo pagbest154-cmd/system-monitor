@@ -114,7 +114,7 @@ func auditLog(r *http.Request, action string) {
 
 func sessionUserLabel(r *http.Request) string {
 	if cookie, err := r.Cookie(sessionCookie); err == nil {
-		if role, user := ParseSessionToken(cookie.Value); user != "" {
+		if _, user := ParseSessionToken(cookie.Value); user != "" {
 			return user
 		}
 	}
