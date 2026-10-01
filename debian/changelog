@@ -1,3 +1,9 @@
+system-monitor-agent (1.0.63-1) unstable; urgency=medium
+
+  * postinst: systemctl restart/start with daemon-reload after unit update.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 01 Oct 2026 15:00:00 +0700
+
 system-monitor-agent (1.0.62-1) unstable; urgency=medium
 
   * postinst: verify service is active after upgrade restart; fallback start.

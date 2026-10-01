@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+## [1.0.63] — 2026-10-01
+
+### Исправлено
+
+- Agent (.deb): postinst использует `systemctl try-restart`/`start` с повторным `daemon-reload` — служба не остаётся inactive после apt upgrade (unit file changed)
+
 ## [1.0.62] — 2026-10-01
 
 ### Исправлено

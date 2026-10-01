@@ -145,27 +145,22 @@ if [ "$1" = "configure" ]; then
     }
 
     restart_agent() {
-        if command -v deb-systemd-invoke >/dev/null; then
-            deb-systemd-invoke restart system-monitor-agent.service >/dev/null 2>&1 || true
-        else
-            systemctl restart system-monitor-agent.service >/dev/null 2>&1 || true
-        fi
+        reload_systemd
+        # Prefer systemctl during maintainer scripts: deb-systemd-invoke restart
+        # can stop the unit but fail to start until unit files are reloaded again.
+        systemctl try-restart system-monitor-agent.service >/dev/null 2>&1 \
+            || systemctl restart system-monitor-agent.service >/dev/null 2>&1 \
+            || true
         if ! systemctl is-active --quiet system-monitor-agent.service 2>/dev/null; then
-            if command -v deb-systemd-invoke >/dev/null; then
-                deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
-            else
-                systemctl start system-monitor-agent.service >/dev/null 2>&1 || true
-            fi
+            reload_systemd
+            systemctl start system-monitor-agent.service >/dev/null 2>&1 || true
         fi
         systemctl is-active --quiet system-monitor-agent.service 2>/dev/null
     }
 
     start_agent() {
-        if command -v deb-systemd-invoke >/dev/null; then
-            deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
-        else
-            systemctl start system-monitor-agent.service 2>/dev/null || true
-        fi
+        reload_systemd
+        systemctl start system-monitor-agent.service >/dev/null 2>&1 || true
     }
 
     reload_systemd
