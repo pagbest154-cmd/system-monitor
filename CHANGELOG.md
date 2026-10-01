@@ -8,6 +8,7 @@
 ### Исправлено
 
 - Agent (.deb): token в install seed (base64); non-interactive установка через `debconf-set-selections` (dpkg не передаёт `AGENT_TOKEN` в postinst)
+- Agent (.deb): первая установка через apt — `$2` бывает `-`, postinst теперь применяет debconf; убран сброс ответов debconf при повторном config
 
 ## [1.0.58-fix] — 2026-10-01
 

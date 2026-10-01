@@ -5,6 +5,13 @@ AGENT_YAML="/etc/system-monitor/agent.yaml"
 TOKEN_FILE="/etc/system-monitor/agent.token"
 SEED_FILE="/run/system-monitor-agent/debconf.seed"
 
+is_first_install() {
+    case "${2:-}" in
+    ""|-) return 0 ;;
+    esac
+    return 1
+}
+
 load_hub_agent_from_debconf() {
     hub_url=""
     agent_id=""
@@ -62,9 +69,8 @@ case "$1" in
         # Fresh install only: debconf / env seed agent.yaml and token.
         # On upgrade preserve /etc/system-monitor/* (see system-monitor-agent.conffiles).
         apply_debconf_cfg=false
-        if [ -z "$2" ]; then
-            apply_debconf_cfg=true
-        elif [ -f "$SEED_FILE" ]; then
+        wrote_config=false
+        if is_first_install "$2" || [ -f "$SEED_FILE" ]; then
             apply_debconf_cfg=true
         fi
 
@@ -90,6 +96,7 @@ case "$1" in
             fi
 
             write_agent_yaml "$hub_url" "$agent_id" "$TOKEN_FILE"
+            wrote_config=true
 
             if [ -n "$token" ]; then
                 umask 077
@@ -117,8 +124,15 @@ esac
 #DEBHELPER#
 
 if [ "$1" = "configure" ]; then
+    if command -v deb-systemd-invoke >/dev/null; then
+        deb-systemd-invoke daemon-reload >/dev/null 2>&1 || systemctl daemon-reload 2>/dev/null || true
+    fi
     if [ -s "$TOKEN_FILE" ] && command -v deb-systemd-invoke >/dev/null; then
-        deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
+        if [ "${wrote_config:-false}" = "true" ]; then
+            deb-systemd-invoke restart system-monitor-agent.service >/dev/null 2>&1 || true
+        else
+            deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
+        fi
     elif [ ! -s "$TOKEN_FILE" ]; then
         echo "system-monitor-agent: служба включена, но не запущена (нет token)." >&2
         echo "  sudo dpkg-reconfigure system-monitor-agent" >&2
