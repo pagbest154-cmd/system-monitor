@@ -137,19 +137,53 @@ if [ "$1" = "configure" ] && [ -f "$SEED_FILE" ] && [ "${wrote_config:-false}" !
 fi
 
 if [ "$1" = "configure" ]; then
-    if command -v deb-systemd-invoke >/dev/null; then
-        deb-systemd-invoke daemon-reload >/dev/null 2>&1 || systemctl daemon-reload 2>/dev/null || true
-    fi
-    if [ -s "$TOKEN_FILE" ] && command -v deb-systemd-invoke >/dev/null; then
-        if [ "${wrote_config:-false}" = "true" ]; then
+    reload_systemd() {
+        if command -v deb-systemd-invoke >/dev/null; then
+            deb-systemd-invoke daemon-reload >/dev/null 2>&1 || true
+        fi
+        systemctl daemon-reload 2>/dev/null || true
+    }
+
+    restart_agent() {
+        if command -v deb-systemd-invoke >/dev/null; then
             deb-systemd-invoke restart system-monitor-agent.service >/dev/null 2>&1 || true
         else
-            deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
+            systemctl restart system-monitor-agent.service 2>/dev/null \
+                || systemctl start system-monitor-agent.service 2>/dev/null \
+                || true
         fi
-    elif [ ! -s "$TOKEN_FILE" ]; then
+    }
+
+    start_agent() {
+        if command -v deb-systemd-invoke >/dev/null; then
+            deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
+        else
+            systemctl start system-monitor-agent.service 2>/dev/null || true
+        fi
+    }
+
+    reload_systemd
+
+    if [ ! -s "$TOKEN_FILE" ]; then
         echo "system-monitor-agent: служба включена, но не запущена (нет token)." >&2
         echo "  sudo dpkg-reconfigure system-monitor-agent" >&2
         echo "  sudo systemctl start system-monitor-agent" >&2
+    else
+        is_upgrade=false
+        if [ -n "${2:-}" ] && [ "$2" != "-" ]; then
+            is_upgrade=true
+        fi
+        if [ "$is_upgrade" = "true" ] || [ "${wrote_config:-false}" = "true" ]; then
+            restart_agent
+            if command -v system-monitor-agent >/dev/null; then
+                agent_ver="$(system-monitor-agent --version 2>/dev/null || true)"
+                if [ -n "$agent_ver" ]; then
+                    echo "system-monitor-agent: перезапущен после обновления, версия ${agent_ver}." >&2
+                fi
+            fi
+        else
+            start_agent
+        fi
     fi
 fi
 
