@@ -17,7 +17,8 @@ if [[ ! -f "$props" ]]; then
 fi
 
 version="${version#v}"
-patch="${version##*.}"
+numeric_base="${version%%-*}"
+patch="${numeric_base##*.}"
 if [[ ! "$patch" =~ ^[0-9]+$ ]]; then
   echo "error: cannot derive appVersionCode from version '$version'" >&2
   exit 1

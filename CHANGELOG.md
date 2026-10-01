@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+## [1.0.58-fix] — 2026-10-01
+
+Hotfix-релиз вместо неудачного **1.0.58** (CI): debconf → `agent.yaml`, purge, APT/CI.
+
+### Исправлено
+
+- Agent (.deb): Hub URL и Agent ID из debconf в `agent.yaml` (seed-файл)
+- Agent (.deb): `apt purge` очищает `/etc/system-monitor`
+- CI: интеграционный тест deb (`apt-get purge`, не `dpkg -r -y`)
+- Agent (.deb): дублирующий `conffiles` убран
+
 ## [1.0.59] — 2026-10-01
 
 ### Исправлено
