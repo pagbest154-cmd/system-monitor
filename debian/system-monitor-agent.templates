@@ -6,9 +6,8 @@ Description: Hub URL (system-monitor):
 
 Template: system-monitor-agent/agent-id
 Type: string
-Default: 
 Description: Agent ID:
- Уникальный идентификатор агента (как в config/agents.yaml на hub). Пусто — hostname.
+ Уникальный идентификатор агента (как в config/agents.yaml на hub). Оставьте пустым, чтобы использовать hostname.
 
 Template: system-monitor-agent/token
 Type: password
