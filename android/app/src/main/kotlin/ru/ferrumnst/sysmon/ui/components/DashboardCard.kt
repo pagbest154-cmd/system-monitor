@@ -32,6 +32,7 @@ fun DashboardCard(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             if (subtitle != null) {
                 Text(

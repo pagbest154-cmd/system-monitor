@@ -48,6 +48,7 @@ fun LoginScreen(
             Text(
                 text = "Вход в хаб",
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(

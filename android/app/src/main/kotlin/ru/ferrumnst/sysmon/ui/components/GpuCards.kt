@@ -79,6 +79,7 @@ private fun GpuCard(
                     text = gpu.name ?: "GPU",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 gpu.videoProcessor?.takeIf { it.isNotBlank() }?.let { processor ->
                     Text(

@@ -43,6 +43,7 @@ fun AnimatedMetricValue(
             text = value,
             style = style,
             fontWeight = fontWeight,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

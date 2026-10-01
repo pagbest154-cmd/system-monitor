@@ -2,6 +2,7 @@ import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 import { fetchJson } from "./api.js";
 import { i18n } from "./i18n.js";
 import { icon, sensorIcon, panelIcon, setIcon } from "./icons.js";
+import { initSettingsApi, initSettingsTabs } from "./settings-api.js";
 
 const t = i18n.settingsPage;
 
@@ -555,6 +556,7 @@ function finishSettingsLoading() {
 }
 
 export async function initSettings() {
+  initSettingsTabs();
   try {
     const [modeData, typesData, sensorsData, dashboardData] = await Promise.all([
       fetchJson("/api/mode"),
@@ -592,6 +594,16 @@ export async function initSettings() {
         token: agent.token && agent.token !== "change-me" ? agent.token : generateAgentToken(),
       }));
       renderAgentsTable();
+      if (!agents.length) {
+        try {
+          const fleet = await fetchJson("/api/agents");
+          const list = fleet.agents || fleet;
+          const first = Array.isArray(list) ? list[0] : null;
+          if (first?.id) agents.push({ id: first.id, name: first.name || first.id });
+        } catch {
+          /* ignore */
+        }
+      }
     }
 
     document.getElementById("retention-days").value = sensorsData.settings?.retention_days ?? 31;
@@ -695,6 +707,7 @@ export async function initSettings() {
     }
   });
   } finally {
+    initSettingsApi({ appMode, sampleAgentId: agents[0]?.id || "" });
     finishSettingsLoading();
   }
 }

@@ -5,8 +5,15 @@
 
 ## [Unreleased]
 
+## [1.0.65] — 2026-10-01
+
+### Добавлено
+
+- Web (Настройки): вкладка «API и статус» — каталог HTTP API, сводка health/версии/режима и проверка GET/WebSocket
+
 ### Исправлено
 
+- Android: заголовки и метрики на тёмной теме — полная Typography с цветами схемы (раньше `headlineSmall`/`titleSmall` брали чёрный из дефолта Material3)
 - Agent (.deb): postinst после upgrade не оставляет службу inactive — `try-restart` при stopped больше не «глотает» цепочку (раньше exit 0 без start)
 - Web (Хосты): модалка алертов — единый стиль кнопок, тёмные number/select без белых spinners
 

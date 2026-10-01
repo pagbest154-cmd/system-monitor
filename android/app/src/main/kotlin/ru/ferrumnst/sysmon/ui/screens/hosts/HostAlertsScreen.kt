@@ -88,13 +88,18 @@ fun HostAlertsScreen(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Назад",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "Уведомления",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     state.agentName,
