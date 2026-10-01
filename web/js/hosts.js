@@ -329,8 +329,8 @@ async function openAlertsModal(agent) {
             <span>${i18n.hosts.alertsNtfyTopic}</span>
             <div class="alert-ntfy-topic-row">
               <input type="text" id="alerts-ntfy-topic" value="${ntfyTopic}" readonly placeholder="—" />
-              <button type="button" class="btn-secondary" id="alerts-ntfy-copy" ${ntfyTopic ? "" : "disabled"}>${i18n.hosts.alertsNtfyCopy}</button>
-              <button type="button" class="btn-secondary" id="alerts-ntfy-regenerate">${i18n.hosts.alertsNtfyRegenerate}</button>
+              <button type="button" class="btn btn-secondary" id="alerts-ntfy-copy" ${ntfyTopic ? "" : "disabled"}>${i18n.hosts.alertsNtfyCopy}</button>
+              <button type="button" class="btn btn-secondary" id="alerts-ntfy-regenerate">${i18n.hosts.alertsNtfyRegenerate}</button>
             </div>
           </label>
           <p class="alert-hint">${i18n.hosts.alertsNtfyHint}</p>
@@ -358,8 +358,8 @@ async function openAlertsModal(agent) {
         <p class="alert-error hidden" id="alerts-error"></p>
       </div>
       <footer class="host-alerts-footer">
-        <button type="button" class="btn-secondary" data-close="1">${i18n.hosts.alertsCancel}</button>
-        <button type="button" class="btn-primary" id="alerts-save">${i18n.hosts.alertsSave}</button>
+        <button type="button" class="btn btn-secondary" data-close="1">${i18n.hosts.alertsCancel}</button>
+        <button type="button" class="btn btn-primary" id="alerts-save">${i18n.hosts.alertsSave}</button>
       </footer>
     </div>
   `;

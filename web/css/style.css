@@ -1710,6 +1710,79 @@ input[type="checkbox"]:disabled {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.host-alerts-panel .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.host-alerts-panel .btn-secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.host-alerts-panel .btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 6%, var(--surface-2));
+}
+
+.host-alerts-panel .btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.host-alerts-panel .btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.host-alerts-panel .btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.host-alerts-panel input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+}
+
+.host-alerts-panel input[type="number"]::-webkit-outer-spin-button,
+.host-alerts-panel input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.host-alerts-panel .alert-field input[type="text"],
+.host-alerts-panel .alert-field input[type="number"],
+.host-alerts-panel .alert-field select,
+.host-alerts-panel .alert-threshold-input {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+}
+
+.host-alerts-panel .alert-field select {
+  min-width: 12rem;
+  cursor: pointer;
 }
 
 .host-alerts-header h2 {
@@ -1773,6 +1846,10 @@ input[type="checkbox"]:disabled {
 
 .alert-field input[type="number"] {
   width: 7rem;
+}
+
+.alert-threshold-input {
+  width: 5.5rem;
 }
 
 .alert-cooldowns {
@@ -1849,10 +1926,6 @@ input[type="checkbox"]:disabled {
   white-space: nowrap;
 }
 
-.alert-threshold-input {
-  width: 5.5rem;
-}
-
 .alert-ntfy-block {
   margin-top: 0.5rem;
   padding: 0.75rem 0;
@@ -1869,6 +1942,10 @@ input[type="checkbox"]:disabled {
 .alert-ntfy-topic-row input {
   flex: 1 1 12rem;
   min-width: 0;
+}
+
+.alert-ntfy-topic-row .btn {
+  flex: 0 0 auto;
 }
 
 .alert-hint,

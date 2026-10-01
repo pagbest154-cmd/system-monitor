@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Исправлено
+
+- Agent (.deb): postinst после upgrade не оставляет службу inactive — `try-restart` при stopped больше не «глотает» цепочку (раньше exit 0 без start)
+- Web (Хосты): модалка алертов — единый стиль кнопок, тёмные number/select без белых spinners
+
 ## [1.0.64] — 2026-10-01
 
 ### Добавлено
