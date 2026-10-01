@@ -52,6 +52,8 @@ printf '%s\n' \
   "system-monitor-agent system-monitor-agent/agent-id string ${AGENT_ID}" \
   "system-monitor-agent system-monitor-agent/token password ${AGENT_TOKEN}" \
   | sudo debconf-set-selections
+# debconf-set-selections alone does not run config before postinst on plain dpkg -i.
+sudo DEBIAN_FRONTEND=noninteractive dpkg-preconfigure -f noninteractive "${deb[0]}"
 sudo DEBIAN_FRONTEND=noninteractive dpkg -i "${deb[0]}"
 
 dump_install_debug() {
@@ -59,6 +61,9 @@ dump_install_debug() {
   sudo ls -la /etc/system-monitor/ 2>&1 || true
   sudo cat /etc/system-monitor/agent.yaml 2>&1 || true
   sudo ls -la /run/system-monitor-agent/ 2>&1 || true
+  if sudo test -f /run/system-monitor-agent/debconf.seed; then
+    sudo cat /run/system-monitor-agent/debconf.seed 2>&1 || true
+  fi
   sudo debconf-get-selections 2>/dev/null | grep system-monitor-agent || true
 }
 

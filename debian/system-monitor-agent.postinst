@@ -5,9 +5,16 @@ AGENT_YAML="/etc/system-monitor/agent.yaml"
 TOKEN_FILE="/etc/system-monitor/agent.token"
 SEED_FILE="/run/system-monitor-agent/debconf.seed"
 
-is_first_install() {
+should_apply_install_config() {
+    if [ -f "$SEED_FILE" ]; then
+        return 0
+    fi
     case "${2:-}" in
     ""|-) return 0 ;;
+    esac
+    status="$(dpkg-query -W -f='${Status}' system-monitor-agent 2>/dev/null || true)"
+    case "$status" in
+    "install ok unpacked" | "install ok half-configured") return 0 ;;
     esac
     return 1
 }
@@ -57,6 +64,48 @@ EOF
     chmod 0644 "$AGENT_YAML"
 }
 
+apply_agent_install_config() {
+    token=""
+    load_hub_agent_from_debconf
+    hub_url="${HUB_URL:-$hub_url}"
+    agent_id="${AGENT_ID:-$agent_id}"
+
+    if [ -z "$token" ] && [ -f /usr/share/debconf/confmodule ]; then
+        . /usr/share/debconf/confmodule
+        db_get system-monitor-agent/token || true
+        token="${RET:-}"
+    fi
+    token="${AGENT_TOKEN:-$token}"
+
+    if [ -z "$hub_url" ]; then
+        hub_url="http://127.0.0.1:8080"
+        echo "system-monitor-agent: Hub URL не задан — используется $hub_url. Задайте URL: sudo dpkg-reconfigure system-monitor-agent" >&2
+    fi
+    if [ -z "$agent_id" ]; then
+        agent_id="$(hostname)"
+    fi
+
+    write_agent_yaml "$hub_url" "$agent_id" "$TOKEN_FILE"
+
+    if [ -n "$token" ]; then
+        umask 077
+        printf '%s' "$token" >"$TOKEN_FILE"
+        chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
+        chmod 0600 "$TOKEN_FILE"
+    elif [ ! -f "$TOKEN_FILE" ]; then
+        touch "$TOKEN_FILE"
+        chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
+        chmod 0600 "$TOKEN_FILE"
+    fi
+
+    if [ ! -s "$TOKEN_FILE" ]; then
+        echo "system-monitor-agent: token не задан — служба не сможет подключиться к hub." >&2
+        echo "Настройка: sudo dpkg-reconfigure system-monitor-agent" >&2
+    fi
+}
+
+wrote_config=false
+
 case "$1" in
     configure)
         mkdir -p /etc/system-monitor /var/lib/system-monitor-agent
@@ -66,53 +115,11 @@ case "$1" in
         chown system-monitor-agent:system-monitor-agent /var/lib/system-monitor-agent
         chmod 0750 /var/lib/system-monitor-agent
 
-        # Fresh install only: debconf / env seed agent.yaml and token.
-        # On upgrade preserve /etc/system-monitor/* (see system-monitor-agent.conffiles).
-        apply_debconf_cfg=false
-        wrote_config=false
-        if is_first_install "$2" || [ -f "$SEED_FILE" ]; then
-            apply_debconf_cfg=true
-        fi
-
-        if $apply_debconf_cfg; then
-            token=""
-            load_hub_agent_from_debconf
-            hub_url="${HUB_URL:-$hub_url}"
-            agent_id="${AGENT_ID:-$agent_id}"
-
-            if [ -z "$token" ] && [ -f /usr/share/debconf/confmodule ]; then
-                . /usr/share/debconf/confmodule
-                db_get system-monitor-agent/token || true
-                token="${RET:-}"
-            fi
-            token="${AGENT_TOKEN:-$token}"
-
-            if [ -z "$hub_url" ]; then
-                hub_url="http://127.0.0.1:8080"
-                echo "system-monitor-agent: Hub URL не задан — используется $hub_url. Задайте URL: sudo dpkg-reconfigure system-monitor-agent" >&2
-            fi
-            if [ -z "$agent_id" ]; then
-                agent_id="$(hostname)"
-            fi
-
-            write_agent_yaml "$hub_url" "$agent_id" "$TOKEN_FILE"
+        # Fresh install / reconfigure: debconf seed or selections -> agent.yaml and token.
+        # On upgrade preserve /etc/system-monitor/* unless seed is written (dpkg-reconfigure).
+        if should_apply_install_config "$2"; then
+            apply_agent_install_config
             wrote_config=true
-
-            if [ -n "$token" ]; then
-                umask 077
-                printf '%s' "$token" >"$TOKEN_FILE"
-                chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
-                chmod 0600 "$TOKEN_FILE"
-            elif [ ! -f "$TOKEN_FILE" ]; then
-                touch "$TOKEN_FILE"
-                chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
-                chmod 0600 "$TOKEN_FILE"
-            fi
-
-            if [ ! -s "$TOKEN_FILE" ]; then
-                echo "system-monitor-agent: token не задан — служба не сможет подключиться к hub." >&2
-                echo "Настройка: sudo dpkg-reconfigure system-monitor-agent" >&2
-            fi
         elif [ ! -f "$TOKEN_FILE" ]; then
             touch "$TOKEN_FILE"
             chown system-monitor-agent:system-monitor-agent "$TOKEN_FILE"
@@ -122,6 +129,12 @@ case "$1" in
 esac
 
 #DEBHELPER#
+
+# dpkg -i often runs debconf config after the main postinst body; apply seed if it appeared late.
+if [ "$1" = "configure" ] && [ -f "$SEED_FILE" ] && [ "${wrote_config:-false}" != "true" ]; then
+    apply_agent_install_config
+    wrote_config=true
+fi
 
 if [ "$1" = "configure" ]; then
     if command -v deb-systemd-invoke >/dev/null; then
