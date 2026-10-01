@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/pagbest154-cmd/system-monitor/internal/collector"
@@ -82,6 +83,10 @@ func (r *Runner) run() {
 	AgentLogf(
 		"starting v%s agent_id=%s hub=%s interval=%ds config=%s",
 		version.Version, r.AgentID, r.Config.HubURL, r.Config.IntervalSec, r.ConfigPath,
+	)
+	AgentLogf(
+		"metrics push endpoint %s/api/agents/%s/metrics",
+		strings.TrimRight(r.Config.HubURL, "/"), r.AgentID,
 	)
 	r.ensureCollector()
 	if err := r.reloadCollector(); err != nil {

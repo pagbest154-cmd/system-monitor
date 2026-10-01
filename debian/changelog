@@ -1,3 +1,9 @@
+system-monitor-agent (1.0.61-1) unstable; urgency=medium
+
+  * debconf: skip prompts on upgrade when config exists; log metrics push URL.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Thu, 01 Oct 2026 14:20:00 +0700
+
 system-monitor-agent (1.0.60-1) unstable; urgency=medium
 
   * postinst: daemon-reload and restart agent after apt upgrade.

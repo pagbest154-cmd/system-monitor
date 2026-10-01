@@ -221,6 +221,8 @@ sudo apt install system-monitor-agent
 sudo systemctl restart system-monitor-agent
 ```
 
+При **`apt install --only-upgrade system-monitor-agent`** debconf не переспрашивает Hub URL, Agent ID и token, если конфиг уже есть; postinst выполняет `daemon-reload` и **restart** службы — вручную перезапускать не нужно.
+
 Если debconf-вопросы не появились (узкий терминал, повторная настройка):
 
 ```bash
@@ -318,6 +320,8 @@ system-monitor-agent --check-update
 ```bash
 sudo apt update && sudo apt install --only-upgrade system-monitor-agent
 ```
+
+Служба перезапускается автоматически (postinst). Debconf при апгрейде не трогает существующий `/etc/system-monitor/*`.
 
 ### Из исходников (Go)
 

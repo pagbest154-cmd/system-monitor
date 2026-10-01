@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+## [1.0.61] — 2026-10-01
+
+### Исправлено
+
+- Agent (.deb): при `apt upgrade` debconf не переспрашивает Hub URL, Agent ID и token, если `/etc/system-monitor/agent.yaml` и token уже настроены (`dpkg-reconfigure` по-прежнему спрашивает)
+- Agent: в журнале при старте пишется полный URL push метрик (`/api/agents/{id}/metrics`); ошибки HTTP уже содержат URL
+
+### Изменено
+
+- README: автоматический restart службы и сохранение конфига при `apt upgrade`
+
 ## [1.0.60] — 2026-10-01
 
 ### Исправлено
