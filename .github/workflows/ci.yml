@@ -26,6 +26,11 @@ jobs:
       - name: Go test
         run: go test ./...
 
+      - name: Integration test deb agent install config
+        run: |
+          chmod +x scripts/test-deb-agent-install-config.sh
+          ./scripts/test-deb-agent-install-config.sh
+
   detect-changes:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
