@@ -3,6 +3,29 @@ set -e
 
 AGENT_YAML="/etc/system-monitor/agent.yaml"
 TOKEN_FILE="/etc/system-monitor/agent.token"
+SEED_FILE="/run/system-monitor-agent/debconf.seed"
+
+load_hub_agent_from_debconf() {
+    hub_url=""
+    agent_id=""
+    if [ -f "$SEED_FILE" ]; then
+        # shellcheck disable=SC1090
+        set -a
+        . "$SEED_FILE"
+        set +a
+        hub_url="${hub_url:-}"
+        agent_id="${agent_id:-}"
+        rm -f "$SEED_FILE"
+        return 0
+    fi
+    if [ -f /usr/share/debconf/confmodule ]; then
+        . /usr/share/debconf/confmodule
+        db_get system-monitor-agent/hub-url || true
+        hub_url="${RET:-}"
+        db_get system-monitor-agent/agent-id || true
+        agent_id="${RET:-}"
+    fi
+}
 
 write_agent_yaml() {
     hub_url="${1:-http://127.0.0.1:8080}"
@@ -30,25 +53,30 @@ case "$1" in
 
         # Fresh install only: debconf / env seed agent.yaml and token.
         # On upgrade preserve /etc/system-monitor/* (see system-monitor-agent.conffiles).
+        apply_debconf_cfg=false
         if [ -z "$2" ]; then
-            hub_url="http://127.0.0.1:8080"
-            agent_id=""
+            apply_debconf_cfg=true
+        elif [ -f "$SEED_FILE" ]; then
+            apply_debconf_cfg=true
+        fi
+
+        if $apply_debconf_cfg; then
+            load_hub_agent_from_debconf
+            hub_url="${HUB_URL:-$hub_url}"
+            agent_id="${AGENT_ID:-$agent_id}"
             token=""
 
             if [ -f /usr/share/debconf/confmodule ]; then
                 . /usr/share/debconf/confmodule
-                db_get system-monitor-agent/hub-url || true
-                hub_url="${RET:-http://127.0.0.1:8080}"
-                db_get system-monitor-agent/agent-id || true
-                agent_id="${RET:-}"
                 db_get system-monitor-agent/token || true
                 token="${RET:-}"
             fi
-
-            hub_url="${HUB_URL:-$hub_url}"
-            agent_id="${AGENT_ID:-$agent_id}"
             token="${AGENT_TOKEN:-$token}"
 
+            if [ -z "$hub_url" ]; then
+                hub_url="http://127.0.0.1:8080"
+                echo "system-monitor-agent: Hub URL не задан — используется $hub_url. Задайте URL: sudo dpkg-reconfigure system-monitor-agent" >&2
+            fi
             if [ -z "$agent_id" ]; then
                 agent_id="$(hostname)"
             fi

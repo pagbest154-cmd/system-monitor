@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Исправлено
+
+- Agent (.deb): Hub URL и Agent ID из debconf записываются в `agent.yaml` через seed-файл (раньше postinst часто не видел ответы debconf и оставлял `http://127.0.0.1:8080`)
+- Agent (.deb): `apt purge` удаляет `agent.token` и очищает `/etc/system-monitor`, если каталог пуст
+
 ## [1.0.57] — 2026-10-01
 
 ### Исправлено

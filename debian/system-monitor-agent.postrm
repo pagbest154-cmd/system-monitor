@@ -9,6 +9,11 @@ case "$1" in
             db_purge system-monitor-agent/agent-id || true
             db_purge system-monitor-agent/token || true
         fi
+        rm -f /etc/system-monitor/agent.token
+        rm -f /etc/system-monitor/agent.yaml
+        rm -f /etc/system-monitor/agent_sensors.yaml
+        rmdir /etc/system-monitor 2>/dev/null || true
+        rm -rf /run/system-monitor-agent
         ;;
 esac
 
