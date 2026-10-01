@@ -121,7 +121,11 @@ func (s *Server) Router() http.Handler {
 	r.Post("/api/auth/login", s.handleLogin)
 	r.Post("/api/auth/logout", s.handleLogout)
 	r.Get("/api/sensor-types", s.handleSensorTypes)
+	r.Get("/health", s.handleHealth)
+	r.Get("/metrics", s.handlePrometheusMetrics)
+	r.Get("/api/hub/backup", s.handleHubBackup)
 	r.Get("/api/alerts", s.handleListAlerts)
+	r.Get("/api/alerts/events", s.handleListAlertEvents)
 	r.Get("/api/alerts/{agentID}", s.handleGetAgentAlerts)
 	r.Put("/api/alerts/{agentID}", s.handlePutAgentAlerts)
 	r.Post("/api/alerts/{agentID}/ntfy/topic", s.handleRegenerateNtfyTopic)
@@ -139,6 +143,10 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.Mode != "hub" || !HubAuthEnabled() || IsPublicPath(r.URL.Path, r.Method) {
 			next.ServeHTTP(w, r)
+			return
+		}
+		if IsViewerSession(r) && isWriteMethod(r.Method) && !isViewerWriteAllowed(r.URL.Path, r.Method) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"detail": "Доступ только для чтения"})
 			return
 		}
 		if IsAuthenticated(r) || IsAgentAuthenticated(r) {
@@ -302,9 +310,15 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 		sensorID = protocol.PrefixedSensorID(agent, sensorID)
 	}
 	points, _ := s.Store.GetHistory(sensorID, period)
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"sensor_id": sensorID, "period": period, "points": points,
-	})
+	format := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("format")))
+	if format == "" {
+		format = "json"
+	}
+	if format != "json" && format != "csv" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "format должен быть json или csv"})
+		return
+	}
+	writeMetricsExport(w, format, sensorID, period, points)
 }
 
 func (s *Server) handleSystem(w http.ResponseWriter, r *http.Request) {
@@ -367,6 +381,7 @@ func (s *Server) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
+	auditLog(r, "delete_agent")
 	agentID := chi.URLParam(r, "agentID")
 	found, metricsDeleted, err := s.Store.DeleteAgent(agentID)
 	if err != nil {
@@ -464,9 +479,13 @@ func (s *Server) evaluatePushAlerts(agentID string, report *protocol.AgentReport
 	}
 	sensorNames := map[string]string{}
 	sensorUnits := map[string]string{}
+	sensorWarn := map[string]*float64{}
+	sensorCritical := map[string]*float64{}
 	for _, sensor := range report.Sensors {
 		sensorNames[sensor.ID] = sensor.Name
 		sensorUnits[sensor.ID] = sensor.Unit
+		sensorWarn[sensor.ID] = sensor.WarnAbove
+		sensorCritical[sensor.ID] = sensor.CriticalAbove
 	}
 	for _, point := range report.Metrics {
 		if point.Value == nil {
@@ -477,12 +496,14 @@ func (s *Server) evaluatePushAlerts(agentID string, report *protocol.AgentReport
 			name = point.SensorID
 		}
 		s.AlertEngine.EvaluateMetric(alerts.MetricInput{
-			AgentID:    agentID,
-			AgentName:  agentName,
-			SensorID:   point.SensorID,
-			SensorName: name,
-			Unit:       sensorUnits[point.SensorID],
-			Value:      *point.Value,
+			AgentID:       agentID,
+			AgentName:     agentName,
+			SensorID:      point.SensorID,
+			SensorName:    name,
+			Unit:          sensorUnits[point.SensorID],
+			Value:         *point.Value,
+			WarnAbove:     sensorWarn[point.SensorID],
+			CriticalAbove: sensorCritical[point.SensorID],
 		})
 	}
 }
@@ -549,6 +570,7 @@ func (s *Server) handleUpdateSensors(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateDashboard(w http.ResponseWriter, r *http.Request) {
+	auditLog(r, "update_dashboard")
 	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
@@ -586,6 +608,7 @@ func (s *Server) handleGetAgentsConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateAgentsConfig(w http.ResponseWriter, r *http.Request) {
+	auditLog(r, "update_agents_config")
 	var body struct {
 		Agents []config.AgentEntry `json:"agents"`
 	}
@@ -618,6 +641,7 @@ func (s *Server) handleGetHubConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateHubConfig(w http.ResponseWriter, r *http.Request) {
+	auditLog(r, "update_hub_config")
 	if s.Mode != "hub" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Доступно только в hub-режиме"})
 		return
@@ -719,11 +743,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
 		return
 	}
-	if !VerifyCredentials(strings.TrimSpace(body.Name), body.Key) {
+	okCred, role := VerifyCredentialsWithRole(strings.TrimSpace(body.Name), body.Key)
+	if !okCred {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Неверное имя хаба или ключ"})
 		return
 	}
-	token := CreateSessionToken()
+	token := CreateSessionToken(role, strings.TrimSpace(body.Name))
 	w.Header().Set("Set-Cookie", SessionCookieHeader(token, RequestIsSecure(r)))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
 )
 
@@ -15,13 +17,20 @@ type AlertSensorRule struct {
 	Threshold float64 `yaml:"threshold" json:"threshold"`
 }
 
+const (
+	AlertThresholdModeManual = "manual"
+	AlertThresholdModeSensor = "sensor"
+)
+
 type AgentAlertConfig struct {
 	Enabled        bool              `yaml:"enabled" json:"enabled"`
+	ThresholdMode  string            `yaml:"threshold_mode" json:"threshold_mode"`
 	Offline        AlertOfflineRule  `yaml:"offline" json:"offline"`
 	Sensors        []AlertSensorRule `yaml:"sensors" json:"sensors"`
 	CooldownSec    int               `yaml:"cooldown_sec" json:"cooldown_sec"`
 	NotifyRecovery bool              `yaml:"notify_recovery" json:"notify_recovery"`
 	Ntfy           NtfyAlertConfig   `yaml:"ntfy" json:"ntfy"`
+	Webhook        WebhookAlertConfig `yaml:"webhook" json:"webhook"`
 }
 
 type AlertsFile struct {
@@ -54,10 +63,19 @@ func SaveAlertsConfig(cfg *AlertsFile, path string) error {
 
 func DefaultAgentAlertConfig() AgentAlertConfig {
 	return AgentAlertConfig{
-		Enabled: false,
-		Offline: AlertOfflineRule{Enabled: false, AfterSec: 180},
-		Sensors: []AlertSensorRule{},
-		CooldownSec: 900,
+		Enabled:       false,
+		ThresholdMode: AlertThresholdModeManual,
+		Offline:       AlertOfflineRule{Enabled: false, AfterSec: 180},
+		Sensors:       []AlertSensorRule{},
+		CooldownSec:   900,
 		NotifyRecovery: false,
 	}
+}
+
+func NormalizeAlertThresholdMode(mode string) string {
+	mode = strings.TrimSpace(strings.ToLower(mode))
+	if mode == AlertThresholdModeSensor {
+		return AlertThresholdModeSensor
+	}
+	return AlertThresholdModeManual
 }

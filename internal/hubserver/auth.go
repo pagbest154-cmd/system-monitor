@@ -18,6 +18,8 @@ import (
 
 const sessionCookie = "sm_hub_session"
 const sessionTTL = 7 * 24 * 3600
+const sessionRoleAdmin = "admin"
+const sessionRoleViewer = "viewer"
 
 var agentAPIPathRE = regexp.MustCompile(`^/api/agents/([^/]+)/(.+)$`)
 
@@ -43,13 +45,38 @@ func HubName() string {
 	return ""
 }
 
-func VerifyCredentials(name, key string) bool {
-	hubName, hubKey, ok := hubCredentials()
-	if !ok {
-		return true
+func hubViewCredentials() (string, string, bool) {
+	name := strings.TrimSpace(os.Getenv("HUB_VIEW_NAME"))
+	key := strings.TrimSpace(os.Getenv("HUB_VIEW_KEY"))
+	if name != "" && key != "" {
+		return name, key, true
 	}
-	return subtle.ConstantTimeCompare([]byte(name), []byte(hubName)) == 1 &&
-		subtle.ConstantTimeCompare([]byte(key), []byte(hubKey)) == 1
+	return "", "", false
+}
+
+func VerifyCredentialsWithRole(name, key string) (bool, string) {
+	name = strings.TrimSpace(name)
+	if adminName, adminKey, ok := hubCredentials(); ok {
+		if subtle.ConstantTimeCompare([]byte(name), []byte(adminName)) == 1 &&
+			subtle.ConstantTimeCompare([]byte(key), []byte(adminKey)) == 1 {
+			return true, sessionRoleAdmin
+		}
+	}
+	if viewName, viewKey, ok := hubViewCredentials(); ok {
+		if subtle.ConstantTimeCompare([]byte(name), []byte(viewName)) == 1 &&
+			subtle.ConstantTimeCompare([]byte(key), []byte(viewKey)) == 1 {
+			return true, sessionRoleViewer
+		}
+	}
+	if _, _, ok := hubCredentials(); !ok {
+		return true, sessionRoleAdmin
+	}
+	return false, ""
+}
+
+func VerifyCredentials(name, key string) bool {
+	ok, _ := VerifyCredentialsWithRole(name, key)
+	return ok
 }
 
 func sessionSecret() []byte {
@@ -62,37 +89,102 @@ func sessionSecret() []byte {
 	return sum[:]
 }
 
-func CreateSessionToken() string {
+func CreateSessionToken(role, user string) string {
+	if role == "" {
+		role = sessionRoleAdmin
+	}
+	if user == "" {
+		user = "-"
+	}
 	expires := time.Now().Unix() + sessionTTL
-	nonce := randomToken(16)
-	payload := strconv.FormatInt(expires, 10) + "." + nonce
+	nonce := randomToken(12)
+	payload := strconv.FormatInt(expires, 10) + "." + nonce + "." + role + "." + user
 	sig := hmacSHA256(payload)
 	raw := payload + "." + sig
 	return strings.TrimRight(base64.URLEncoding.EncodeToString([]byte(raw)), "=")
 }
 
-func VerifySessionToken(token string) bool {
+func ParseSessionToken(token string) (role, user string) {
 	if token == "" {
-		return false
+		return "", ""
 	}
 	padding := strings.Repeat("=", (4-len(token)%4)%4)
 	raw, err := base64.URLEncoding.DecodeString(token + padding)
 	if err != nil {
-		return false
+		return "", ""
 	}
 	parts := strings.Split(string(raw), ".")
-	if len(parts) != 3 {
-		return false
+	if len(parts) == 3 {
+		payload := parts[0] + "." + parts[1]
+		if hmacSHA256(payload) != parts[2] {
+			return "", ""
+		}
+		expires, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil || expires <= time.Now().Unix() {
+			return "", ""
+		}
+		return sessionRoleAdmin, ""
 	}
-	payload := parts[0] + "." + parts[1]
-	if hmacSHA256(payload) != parts[2] {
-		return false
+	if len(parts) < 5 {
+		return "", ""
+	}
+	sigIndex := len(parts) - 1
+	payload := strings.Join(parts[:sigIndex], ".")
+	if hmacSHA256(payload) != parts[sigIndex] {
+		return "", ""
 	}
 	expires, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
+	if err != nil || expires <= time.Now().Unix() {
+		return "", ""
+	}
+	role = parts[2]
+	if role != sessionRoleViewer {
+		role = sessionRoleAdmin
+	}
+	user = parts[3]
+	return role, user
+}
+
+func isWriteMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
 		return false
 	}
-	return expires > time.Now().Unix()
+}
+
+func isViewerWriteAllowed(path, method string) bool {
+	if path == "/api/auth/logout" && method == http.MethodPost {
+		return true
+	}
+	return false
+}
+
+func VerifySessionToken(token string) bool {
+	role, _ := ParseSessionToken(token)
+	return role != ""
+}
+
+func SessionRole(r *http.Request) string {
+	if !HubAuthEnabled() {
+		return sessionRoleAdmin
+	}
+	if cookie, err := r.Cookie(sessionCookie); err == nil {
+		if role, _ := ParseSessionToken(cookie.Value); role != "" {
+			return role
+		}
+	}
+	if user, pass, ok := ParseBasicAuth(r.Header.Get("Authorization")); ok {
+		if okCred, role := VerifyCredentialsWithRole(user, pass); okCred {
+			return role
+		}
+	}
+	return sessionRoleAdmin
+}
+
+func IsViewerSession(r *http.Request) bool {
+	return SessionRole(r) == sessionRoleViewer
 }
 
 func hmacSHA256(payload string) string {
@@ -190,6 +282,12 @@ func IsPublicPath(path, method string) bool {
 		return true
 	}
 	if path == "/api/version" && method == http.MethodGet {
+		return true
+	}
+	if path == "/health" && method == http.MethodGet {
+		return true
+	}
+	if path == "/metrics" && method == http.MethodGet {
 		return true
 	}
 	return false

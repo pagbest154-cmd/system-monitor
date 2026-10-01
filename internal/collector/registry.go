@@ -15,6 +15,8 @@ var registry = map[string]factory{
 	"system.network_bytes":    func(c config.SensorConfig) Sensor { return networkBytesSensor{baseSensor{c}} },
 	"system.temperature":      func(c config.SensorConfig) Sensor { return temperatureSensor{baseSensor{c}} },
 	"system.gpu_temperature":  func(c config.SensorConfig) Sensor { return gpuTemperatureSensor{baseSensor{c}} },
+	"system.load_average":     func(c config.SensorConfig) Sensor { return loadAverageSensor{baseSensor{c}} },
+	"system.process_cpu_percent": func(c config.SensorConfig) Sensor { return processCPUPercentSensor{baseSensor{c}} },
 	"gpio.dht22":              func(c config.SensorConfig) Sensor { return dht22Sensor{baseSensor{c}} },
 	"remote.http_json":        func(c config.SensorConfig) Sensor { return httpJsonSensor{baseSensor{c}} },
 	"remote.mqtt":             func(c config.SensorConfig) Sensor { return mqttSensor{baseSensor{c}} },

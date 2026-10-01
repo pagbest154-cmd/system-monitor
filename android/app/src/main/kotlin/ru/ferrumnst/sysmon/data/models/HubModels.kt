@@ -73,6 +73,7 @@ data class SensorInfo(
     val unit: String? = null,
     val enabled: Boolean = true,
     @SerialName("warn_above") val warnAbove: Double? = null,
+    @SerialName("critical_above") val criticalAbove: Double? = null,
     val current: MetricReading? = null,
 )
 

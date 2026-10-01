@@ -47,7 +47,9 @@ func (s *Server) handlePutAgentAlerts(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
 		return
 	}
+	agentCfg.ThresholdMode = config.NormalizeAlertThresholdMode(agentCfg.ThresholdMode)
 	config.EnsureAgentNtfyTopic(&agentCfg, agentID)
+	auditLog(r, "update_alerts")
 	cfg, err := config.LoadAlertsConfig("")
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": err.Error()})

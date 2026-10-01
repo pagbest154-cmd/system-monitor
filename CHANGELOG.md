@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+## [1.0.64] — 2026-10-01
+
+### Добавлено
+
+- Hub: push-алерты — режим порогов «как в датчике» (`threshold_mode: sensor`) с отдельными уведомлениями warning/critical через ntfy priority; web (Хосты) и Android SysMon
+- Hub API: экспорт истории метрик — `GET /api/metrics/{id}?format=csv&period=…&agent=…`
+- Hub: журнал алертов (`GET /api/alerts/events`), backup БД (`GET /api/hub/backup`), webhook в `alerts.yaml`, `/health` и `/metrics`
+- Agent: датчики `system.load_average`, `system.process_cpu_percent`
+- Hub: read-only вход (`HUB_VIEW_NAME` / `HUB_VIEW_KEY`), audit log изменений config в journal hub
+
 ## [1.0.63] — 2026-10-01
 
 ### Исправлено

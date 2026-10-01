@@ -159,12 +159,17 @@ function openUpdateModal(agent, meta) {
 function defaultAlertConfig() {
   return {
     enabled: false,
+    threshold_mode: "manual",
     offline: { enabled: false, after_sec: 180 },
     sensors: [],
     cooldown_sec: 900,
     notify_recovery: false,
     ntfy: { topic: "", token: "" },
   };
+}
+
+function isSensorThresholdMode(mode) {
+  return (mode || "manual") === "sensor";
 }
 
 function mergeSensorRows(sensors, config) {
@@ -180,11 +185,13 @@ function mergeSensorRows(sensors, config) {
         unit: sensor.unit || "",
         enabled: rule?.enabled === true,
         threshold: rule?.threshold ?? defaultThreshold,
+        warn_above: sensor.warn_above,
+        critical_above: sensor.critical_above,
       };
     });
 }
 
-function renderSensorRows(rows) {
+function renderSensorRows(rows, sensorMode) {
   return rows
     .map(
       (row) => `
@@ -201,7 +208,10 @@ function renderSensorRows(rows) {
           </div>
         </td>
         <td>
-          <div class="alert-threshold-cell">
+          ${
+            sensorMode
+              ? `<div class="alert-sensor-limits">${formatSensorLimits(row)}</div>`
+              : `<div class="alert-threshold-cell">
             <input
               type="number"
               class="alert-threshold-input"
@@ -211,7 +221,8 @@ function renderSensorRows(rows) {
               ${row.enabled ? "" : "disabled"}
             />
             ${row.unit ? `<span class="alert-unit">${row.unit}</span>` : ""}
-          </div>
+          </div>`
+          }
         </td>
       </tr>
     `,
@@ -219,18 +230,59 @@ function renderSensorRows(rows) {
     .join("");
 }
 
+function formatSensorLimits(row) {
+  const parts = [];
+  if (row.warn_above != null) parts.push(`≥ ${row.warn_above}`);
+  if (row.critical_above != null) parts.push(`≥ ${row.critical_above}`);
+  const text = parts.length ? parts.join(" / ") : "—";
+  return row.unit ? `${text} ${row.unit}` : text;
+}
+
+function bindSensorRowHandlers(modal, sensorRows) {
+  modal.querySelectorAll("[data-sensor-enabled]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const sensorId = checkbox.dataset.sensorEnabled;
+      const input = modal.querySelector(`[data-sensor-threshold="${sensorId}"]`);
+      if (input) input.disabled = !checkbox.checked;
+    });
+  });
+}
+
+function renderAlertEvents(events) {
+  if (!events?.length) {
+    return `<li class="alert-event-empty">${i18n.hosts.alertsEventsEmpty}</li>`;
+  }
+  return events
+    .map((ev) => {
+      const when = formatTime(ev.ts);
+      const severity = ev.severity || "";
+      return `<li class="alert-event-item"><span class="alert-event-time">${when}</span> <span class="alert-event-sev">${severity}</span> <strong>${ev.title}</strong> — ${ev.body}</li>`;
+    })
+    .join("");
+}
+
+function refreshSensorRowsTable(modal, sensorRows) {
+  const mode = modal.querySelector("#alerts-threshold-mode")?.value || "manual";
+  const tbody = modal.querySelector("#alert-sensor-rows");
+  if (tbody) tbody.innerHTML = renderSensorRows(sensorRows, isSensorThresholdMode(mode));
+  bindSensorRowHandlers(modal, sensorRows);
+}
+
 async function openAlertsModal(agent) {
   const existing = document.getElementById("host-alerts-modal");
   if (existing) existing.remove();
 
-  const [alertsData, sensorsData] = await Promise.all([
+  const [alertsData, sensorsData, eventsData] = await Promise.all([
     fetchJson(`/api/alerts/${encodeURIComponent(agent.id)}`),
     fetchJson(`/api/sensors?agent=${encodeURIComponent(agent.id)}`),
+    fetchJson(`/api/alerts/events?agent_id=${encodeURIComponent(agent.id)}&limit=20`).catch(() => ({ events: [] })),
   ]);
   const config = alertsData.config || defaultAlertConfig();
   const ntfyBaseUrl = alertsData.ntfy_base_url || "https://ntfy.sh";
   const ntfyTopic = config.ntfy?.topic || "";
   const sensorRows = mergeSensorRows(sensorsData.sensors || [], config);
+  const thresholdMode = config.threshold_mode || "manual";
+  const sensorModeInitial = isSensorThresholdMode(thresholdMode);
 
   const modal = document.createElement("div");
   modal.id = "host-alerts-modal";
@@ -283,17 +335,26 @@ async function openAlertsModal(agent) {
           </label>
           <p class="alert-hint">${i18n.hosts.alertsNtfyHint}</p>
         </div>
+        <label class="alert-field">
+          <span>${i18n.hosts.alertsThresholdMode}</span>
+          <select id="alerts-threshold-mode">
+            <option value="manual" ${thresholdMode === "manual" ? "selected" : ""}>${i18n.hosts.alertsThresholdModeManual}</option>
+            <option value="sensor" ${thresholdMode === "sensor" ? "selected" : ""}>${i18n.hosts.alertsThresholdModeSensor}</option>
+          </select>
+        </label>
         <h3 class="alert-sensors-title">${i18n.hosts.alertsSensors}</h3>
         <table class="alert-sensors-table">
           <thead>
             <tr>
               <th>${i18n.hosts.alertsSensorName}</th>
-              <th>${i18n.hosts.alertsThreshold}</th>
+              <th>${sensorModeInitial ? i18n.hosts.alertsSensorLimits : i18n.hosts.alertsThreshold}</th>
             </tr>
           </thead>
-          <tbody id="alert-sensor-rows">${renderSensorRows(sensorRows)}</tbody>
+          <tbody id="alert-sensor-rows">${renderSensorRows(sensorRows, sensorModeInitial)}</tbody>
         </table>
         <p class="alert-hint">${i18n.hosts.alertsHint}</p>
+        <h3 class="alert-sensors-title">${i18n.hosts.alertsEventsTitle}</h3>
+        <ul class="alert-events-list" id="alert-events-list">${renderAlertEvents([])}</ul>
         <p class="alert-error hidden" id="alerts-error"></p>
       </div>
       <footer class="host-alerts-footer">
@@ -303,6 +364,8 @@ async function openAlertsModal(agent) {
     </div>
   `;
   document.body.appendChild(modal);
+  const eventsList = modal.querySelector("#alert-events-list");
+  if (eventsList) eventsList.innerHTML = renderAlertEvents(eventsData.events || []);
 
   let cooldownMinutes = Math.max(1, Math.round((config.cooldown_sec ?? 900) / 60));
 
@@ -319,13 +382,15 @@ async function openAlertsModal(agent) {
     });
   });
 
-  modal.querySelectorAll("[data-sensor-enabled]").forEach((checkbox) => {
-    checkbox.addEventListener("change", () => {
-      const sensorId = checkbox.dataset.sensorEnabled;
-      const input = modal.querySelector(`[data-sensor-threshold="${sensorId}"]`);
-      if (input) input.disabled = !checkbox.checked;
-    });
+  modal.querySelector("#alerts-threshold-mode")?.addEventListener("change", () => {
+    refreshSensorRowsTable(modal, sensorRows);
+    const mode = modal.querySelector("#alerts-threshold-mode")?.value || "manual";
+    const th = modal.querySelector(".alert-sensors-table thead th:last-child");
+    if (th) {
+      th.textContent = isSensorThresholdMode(mode) ? i18n.hosts.alertsSensorLimits : i18n.hosts.alertsThreshold;
+    }
   });
+  bindSensorRowHandlers(modal, sensorRows);
 
   modal.querySelector("#alerts-ntfy-copy")?.addEventListener("click", async () => {
     const topicInput = modal.querySelector("#alerts-ntfy-topic");
@@ -378,6 +443,7 @@ async function openAlertsModal(agent) {
     });
     const payload = {
       enabled: modal.querySelector("#alerts-enabled")?.checked === true,
+      threshold_mode: modal.querySelector("#alerts-threshold-mode")?.value || "manual",
       offline: {
         enabled: modal.querySelector("#alerts-offline-enabled")?.checked === true,
         after_sec: Number(modal.querySelector("#alerts-offline-sec")?.value || 180),

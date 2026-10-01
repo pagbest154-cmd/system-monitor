@@ -25,6 +25,7 @@ data class NtfyAlertConfig(
 @Serializable
 data class AgentAlertConfig(
     val enabled: Boolean = false,
+    @SerialName("threshold_mode") val thresholdMode: String = "manual",
     val offline: AlertOfflineRule = AlertOfflineRule(),
     val sensors: List<AlertSensorRule> = emptyList(),
     @SerialName("cooldown_sec") val cooldownSec: Int = 900,

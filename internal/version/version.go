@@ -1,4 +1,4 @@
 package version
 
 // Version is set at build time via -ldflags.
-var Version = "1.0.63"
+var Version = "1.0.64"

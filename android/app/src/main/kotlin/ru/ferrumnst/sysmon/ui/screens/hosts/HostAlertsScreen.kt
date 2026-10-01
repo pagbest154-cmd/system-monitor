@@ -228,8 +228,36 @@ fun HostAlertsScreen(
 
                         item {
                             DashboardCard(
+                                title = "Режим порогов",
+                                subtitle = "Свой порог или warn/critical из датчика",
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        if (state.sensorThresholdMode) "Как в датчике" else "Свой порог для push",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Switch(
+                                        checked = state.sensorThresholdMode,
+                                        onCheckedChange = vm::setSensorThresholdMode,
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            DashboardCard(
                                 title = "Датчики",
-                                subtitle = "Порог срабатывания (≥)",
+                                subtitle = if (state.sensorThresholdMode) {
+                                    "Предупр. / критич. из настроек датчика"
+                                } else {
+                                    "Порог срабатывания (≥)"
+                                },
                             ) {
                                 if (state.sensorRows.isEmpty()) {
                                     Text(
@@ -249,6 +277,7 @@ fun HostAlertsScreen(
                                             }
                                             SensorAlertRowView(
                                                 row = row,
+                                                sensorMode = state.sensorThresholdMode,
                                                 onEnabledChange = { vm.setSensorEnabled(row.sensorId, it) },
                                                 onThresholdChange = { vm.setSensorThreshold(row.sensorId, it) },
                                             )
@@ -376,6 +405,7 @@ private fun InfoValueRow(
 @Composable
 private fun SensorAlertRowView(
     row: SensorAlertRow,
+    sensorMode: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onThresholdChange: (String) -> Unit,
 ) {
@@ -396,20 +426,33 @@ private fun SensorAlertRowView(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        OutlinedTextField(
-            value = row.thresholdText,
-            onValueChange = onThresholdChange,
-            modifier = Modifier.widthIn(min = 72.dp, max = 96.dp),
-            singleLine = true,
-            enabled = row.enabled,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            suffix = {
-                row.unit?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall)
-                }
-            },
-            shape = RoundedCornerShape(10.dp),
-        )
+        if (sensorMode) {
+            val limits = buildList {
+                row.warnAbove?.let { add("≥ $it") }
+                row.criticalAbove?.let { add("≥ $it") }
+            }.joinToString(" / ").ifBlank { "—" }
+            Text(
+                text = row.unit?.let { "$limits $it" } ?: limits,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.widthIn(min = 72.dp, max = 120.dp),
+            )
+        } else {
+            OutlinedTextField(
+                value = row.thresholdText,
+                onValueChange = onThresholdChange,
+                modifier = Modifier.widthIn(min = 72.dp, max = 96.dp),
+                singleLine = true,
+                enabled = row.enabled,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                suffix = {
+                    row.unit?.let {
+                        Text(it, style = MaterialTheme.typography.labelSmall)
+                    }
+                },
+                shape = RoundedCornerShape(10.dp),
+            )
+        }
         Switch(
             checked = row.enabled,
             onCheckedChange = onEnabledChange,

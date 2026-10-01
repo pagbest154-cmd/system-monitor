@@ -22,12 +22,14 @@ type Sender interface {
 }
 
 type MetricInput struct {
-	AgentID    string
-	AgentName  string
-	SensorID   string
-	SensorName string
-	Unit       string
-	Value      float64
+	AgentID       string
+	AgentName     string
+	SensorID      string
+	SensorName    string
+	Unit          string
+	Value         float64
+	WarnAbove     *float64
+	CriticalAbove *float64
 }
 
 func NewEngine(store *storage.MetricStore, sender Sender) *Engine {
@@ -47,6 +49,14 @@ func (e *Engine) EvaluateMetric(input MetricInput) {
 	if rule == nil || !rule.Enabled {
 		return
 	}
+	if config.NormalizeAlertThresholdMode(agentCfg.ThresholdMode) == config.AlertThresholdModeSensor {
+		e.evaluateSensorThresholds(agentCfg, input)
+		return
+	}
+	e.evaluateManualThreshold(agentCfg, input, rule)
+}
+
+func (e *Engine) evaluateManualThreshold(agentCfg config.AgentAlertConfig, input MetricInput, rule *config.AlertSensorRule) {
 	breached := input.Value >= rule.Threshold
 	stateKey := "sensor:" + input.SensorID
 	prev, _ := e.store.GetAlertState(input.AgentID, stateKey)
@@ -72,6 +82,89 @@ func (e *Engine) EvaluateMetric(input MetricInput) {
 	}
 	if !breached && prev.LastBreached {
 		_ = e.store.SetAlertState(input.AgentID, stateKey, false, prev.LastNotifiedAt)
+		if agentCfg.NotifyRecovery {
+			e.dispatch(agentCfg, input.AgentName, fmt.Sprintf("%s вернулся в норму", input.SensorName), map[string]string{
+				"agent_id":  input.AgentID,
+				"kind":      "recovery",
+				"sensor_id": input.SensorID,
+				"severity":  "ok",
+			})
+		}
+	}
+}
+
+func (e *Engine) evaluateSensorThresholds(agentCfg config.AgentAlertConfig, input MetricInput) {
+	warn := input.WarnAbove
+	critical := input.CriticalAbove
+	if warn == nil && critical == nil {
+		return
+	}
+	criticalKey := "sensor:" + input.SensorID + ":critical"
+	warnKey := "sensor:" + input.SensorID + ":warn"
+	prevCritical, _ := e.store.GetAlertState(input.AgentID, criticalKey)
+	prevWarn, _ := e.store.GetAlertState(input.AgentID, warnKey)
+
+	isCritical := critical != nil && input.Value >= *critical
+	isWarn := warn != nil && input.Value >= *warn
+	now := float64(time.Now().UnixNano()) / 1e9
+	unit := strings.TrimSpace(input.Unit)
+	valueText := formatValue(input.Value, unit)
+
+	if isCritical {
+		if !prevCritical.LastBreached {
+			if !e.inCooldown(agentCfg, prevCritical) {
+				thresholdText := formatValue(*critical, unit)
+				body := fmt.Sprintf("%s — %s (критично ≥ %s)", input.SensorName, valueText, thresholdText)
+				e.dispatch(agentCfg, input.AgentName, body, map[string]string{
+					"agent_id":  input.AgentID,
+					"kind":      "sensor",
+					"sensor_id": input.SensorID,
+					"severity":  "critical",
+				})
+				_ = e.store.SetAlertState(input.AgentID, criticalKey, true, now)
+			} else {
+				_ = e.store.SetAlertState(input.AgentID, criticalKey, true, prevCritical.LastNotifiedAt)
+			}
+		}
+		if isWarn && !prevWarn.LastBreached {
+			_ = e.store.SetAlertState(input.AgentID, warnKey, true, prevWarn.LastNotifiedAt)
+		}
+		return
+	}
+
+	if prevCritical.LastBreached {
+		_ = e.store.SetAlertState(input.AgentID, criticalKey, false, prevCritical.LastNotifiedAt)
+		if agentCfg.NotifyRecovery {
+			e.dispatch(agentCfg, input.AgentName, fmt.Sprintf("%s ниже критического порога", input.SensorName), map[string]string{
+				"agent_id":  input.AgentID,
+				"kind":      "recovery",
+				"sensor_id": input.SensorID,
+				"severity":  "ok",
+			})
+		}
+	}
+
+	if isWarn {
+		if !prevWarn.LastBreached {
+			if e.inCooldown(agentCfg, prevWarn) {
+				_ = e.store.SetAlertState(input.AgentID, warnKey, true, prevWarn.LastNotifiedAt)
+				return
+			}
+			thresholdText := formatValue(*warn, unit)
+			body := fmt.Sprintf("%s — %s (предупр. ≥ %s)", input.SensorName, valueText, thresholdText)
+			e.dispatch(agentCfg, input.AgentName, body, map[string]string{
+				"agent_id":  input.AgentID,
+				"kind":      "sensor",
+				"sensor_id": input.SensorID,
+				"severity":  "warning",
+			})
+			_ = e.store.SetAlertState(input.AgentID, warnKey, true, now)
+		}
+		return
+	}
+
+	if prevWarn.LastBreached {
+		_ = e.store.SetAlertState(input.AgentID, warnKey, false, prevWarn.LastNotifiedAt)
 		if agentCfg.NotifyRecovery {
 			e.dispatch(agentCfg, input.AgentName, fmt.Sprintf("%s вернулся в норму", input.SensorName), map[string]string{
 				"agent_id":  input.AgentID,
@@ -154,18 +247,33 @@ func (e *Engine) StartOfflineLoop() {
 }
 
 func (e *Engine) dispatch(agentCfg config.AgentAlertConfig, title, body string, data map[string]string) {
+	agentID := data["agent_id"]
+	_ = e.store.InsertAlertEvent(storage.AlertEvent{
+		AgentID:  agentID,
+		Kind:     data["kind"],
+		Severity: data["severity"],
+		SensorID: data["sensor_id"],
+		Title:    title,
+		Body:     body,
+	})
 	topic := strings.TrimSpace(agentCfg.Ntfy.Topic)
-	if topic == "" {
+	if topic != "" && e.sender != nil {
+		if err := e.sender.Send(topic, agentCfg.Ntfy.Token, title, body, data); err != nil {
+			log.Printf("[alerts] ntfy send failed: %v", err)
+		}
+	} else if topic == "" {
 		log.Printf("[alerts] no ntfy topic: %s — %s", title, body)
-		return
-	}
-	if e.sender == nil {
+	} else if e.sender == nil {
 		log.Printf("[alerts] %s: %s", title, body)
-		return
 	}
-	if err := e.sender.Send(topic, agentCfg.Ntfy.Token, title, body, data); err != nil {
-		log.Printf("[alerts] send failed: %v", err)
-	}
+	sendWebhook(agentCfg.Webhook, webhookPayload{
+		AgentID:  agentID,
+		Title:    title,
+		Body:     body,
+		Kind:     data["kind"],
+		Severity: data["severity"],
+		SensorID: data["sensor_id"],
+	})
 }
 
 func (e *Engine) inCooldown(agentCfg config.AgentAlertConfig, prev storage.AlertState) bool {

@@ -12,6 +12,11 @@ type NtfyAlertConfig struct {
 	Token string `yaml:"token" json:"token"`
 }
 
+type WebhookAlertConfig struct {
+	URL    string `yaml:"url" json:"url"`
+	Secret string `yaml:"secret" json:"secret"`
+}
+
 var agentIDSlugRe = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
 
 func EnsureAgentNtfyTopic(cfg *AgentAlertConfig, agentID string) {

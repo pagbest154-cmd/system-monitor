@@ -180,6 +180,9 @@ alerts:
     ntfy:
       topic: sysmon-homepc-a8f3k2...
       token: ""   # опционально, если на ntfy включена авторизация
+    webhook:
+      url: ""     # опционально: POST JSON при алерте
+      secret: ""  # опционально: заголовок X-Sysmon-Secret
     sensors:
       - sensor_id: cpu_percent
         enabled: true
@@ -440,6 +443,8 @@ panels:
 | `system.disk_usage` | Занятость диска (`params.path`) |
 | `system.network_bytes` | Сеть МБ/с (`params.direction`: recv/sent) |
 | `system.temperature` | Температура CPU |
+| `system.load_average` | Load average (1 min) |
+| `system.process_cpu_percent` | CPU % процессов (`params.name`) |
 | `gpio.dht22` | DHT22 на Raspberry Pi (`params.pin`) |
 | `remote.http_json` | HTTP API (`params.url`, `params.json_path`) |
 | `remote.mqtt` | MQTT-топик (`params.topic`, `params.broker`) |
@@ -465,11 +470,16 @@ panels:
 | GET | `/api/metrics/{id}?agent=` | История метрик агента |
 | GET | `/api/sensors` | Список датчиков и текущие значения |
 | GET | `/api/metrics/{id}?period=1h` | История метрик |
+| GET | `/api/metrics/{id}?period=1h&format=csv` | Экспорт истории (CSV; `format=json` по умолчанию) |
 | GET | `/api/system` | Информация о железе (CPU, RAM, диски, GPU…) |
 | GET | `/api/dashboard` | Конфигурация панелей |
 | PUT | `/api/config/sensors` | Обновить датчики |
 | PUT | `/api/config/dashboard` | Обновить панели |
+| GET | `/api/alerts/events?agent_id=` | Журнал срабатываний алертов |
 | GET | `/api/alerts` | Все настройки алертов + `ntfy_base_url` |
+| GET | `/api/hub/backup` | Скачать snapshot SQLite (VACUUM INTO) |
+| GET | `/health` | Health-check |
+| GET | `/metrics` | Prometheus-метрики (snapshot) |
 | GET | `/api/alerts/{agentID}` | Алерты хоста |
 | PUT | `/api/alerts/{agentID}` | Сохранить алерты (topic создаётся при `enabled: true`) |
 | POST | `/api/alerts/{agentID}/ntfy/topic` | Перегенерировать ntfy topic |

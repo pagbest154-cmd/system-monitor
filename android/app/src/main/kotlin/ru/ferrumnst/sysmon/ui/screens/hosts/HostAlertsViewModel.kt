@@ -25,6 +25,8 @@ data class SensorAlertRow(
     val unit: String?,
     val enabled: Boolean,
     val thresholdText: String,
+    val warnAbove: Double? = null,
+    val criticalAbove: Double? = null,
 )
 
 data class HostAlertsUiState(
@@ -34,6 +36,7 @@ data class HostAlertsUiState(
     val isSaving: Boolean = false,
     val error: String? = null,
     val alertsEnabled: Boolean = false,
+    val sensorThresholdMode: Boolean = false,
     val offlineEnabled: Boolean = false,
     val offlineAfterSec: String = "180",
     val cooldownMinutes: Int = 15,
@@ -84,14 +87,18 @@ class HostAlertsViewModel(
                         unit = sensor.unit,
                         enabled = rule?.enabled == true,
                         thresholdText = formatThreshold(rule?.threshold ?: defaultThreshold),
+                        warnAbove = sensor.warnAbove,
+                        criticalAbove = sensor.criticalAbove,
                     )
                 }
                 val subscribed = subscriptionStore.getAll().any { it.agentId == agentId }
+                val sensorMode = alerts.thresholdMode == "sensor"
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         agentName = resolvedName,
                         alertsEnabled = alerts.enabled,
+                        sensorThresholdMode = sensorMode,
                         offlineEnabled = alerts.offline.enabled,
                         offlineAfterSec = alerts.offline.afterSec.toString(),
                         cooldownMinutes = (alerts.cooldownSec / 60).coerceAtLeast(1),
@@ -112,6 +119,10 @@ class HostAlertsViewModel(
 
     fun setAlertsEnabled(enabled: Boolean) {
         _uiState.update { it.copy(alertsEnabled = enabled) }
+    }
+
+    fun setSensorThresholdMode(sensorMode: Boolean) {
+        _uiState.update { it.copy(sensorThresholdMode = sensorMode) }
     }
 
     fun setOfflineEnabled(enabled: Boolean) {
@@ -165,6 +176,7 @@ class HostAlertsViewModel(
                 }
                 val config = AgentAlertConfig(
                     enabled = state.alertsEnabled,
+                    thresholdMode = if (state.sensorThresholdMode) "sensor" else "manual",
                     offline = AlertOfflineRule(
                         enabled = state.offlineEnabled,
                         afterSec = state.offlineAfterSec.toIntOrNull() ?: 180,
