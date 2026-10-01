@@ -1,0 +1,58 @@
+name: Republish APT Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag (e.g. v1.0.57)"
+        required: true
+        default: v1.0.57
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  republish:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y apt-utils gzip
+
+      - name: Download .deb from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist
+          gh release download "${{ inputs.release_tag }}" \
+            --repo "${{ github.repository }}" \
+            --pattern 'system-monitor-agent_*_amd64.deb' \
+            --dir dist
+
+      - name: Build and merge APT repo
+        env:
+          APT_REPO_MERGE: "1"
+          APT_REPO_MERGE_URL: https://pagbest154-cmd.github.io/system-monitor/apt
+        run: |
+          chmod +x scripts/publish-apt-repo.sh
+          shopt -s nullglob
+          deb=(dist/system-monitor-agent_*.deb)
+          ./scripts/publish-apt-repo.sh "${deb[0]}" dist/apt-repo-pages
+          mkdir -p _site/apt
+          cp -a dist/apt-repo-pages/. _site/apt/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

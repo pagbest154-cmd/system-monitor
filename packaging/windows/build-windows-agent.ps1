@@ -21,7 +21,20 @@ function Ensure-Nssm {
     $zipPath = Join-Path $ThirdPartyDir "nssm.zip"
     New-Item -ItemType Directory -Force -Path $NssmDir | Out-Null
     Write-Host "Downloading NSSM..."
-    Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile $zipPath
+    $downloaded = $false
+    for ($i = 1; $i -le 3; $i++) {
+        try {
+            Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile $zipPath -TimeoutSec 120
+            $downloaded = $true
+            break
+        } catch {
+            Write-Warning "NSSM download attempt $i failed: $_"
+            Start-Sleep -Seconds 5
+        }
+    }
+    if (-not $downloaded) {
+        throw "Failed to download NSSM from nssm.cc after retries"
+    }
     Expand-Archive -Path $zipPath -DestinationPath (Join-Path $ThirdPartyDir "nssm-src") -Force
     Copy-Item (Join-Path $ThirdPartyDir "nssm-src\nssm-2.24\win64\nssm.exe") $NssmExe
     Remove-Item $zipPath -Force

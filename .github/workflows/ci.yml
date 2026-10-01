@@ -104,6 +104,12 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
 
+      - name: Cache NSSM
+        uses: actions/cache@v4
+        with:
+          path: packaging/windows/third_party/nssm
+          key: nssm-2.24-win64
+
       - name: Build Windows installer
         shell: pwsh
         run: ./packaging/windows/build-windows-agent.ps1 -Version ${{ needs.detect-changes.outputs.version }}
