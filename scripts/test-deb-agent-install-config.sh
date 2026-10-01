@@ -7,7 +7,8 @@ cd "$root"
 
 HUB_URL='https://ci-hub.example:9443/v1'
 AGENT_ID='ci-agent-id_42'
-AGENT_TOKEN='ci-token-with-"quote-and-\backslash'
+# debconf-set-selections line must not contain raw quotes; special chars covered in Go unit tests.
+AGENT_TOKEN='ci-token-secret-42'
 
 AGENT_YAML=/etc/system-monitor/agent.yaml
 TOKEN_FILE=/etc/system-monitor/agent.token
@@ -46,19 +47,36 @@ fi
 purge_agent_pkg
 
 echo "Installing ${deb[0]} (debconf preseed; dpkg strips custom env from maintainer scripts)..."
-sudo debconf-set-selections <<EOF
-system-monitor-agent system-monitor-agent/hub-url string ${HUB_URL}
-system-monitor-agent system-monitor-agent/agent-id string ${AGENT_ID}
-system-monitor-agent system-monitor-agent/token password ${AGENT_TOKEN}
-EOF
+printf '%s\n' \
+  "system-monitor-agent system-monitor-agent/hub-url string ${HUB_URL}" \
+  "system-monitor-agent system-monitor-agent/agent-id string ${AGENT_ID}" \
+  "system-monitor-agent system-monitor-agent/token password ${AGENT_TOKEN}" \
+  | sudo debconf-set-selections
 sudo DEBIAN_FRONTEND=noninteractive dpkg -i "${deb[0]}"
 
-if [ ! -f "$AGENT_YAML" ]; then
+dump_install_debug() {
+  echo "--- debug: install state ---" >&2
+  sudo ls -la /etc/system-monitor/ 2>&1 || true
+  sudo cat /etc/system-monitor/agent.yaml 2>&1 || true
+  sudo ls -la /run/system-monitor-agent/ 2>&1 || true
+  sudo debconf-get-selections 2>/dev/null | grep system-monitor-agent || true
+}
+
+if ! sudo test -f "$AGENT_YAML"; then
   echo "Missing $AGENT_YAML" >&2
+  dump_install_debug
   exit 1
 fi
 if ! sudo test -f "$TOKEN_FILE"; then
   echo "Missing $TOKEN_FILE" >&2
+  dump_install_debug
+  exit 1
+fi
+
+hub_in_yaml="$(sudo grep -E '^hub_url:' "$AGENT_YAML" || true)"
+if ! echo "$hub_in_yaml" | grep -q "$HUB_URL"; then
+  echo "hub_url mismatch in agent.yaml: $hub_in_yaml" >&2
+  dump_install_debug
   exit 1
 fi
 
