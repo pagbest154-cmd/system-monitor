@@ -12,12 +12,13 @@ AGENT_TOKEN='ci-token-with-"quote-and-\backslash'
 AGENT_YAML=/etc/system-monitor/agent.yaml
 TOKEN_FILE=/etc/system-monitor/agent.token
 
-cleanup() {
+purge_agent_pkg() {
   if dpkg -s system-monitor-agent &>/dev/null; then
-    sudo DEBIAN_FRONTEND=noninteractive dpkg -r -y system-monitor-agent || true
+    sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y system-monitor-agent || true
   fi
+  sudo rm -rf /etc/system-monitor /run/system-monitor-agent
 }
-trap cleanup EXIT
+trap purge_agent_pkg EXIT
 
 echo "Installing build dependencies..."
 sudo apt-get update -qq
@@ -42,8 +43,7 @@ if [ ${#deb[@]} -eq 0 ]; then
   exit 1
 fi
 
-cleanup
-sudo rm -rf /etc/system-monitor
+purge_agent_pkg
 
 echo "Installing ${deb[0]} with HUB_URL / AGENT_ID / AGENT_TOKEN..."
 sudo DEBIAN_FRONTEND=noninteractive \
@@ -56,7 +56,7 @@ if [ ! -f "$AGENT_YAML" ]; then
   echo "Missing $AGENT_YAML" >&2
   exit 1
 fi
-if [ ! -f "$TOKEN_FILE" ]; then
+if ! sudo test -f "$TOKEN_FILE"; then
   echo "Missing $TOKEN_FILE" >&2
   exit 1
 fi
