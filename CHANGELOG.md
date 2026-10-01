@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+## [1.0.56] — 2026-10-01
+
+### Добавлено
+
+- Agent: тесты генерации `agent.yaml` и `agent.token` при установке (Linux `.deb` с `HUB_URL` / `AGENT_ID` / `AGENT_TOKEN`, Windows — паритет с Inno Setup)
+- CI: интеграционный шаг `scripts/test-deb-agent-install-config.sh` после `go test`
+
 ## [1.0.55] — 2026-09-30
 
 ### Добавлено
