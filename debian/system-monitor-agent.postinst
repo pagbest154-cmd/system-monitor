@@ -148,10 +148,16 @@ if [ "$1" = "configure" ]; then
         if command -v deb-systemd-invoke >/dev/null; then
             deb-systemd-invoke restart system-monitor-agent.service >/dev/null 2>&1 || true
         else
-            systemctl restart system-monitor-agent.service 2>/dev/null \
-                || systemctl start system-monitor-agent.service 2>/dev/null \
-                || true
+            systemctl restart system-monitor-agent.service >/dev/null 2>&1 || true
         fi
+        if ! systemctl is-active --quiet system-monitor-agent.service 2>/dev/null; then
+            if command -v deb-systemd-invoke >/dev/null; then
+                deb-systemd-invoke start system-monitor-agent.service >/dev/null 2>&1 || true
+            else
+                systemctl start system-monitor-agent.service >/dev/null 2>&1 || true
+            fi
+        fi
+        systemctl is-active --quiet system-monitor-agent.service 2>/dev/null
     }
 
     start_agent() {
@@ -174,12 +180,17 @@ if [ "$1" = "configure" ]; then
             is_upgrade=true
         fi
         if [ "$is_upgrade" = "true" ] || [ "${wrote_config:-false}" = "true" ]; then
-            restart_agent
-            if command -v system-monitor-agent >/dev/null; then
-                agent_ver="$(system-monitor-agent --version 2>/dev/null || true)"
-                if [ -n "$agent_ver" ]; then
-                    echo "system-monitor-agent: перезапущен после обновления, версия ${agent_ver}." >&2
+            if restart_agent; then
+                if command -v system-monitor-agent >/dev/null; then
+                    agent_ver="$(system-monitor-agent --version 2>/dev/null || true)"
+                    if [ -n "$agent_ver" ]; then
+                        echo "system-monitor-agent: перезапущен после обновления, версия ${agent_ver}." >&2
+                    fi
                 fi
+            else
+                echo "system-monitor-agent: пакет обновлён, но служба не запущена." >&2
+                echo "  sudo systemctl status system-monitor-agent" >&2
+                echo "  sudo systemctl start system-monitor-agent" >&2
             fi
         else
             start_agent
