@@ -368,9 +368,16 @@ jobs:
           path: dist
 
       - name: Prepare apt repo for Pages
+        env:
+          APT_REPO_MERGE: "1"
+          APT_REPO_MERGE_URL: https://pagbest154-cmd.github.io/system-monitor/apt
         run: |
+          chmod +x scripts/publish-apt-repo.sh
+          shopt -s nullglob
+          deb=(dist/system-monitor-agent_*.deb)
+          ./scripts/publish-apt-repo.sh "${deb[0]}" dist/apt-repo-pages
           mkdir -p _site/apt
-          cp -a dist/apt-repo/. _site/apt/
+          cp -a dist/apt-repo-pages/. _site/apt/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

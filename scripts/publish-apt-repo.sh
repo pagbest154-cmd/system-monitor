@@ -17,7 +17,38 @@ pool_dir="$out_dir/pool/main/s/system-monitor-agent"
 packages_dir="$out_dir/dists/$suite/$component/binary-$arch"
 packages_file="$packages_dir/Packages"
 
+merge_remote_pool() {
+  local base="${APT_REPO_MERGE_URL:-}"
+  if [[ -z "$base" || "${APT_REPO_MERGE:-}" != "1" ]]; then
+    return 0
+  fi
+  local tmp_pkg
+  tmp_pkg="$(mktemp)"
+  if ! curl -fsSL "$base/dists/$suite/$component/binary-$arch/Packages" -o "$tmp_pkg" 2>/dev/null; then
+    if ! curl -fsSL "$base/dists/$suite/$component/binary-$arch/Packages.gz" | gunzip >"$tmp_pkg" 2>/dev/null; then
+      rm -f "$tmp_pkg"
+      echo "merge: no remote Packages at $base (first publish?)" >&2
+      return 0
+    fi
+  fi
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line//$'\r'/}"
+    case "$line" in
+      Filename:*)
+        local fn="${line#Filename: }"
+        mkdir -p "$out_dir/$(dirname "$fn")"
+        if [[ ! -f "$out_dir/$fn" ]]; then
+          echo "merge: fetching $fn" >&2
+          curl -fsSL "$base/$fn" -o "$out_dir/$fn" || echo "merge: failed $fn" >&2
+        fi
+        ;;
+    esac
+  done <"$tmp_pkg"
+  rm -f "$tmp_pkg"
+}
+
 mkdir -p "$pool_dir" "$packages_dir"
+merge_remote_pool
 cp "$deb_file" "$pool_dir/"
 
 # Run from repo root so Packages lists paths like pool/main/... (not dist/apt-repo/pool/...).

@@ -199,6 +199,8 @@ sudo apt update
 sudo apt install system-monitor-agent
 ```
 
+После нового релиза агента сначала снова выполните `sudo apt update` — иначе apt может пытаться скачать старый `.deb` (404).
+
 Автономный бинарник — **Python на машине не нужен**.  
 При первой установке debconf спросит **Hub URL**, **Agent ID** и **token**.  
 На hub добавьте агента в [`config/agents.yaml`](config/agents.yaml) с тем же token.
