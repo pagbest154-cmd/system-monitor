@@ -10,6 +10,7 @@
 ### Исправлено
 
 - Agent (.deb): debconf снова спрашивает Hub URL и Agent ID при первой установке (раньше agent-id подставлялся до диалога и hub-url мог браться из старого кэша debconf)
+- CI: `publish-apt-pages` — checkout репозитория и `apt-utils` для публикации APT на Pages
 
 ### Изменено
 

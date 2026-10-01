@@ -361,11 +361,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
       - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
           name: release-assets
           path: dist
+
+      - name: Install apt repo tools
+        run: sudo apt-get update && sudo apt-get install -y apt-utils gzip
 
       - name: Prepare apt repo for Pages
         env:
