@@ -8,6 +8,7 @@ SEED_FILE="/run/system-monitor-agent/debconf.seed"
 load_hub_agent_from_debconf() {
     hub_url=""
     agent_id=""
+    seed_token=""
     if [ -f "$SEED_FILE" ]; then
         # shellcheck disable=SC1090
         set -a
@@ -15,7 +16,14 @@ load_hub_agent_from_debconf() {
         set +a
         hub_url="${hub_url:-}"
         agent_id="${agent_id:-}"
+        if [ -f "${SEED_FILE}.token.b64" ]; then
+            seed_token="$(base64 -d "${SEED_FILE}.token.b64" 2>/dev/null || true)"
+            rm -f "${SEED_FILE}.token.b64"
+        fi
         rm -f "$SEED_FILE"
+        if [ -n "$seed_token" ]; then
+            token="$seed_token"
+        fi
         return 0
     fi
     if [ -f /usr/share/debconf/confmodule ]; then
@@ -61,12 +69,12 @@ case "$1" in
         fi
 
         if $apply_debconf_cfg; then
+            token=""
             load_hub_agent_from_debconf
             hub_url="${HUB_URL:-$hub_url}"
             agent_id="${AGENT_ID:-$agent_id}"
-            token=""
 
-            if [ -f /usr/share/debconf/confmodule ]; then
+            if [ -z "$token" ] && [ -f /usr/share/debconf/confmodule ]; then
                 . /usr/share/debconf/confmodule
                 db_get system-monitor-agent/token || true
                 token="${RET:-}"

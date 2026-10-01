@@ -13,7 +13,8 @@ case "$1" in
         rm -f /etc/system-monitor/agent.yaml
         rm -f /etc/system-monitor/agent_sensors.yaml
         rmdir /etc/system-monitor 2>/dev/null || true
-        rm -rf /run/system-monitor-agent
+        rm -f /run/system-monitor-agent/debconf.seed /run/system-monitor-agent/debconf.seed.token.b64
+        rmdir /run/system-monitor-agent 2>/dev/null || true
         ;;
 esac
 

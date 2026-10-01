@@ -45,12 +45,13 @@ fi
 
 purge_agent_pkg
 
-echo "Installing ${deb[0]} with HUB_URL / AGENT_ID / AGENT_TOKEN..."
-sudo DEBIAN_FRONTEND=noninteractive \
-  HUB_URL="$HUB_URL" \
-  AGENT_ID="$AGENT_ID" \
-  AGENT_TOKEN="$AGENT_TOKEN" \
-  dpkg -i "${deb[0]}"
+echo "Installing ${deb[0]} (debconf preseed; dpkg strips custom env from maintainer scripts)..."
+sudo debconf-set-selections <<EOF
+system-monitor-agent system-monitor-agent/hub-url string ${HUB_URL}
+system-monitor-agent system-monitor-agent/agent-id string ${AGENT_ID}
+system-monitor-agent system-monitor-agent/token password ${AGENT_TOKEN}
+EOF
+sudo DEBIAN_FRONTEND=noninteractive dpkg -i "${deb[0]}"
 
 if [ ! -f "$AGENT_YAML" ]; then
   echo "Missing $AGENT_YAML" >&2

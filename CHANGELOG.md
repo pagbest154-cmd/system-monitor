@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Исправлено
+
+- Agent (.deb): token в install seed (base64); non-interactive установка через `debconf-set-selections` (dpkg не передаёт `AGENT_TOKEN` в postinst)
+
 ## [1.0.58-fix] — 2026-10-01
 
 Hotfix-релиз вместо неудачного **1.0.58** (CI): debconf → `agent.yaml`, purge, APT/CI.
