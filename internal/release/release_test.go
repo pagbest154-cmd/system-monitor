@@ -29,6 +29,29 @@ func TestSysmonApkAssetName(t *testing.T) {
 	if got != want {
 		t.Fatalf("SysmonApkAssetName(%q) = %q, want %q", "1.0.43", got, want)
 	}
+	gotFix := SysmonApkAssetName("v1.0.58-fix")
+	wantFix := "sysmon-1.0.58-fix.apk"
+	if gotFix != wantFix {
+		t.Fatalf("SysmonApkAssetName(%q) = %q, want %q", "v1.0.58-fix", gotFix, wantFix)
+	}
+}
+
+func TestAgentWindowsSetupAssetNamePreservesReleaseSuffix(t *testing.T) {
+	got := AgentWindowsSetupAssetName("v1.0.58-fix")
+	want := "system-monitor-agent_1.0.58-fix_setup.exe"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestReleaseDownloadURLUsesTagAssetName(t *testing.T) {
+	tag := "v1.0.58-fix"
+	asset := AgentWindowsSetupAssetName(ReleaseAssetVersion(tag))
+	url := ReleaseDownloadURL(tag, "1.0.58", asset)
+	want := "https://github.com/pagbest154-cmd/system-monitor/releases/download/v1.0.58-fix/system-monitor-agent_1.0.58-fix_setup.exe"
+	if url != want {
+		t.Fatalf("ReleaseDownloadURL = %q, want %q", url, want)
+	}
 }
 
 func TestPickLatestRelease(t *testing.T) {

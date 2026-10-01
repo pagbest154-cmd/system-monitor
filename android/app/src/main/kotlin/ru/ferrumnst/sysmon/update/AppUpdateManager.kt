@@ -75,7 +75,7 @@ class AppUpdateManager(
                         AppUpdateInfo(currentVersion = current)
                     } else {
                         val latest = VersionUtils.normalize(release.tagName)
-                        val apkName = VersionUtils.apkAssetName(latest)
+                        val apkName = VersionUtils.apkAssetName(release.tagName)
                         val asset = release.assets.firstOrNull { it.name == apkName }
                         val updateAvailable = asset != null && VersionUtils.isNewer(latest, current)
                         AppUpdateInfo(

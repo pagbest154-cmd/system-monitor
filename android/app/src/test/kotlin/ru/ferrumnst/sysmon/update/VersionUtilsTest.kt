@@ -16,5 +16,6 @@ class VersionUtilsTest {
     @Test
     fun apkAssetName_matchesReleaseNaming() {
         assertTrue(VersionUtils.apkAssetName("v1.0.43") == "sysmon-1.0.43.apk")
+        assertTrue(VersionUtils.apkAssetName("v1.0.58-fix") == "sysmon-1.0.58-fix.apk")
     }
 }

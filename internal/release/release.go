@@ -48,6 +48,11 @@ func NormalizeVersion(v string) string {
 	return v
 }
 
+// ReleaseAssetVersion is the version string embedded in release artifact file names (keeps -fix etc.).
+func ReleaseAssetVersion(v string) string {
+	return strings.TrimSpace(strings.TrimPrefix(v, "v"))
+}
+
 func VersionKey(v string) []int {
 	parts := strings.Split(NormalizeVersion(v), ".")
 	out := make([]int, 0, len(parts))
@@ -220,15 +225,15 @@ func FetchLatestRelease(userAgent string) (latestVersion, releaseURL, tag string
 type AssetNameFunc func(version string) string
 
 func AgentDebAssetName(v string) string {
-	return fmt.Sprintf("system-monitor-agent_%s-1_amd64.deb", NormalizeVersion(v))
+	return fmt.Sprintf("system-monitor-agent_%s-1_amd64.deb", ReleaseAssetVersion(v))
 }
 
 func AgentWindowsSetupAssetName(v string) string {
-	return fmt.Sprintf("system-monitor-agent_%s_setup.exe", NormalizeVersion(v))
+	return fmt.Sprintf("system-monitor-agent_%s_setup.exe", ReleaseAssetVersion(v))
 }
 
 func SysmonApkAssetName(v string) string {
-	return fmt.Sprintf("sysmon-%s.apk", NormalizeVersion(v))
+	return fmt.Sprintf("sysmon-%s.apk", ReleaseAssetVersion(v))
 }
 
 func CheckReleaseUpdates(currentVersion, cachePath string, force bool, userAgent string, checkInterval int, assetName AssetNameFunc) ReleaseCheckResult {
@@ -281,7 +286,7 @@ func CheckReleaseUpdates(currentVersion, cachePath string, force bool, userAgent
 	}
 	var downloadURL *string
 	if assetName != nil {
-		url := ReleaseDownloadURL(tag, latestVersion, assetName(latestVersion))
+		url := ReleaseDownloadURL(tag, latestVersion, assetName(ReleaseAssetVersion(tag)))
 		downloadURL = &url
 	}
 	result := ReleaseCheckResult{

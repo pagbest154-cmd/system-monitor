@@ -30,12 +30,19 @@ class NtfyListenerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_SYNC -> syncSubscriptions()
             ACTION_STOP -> {
                 closeAll()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
+            }
+            else -> {
+                // Must run before any async work — startForegroundService() deadline is ~10s on Android 8+.
+                startForeground(
+                    FOREGROUND_NOTIFICATION_ID,
+                    NotificationHelper.buildListenerNotification(this),
+                )
+                syncSubscriptions()
             }
         }
         return START_STICKY
@@ -56,10 +63,6 @@ class NtfyListenerService : Service() {
                 stopSelf()
                 return@launch
             }
-            startForeground(
-                FOREGROUND_NOTIFICATION_ID,
-                NotificationHelper.buildListenerNotification(this@NtfyListenerService),
-            )
             val activeKeys = subscriptions.map { it.key }.toSet()
             sockets.keys.filterNot { it in activeKeys }.forEach { key ->
                 sockets.remove(key)?.close(1000, "removed")

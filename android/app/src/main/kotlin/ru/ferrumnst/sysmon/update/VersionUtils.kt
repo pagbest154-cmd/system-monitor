@@ -26,5 +26,8 @@ object VersionUtils {
         return false
     }
 
-    fun apkAssetName(version: String): String = "sysmon-${normalize(version)}.apk"
+    fun apkAssetName(version: String): String {
+        val label = version.trim().removePrefix("v")
+        return "sysmon-$label.apk"
+    }
 }

@@ -5,10 +5,17 @@
 
 ## [Unreleased]
 
+## [1.0.59] — 2026-10-01
+
 ### Исправлено
 
+- Android: crash при сохранении настроек уведомлений — `NtfyListenerService` вызывает `startForeground()` сразу в `onStartCommand`, до асинхронной загрузки подписок
+- Agent (Windows): автообновление — URL артефакта GitHub Release совпадает с именем файла (версии с суффиксом, напр. `1.0.58-fix`)
+- Android: проверка обновления APK — имя asset берётся из полного тега релиза
 - Agent (.deb): token в install seed (base64); non-interactive установка через `debconf-set-selections` (dpkg не передаёт `AGENT_TOKEN` в postinst)
 - Agent (.deb): первая установка через apt — `$2` бывает `-`, postinst теперь применяет debconf; убран сброс ответов debconf при повторном config
+- CI: интеграционный тест deb — `apt-get purge` вместо неверного `dpkg -r -y`; чистая переустановка перед `dpkg -i`
+- Agent (.deb): убран дублирующий `debian/system-monitor-agent.conffiles` (предупреждение dpkg-deb)
 
 ## [1.0.58-fix] — 2026-10-01
 
@@ -20,13 +27,6 @@ Hotfix-релиз вместо неудачного **1.0.58** (CI): debconf →
 - Agent (.deb): `apt purge` очищает `/etc/system-monitor`
 - CI: интеграционный тест deb (`apt-get purge`, не `dpkg -r -y`)
 - Agent (.deb): дублирующий `conffiles` убран
-
-## [1.0.59] — 2026-10-01
-
-### Исправлено
-
-- CI: интеграционный тест deb — `apt-get purge` вместо неверного `dpkg -r -y`; чистая переустановка перед `dpkg -i`
-- Agent (.deb): убран дублирующий `debian/system-monitor-agent.conffiles` (предупреждение dpkg-deb)
 
 ## [1.0.58] — 2026-10-01
 
