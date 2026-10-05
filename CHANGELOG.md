@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+## [1.0.67] — 2026-10-05
+
+### Добавлено
+
+- mdadm: health value 0/1/2 для алертов, устройства массива в `details`, пресет «Включить все RAID» в алертах хоста
+- deb agent: conffiles для `agent.yaml` / `agent_sensors.yaml`, postinst не затирает настроенный конфиг
+
+### Исправлено
+
+- SYSMON-25: перезапись `agent.yaml` при переустановке deb (conffiles + guard в postinst)
+
 ## [1.0.66] — 2026-10-05
 
 ### Добавлено

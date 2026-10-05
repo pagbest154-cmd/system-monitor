@@ -343,6 +343,7 @@ async function openAlertsModal(agent) {
           </select>
         </label>
         <h3 class="alert-sensors-title">${i18n.hosts.alertsSensors}</h3>
+        <button type="button" class="btn btn-secondary alert-mdadm-preset" id="alerts-enable-mdadm">${i18n.hosts.alertsEnableMdadm}</button>
         <table class="alert-sensors-table">
           <thead>
             <tr>
@@ -380,6 +381,17 @@ async function openAlertsModal(agent) {
         item.classList.toggle("active", Number(item.dataset.cooldown) === cooldownMinutes);
       });
     });
+  });
+
+  modal.querySelector("#alerts-enable-mdadm")?.addEventListener("click", () => {
+    sensorRows.forEach((row) => {
+      if (row.sensor_id.startsWith("mdadm_")) {
+        row.enabled = true;
+      }
+    });
+    const modeSelect = modal.querySelector("#alerts-threshold-mode");
+    if (modeSelect) modeSelect.value = "sensor";
+    refreshSensorRowsTable(modal, sensorRows);
   });
 
   modal.querySelector("#alerts-threshold-mode")?.addEventListener("change", () => {

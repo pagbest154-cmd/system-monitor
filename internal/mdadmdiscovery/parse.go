@@ -9,6 +9,13 @@ import (
 
 const mdstatPath = "/proc/mdstat"
 
+// MemberDevice is one block device in an md array (from mdstat header + [UU_] line).
+type MemberDevice struct {
+	Name  string
+	Slot  int
+	State string // active | failed
+}
+
 // Array describes one Linux md RAID array from /proc/mdstat.
 type Array struct {
 	Device        string
@@ -18,14 +25,27 @@ type Array struct {
 	TotalDevices  int
 	FailedDevices int
 	CheckProgress *float64
+	Devices       []MemberDevice
 }
 
 var (
 	mdHeaderRe = regexp.MustCompile(`^(\S+)\s*:\s*(\S+)(?:\s+(\S+))?`)
+	deviceRe   = regexp.MustCompile(`(\S+)\[(\d+)\]`)
 	countRe    = regexp.MustCompile(`\[(\d+)/(\d+)\]`)
 	stateRe    = regexp.MustCompile(`\[([U_]+)\]`)
 	checkRe    = regexp.MustCompile(`(?:check|recovery|resync|reshape)\s*=\s*([\d.]+)%`)
 )
+
+// HealthMetricValue maps array health to a scalar for alerts: 0 ok, 1 degraded, 2+ failed disk(s).
+func HealthMetricValue(a Array) float64 {
+	if a.FailedDevices > 0 {
+		return 2
+	}
+	if a.State == "degraded" {
+		return 1
+	}
+	return 0
+}
 
 // ParseMdstat parses the contents of /proc/mdstat.
 func ParseMdstat(content string) []Array {
@@ -53,6 +73,7 @@ func ParseMdstat(content string) []Array {
 				Device:    m[1],
 				State:     m[2],
 				RaidLevel: raidLevel,
+				Devices:   parseMemberDevices(trimmed),
 			}
 			continue
 		}
@@ -78,9 +99,14 @@ func ParseMdstat(content string) []Array {
 		}
 		if sm := stateRe.FindStringSubmatch(trimmed); sm != nil {
 			failed := 0
-			for _, ch := range sm[1] {
+			for i, ch := range sm[1] {
+				state := "active"
 				if ch == '_' {
+					state = "failed"
 					failed++
+				}
+				if i < len(current.Devices) {
+					current.Devices[i].State = state
 				}
 			}
 			if failed > current.FailedDevices {
@@ -124,4 +150,13 @@ func ReadMdstat() []Array {
 // DeviceToSensorID returns mdadm_md0 for device md0.
 func DeviceToSensorID(device string) string {
 	return "mdadm_" + strings.TrimSpace(device)
+}
+
+func parseMemberDevices(line string) []MemberDevice {
+	members := make([]MemberDevice, 0)
+	for _, m := range deviceRe.FindAllStringSubmatch(line, -1) {
+		slot, _ := strconv.Atoi(m[2])
+		members = append(members, MemberDevice{Name: m[1], Slot: slot, State: "active"})
+	}
+	return members
 }

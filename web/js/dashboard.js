@@ -807,7 +807,7 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
   }
 
   if (panel.type === "raid") {
-    updateRaidPanel(chartDom, sensorIds, latest, sensorMeta);
+    updateRaidPanel(chartDom, sensorIds, latest, sensorMeta, { appMode, selectedAgent });
     return;
   }
 

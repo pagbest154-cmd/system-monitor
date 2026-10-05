@@ -5,6 +5,23 @@ AGENT_YAML="/etc/system-monitor/agent.yaml"
 TOKEN_FILE="/etc/system-monitor/agent.token"
 SEED_FILE="/run/system-monitor-agent/debconf.seed"
 
+agent_yaml_is_configured() {
+    if [ ! -s "$AGENT_YAML" ]; then
+        return 1
+    fi
+    if grep -qE 'agent_id:\s*"(local-agent|)"' "$AGENT_YAML" 2>/dev/null; then
+        return 1
+    fi
+    if grep -q 'change-me' "$AGENT_YAML" 2>/dev/null; then
+        return 1
+    fi
+    hub="$(grep -E '^hub_url:' "$AGENT_YAML" 2>/dev/null | sed 's/^hub_url:\s*//' | tr -d '"')" || true
+    if [ -z "$hub" ] || [ "$hub" = "http://127.0.0.1:8080" ]; then
+        return 1
+    fi
+    return 0
+}
+
 should_apply_install_config() {
     if [ -f "$SEED_FILE" ]; then
         return 0
@@ -116,8 +133,8 @@ case "$1" in
         chmod 0750 /var/lib/system-monitor-agent
 
         # Fresh install / reconfigure: debconf seed or selections -> agent.yaml and token.
-        # On upgrade preserve /etc/system-monitor/* unless seed is written (dpkg-reconfigure).
-        if should_apply_install_config "$2"; then
+        # On upgrade preserve /etc/system-monitor/* (conffiles + guard below).
+        if should_apply_install_config "$2" && ! agent_yaml_is_configured; then
             apply_agent_install_config
             wrote_config=true
         elif [ ! -f "$TOKEN_FILE" ]; then

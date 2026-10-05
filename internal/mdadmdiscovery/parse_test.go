@@ -26,6 +26,12 @@ md0 : active raid1 sda1[0] sdb1[1]
 	if a.Device != "md0" || a.RaidLevel != "raid1" || a.State != "active" {
 		t.Fatalf("unexpected array: %+v", a)
 	}
+	if len(a.Devices) != 2 || a.Devices[0].Name != "sda1" {
+		t.Fatalf("devices: %+v", a.Devices)
+	}
+	if HealthMetricValue(a) != 0 {
+		t.Fatalf("health value want 0 got %v", HealthMetricValue(a))
+	}
 	if a.ActiveDevices != 2 || a.TotalDevices != 2 || a.FailedDevices != 0 {
 		t.Fatalf("devices: %+v", a)
 	}
@@ -48,6 +54,16 @@ func TestParseMdstat_degraded(t *testing.T) {
 	}
 	if a.FailedDevices < 1 {
 		t.Fatalf("expected failed devices, got %d", a.FailedDevices)
+	}
+	if HealthMetricValue(a) != 2 {
+		t.Fatalf("health value want 2 got %v", HealthMetricValue(a))
+	}
+}
+
+func TestHealthMetricValue_degradedNoFailed(t *testing.T) {
+	a := Array{State: "degraded", FailedDevices: 0}
+	if HealthMetricValue(a) != 1 {
+		t.Fatalf("want 1 got %v", HealthMetricValue(a))
 	}
 }
 

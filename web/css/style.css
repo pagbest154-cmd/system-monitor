@@ -542,6 +542,17 @@ main {
   margin-top: 0.35rem;
 }
 
+.raid-members {
+  margin: 0.25rem 0 0.5rem 1rem;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted, #8b9cb3);
+}
+
+.raid-member-state {
+  opacity: 0.85;
+}
+
 .panel-header {
   display: flex;
   align-items: center;

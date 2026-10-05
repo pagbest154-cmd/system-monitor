@@ -147,6 +147,45 @@ func TestEvaluateMetricSensorThresholdsCritical(t *testing.T) {
 	}
 }
 
+func TestEvaluateMetricMdadmSensorThresholds(t *testing.T) {
+	engine, sender, cleanup := setupEngineTest(t)
+	defer cleanup()
+
+	warn := 1.0
+	critical := 2.0
+	writeAlerts(t, &config.AlertsFile{
+		Alerts: map[string]config.AgentAlertConfig{
+			"4ov_server": {
+				Enabled:       true,
+				ThresholdMode: config.AlertThresholdModeSensor,
+				CooldownSec:   0,
+				Ntfy:          config.NtfyAlertConfig{Topic: "raid-topic"},
+				Sensors: []config.AlertSensorRule{
+					{SensorID: "mdadm_md0", Enabled: true},
+				},
+			},
+		},
+	})
+
+	engine.EvaluateMetric(MetricInput{
+		AgentID: "4ov_server", AgentName: "4ov", SensorID: "mdadm_md0",
+		SensorName: "RAID md0", Value: 1,
+		WarnAbove: &warn, CriticalAbove: &critical,
+	})
+	if sender.count() != 1 || sender.last().severity != "warning" {
+		t.Fatalf("degraded: expected warning, got %+v", sender.last())
+	}
+
+	engine.EvaluateMetric(MetricInput{
+		AgentID: "4ov_server", AgentName: "4ov", SensorID: "mdadm_md0",
+		SensorName: "RAID md0", Value: 2,
+		WarnAbove: &warn, CriticalAbove: &critical,
+	})
+	if sender.count() != 2 || sender.last().severity != "critical" {
+		t.Fatalf("failed disk: expected critical, got sends=%d last=%+v", sender.count(), sender.last())
+	}
+}
+
 func TestNormalizeAlertThresholdMode(t *testing.T) {
 	if config.NormalizeAlertThresholdMode("sensor") != config.AlertThresholdModeSensor {
 		t.Fatal("expected sensor mode")

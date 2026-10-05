@@ -317,19 +317,41 @@ function formatRaidCard(reading, meta) {
   if (check != null && check !== "" && !Number.isNaN(Number(check))) {
     checkLine = `<div class="raid-row">${i18n.raid.check}: <strong>${Number(check).toFixed(1)}%</strong></div>`;
   }
+  let membersLine = "";
+  const members = Array.isArray(details.devices) ? details.devices : [];
+  if (members.length) {
+    const list = members
+      .map((d) => {
+        const name = d.name || d.Name || "—";
+        const st = d.state === "failed" ? i18n.raid.memberFailed : i18n.raid.memberOk;
+        return `<li>${name} <span class="raid-member-state">(${st})</span></li>`;
+      })
+      .join("");
+    membersLine = `<div class="raid-row">${i18n.raid.members}:</div><ul class="raid-members">${list}</ul>`;
+  }
   return `
     <div class="raid-card" style="border-color:${statusColor(status)}">
       <div class="raid-card-title">${device}</div>
       <div class="raid-row">${i18n.raid.level}: <strong>${level}</strong></div>
       <div class="raid-row">${i18n.raid.state}: <strong>${state}</strong></div>
       <div class="raid-row">${i18n.raid.devices}: <strong>${active}</strong> · ${i18n.raid.failed}: <strong>${failed}</strong></div>
+      ${membersLine}
       ${checkLine}
       <div class="raid-badge">${statusBadge(status, i18n.status[status] || status)}</div>
     </div>
   `;
 }
 
-export function updateRaidPanel(dom, sensorIds, latest, sensorMeta) {
+export function updateRaidPanel(dom, sensorIds, latest, sensorMeta, context = {}) {
+  const { appMode = "standalone", selectedAgent = "" } = context;
+  if (appMode === "hub" && !selectedAgent) {
+    const html = `<p class="sys-empty panel-empty">${i18n.raid.selectAgent}</p>`;
+    if (dom.dataset.raidKey !== "no-agent") {
+      dom.dataset.raidKey = "no-agent";
+      dom.innerHTML = html;
+    }
+    return;
+  }
   const cards = sensorIds
     .map((id) => {
       const reading = latest[id];
@@ -338,11 +360,13 @@ export function updateRaidPanel(dom, sensorIds, latest, sensorMeta) {
       return formatRaidCard(reading || meta?.current, meta);
     })
     .filter(Boolean);
+  const emptyMsg =
+    appMode === "hub" && selectedAgent ? i18n.raid.emptyOnHost : i18n.raid.empty;
   const html =
     cards.length > 0
       ? `<div class="raid-grid">${cards.join("")}</div>`
-      : `<p class="sys-empty panel-empty">${i18n.raid.empty}</p>`;
-  const key = sensorIds.join(",") + "|" + cards.length;
+      : `<p class="sys-empty panel-empty">${emptyMsg}</p>`;
+  const key = `${selectedAgent}|${sensorIds.join(",")}|${cards.length}`;
   if (dom.dataset.raidKey === key) return;
   dom.dataset.raidKey = key;
   dom.innerHTML = html;

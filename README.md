@@ -226,6 +226,10 @@ sudo systemctl restart system-monitor-agent
 
 При **`apt install --only-upgrade system-monitor-agent`** debconf не переспрашивает Hub URL, Agent ID и token, если конфиг уже есть; postinst выполняет `daemon-reload` и **restart** службы — вручную перезапускать не нужно.
 
+`/etc/system-monitor/agent.yaml` и `agent_sensors.yaml` помечены как **conffiles**: при обычном `apt upgrade` dpkg не подменяет их шаблоном из пакета (в отличие от `dpkg -i` без conffiles в старых версиях). Postinst не перезаписывает уже настроенный `agent.yaml`.
+
+**RAID-алерты (fleet, Linux-агент с mdadm, например `4ov_server`):** на hub в **Хосты → Алерты** включите уведомления, режим порогов **«как в датчике»**, кнопку **«Включить все RAID»**; датчики `mdadm_md*` шлют warning при деградации (value≥1) и critical при сбойном диске (value≥2). На dashboard выберите этого агента — панель `raid` / `auto_mdadm`.
+
 Если debconf-вопросы не появились (узкий терминал, повторная настройка):
 
 ```bash

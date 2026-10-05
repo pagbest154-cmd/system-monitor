@@ -20,15 +20,21 @@ func (s mdadmStatusSensor) Read() SensorReading {
 	if arr == nil {
 		return SensorReading{SensorID: s.ID(), Status: "unknown", Error: fmt.Sprintf("массив %s не найден", device)}
 	}
-	failed := float64(arr.FailedDevices)
-	value := failed
+	value := mdadmdiscovery.HealthMetricValue(*arr)
 	status := s.healthStatus(*arr, &value)
+	devices := make([]map[string]interface{}, 0, len(arr.Devices))
+	for _, d := range arr.Devices {
+		devices = append(devices, map[string]interface{}{
+			"name": d.Name, "slot": d.Slot, "state": d.State,
+		})
+	}
 	details := map[string]interface{}{
 		"device":         arr.Device,
 		"raid_level":     arr.RaidLevel,
 		"state":          arr.State,
 		"active_devices": arr.ActiveDevices,
 		"failed_devices": arr.FailedDevices,
+		"devices":        devices,
 	}
 	if arr.CheckProgress != nil {
 		details["check_progress"] = *arr.CheckProgress
@@ -44,10 +50,11 @@ func (s mdadmStatusSensor) Read() SensorReading {
 }
 
 func (s mdadmStatusSensor) healthStatus(arr mdadmdiscovery.Array, value *float64) string {
-	if arr.FailedDevices > 0 {
+	v := mdadmdiscovery.HealthMetricValue(arr)
+	if v >= 2 {
 		return "critical"
 	}
-	if arr.State == "degraded" {
+	if v >= 1 {
 		return "warning"
 	}
 	return evaluateStatus(s.cfg, value)

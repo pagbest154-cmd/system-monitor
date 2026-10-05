@@ -10,10 +10,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ru.ferrumnst.sysmon.data.models.MetricReading
@@ -82,6 +85,9 @@ fun RaidPanelCard(
                     if (check != null) {
                         Text("Проверка: ${"%.1f".format(check)}%", style = MaterialTheme.typography.bodySmall)
                     }
+                    raidMemberLines(details).forEach { line ->
+                        Text(line, style = MaterialTheme.typography.bodySmall)
+                    }
                     reading?.status?.let { status ->
                         StatusBadge(status = status, label = status, modifier = Modifier.padding(top = 4.dp))
                     }
@@ -93,3 +99,14 @@ fun RaidPanelCard(
 
 private val JsonPrimitive.contentOrNull: String?
     get() = if (isString) content else content
+
+private fun raidMemberLines(details: JsonElement?): List<String> {
+    val arr = details?.jsonObject?.get("devices") as? JsonArray ?: return emptyList()
+    return arr.mapNotNull { el ->
+        val obj = el as? JsonObject ?: return@mapNotNull null
+        val name = obj["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+        val state = obj["state"]?.jsonPrimitive?.contentOrNull ?: "active"
+        val label = if (state == "failed") "сбой" else "в строю"
+        "· $name ($label)"
+    }
+}
