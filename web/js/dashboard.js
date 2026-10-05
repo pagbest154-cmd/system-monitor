@@ -213,7 +213,17 @@ function latestFromSystem(system) {
   for (const part of system.disks || system.partitions || []) {
     if (part.percent == null) continue;
     const id = diskSensorId(part.mountpoint);
-    latest[id] = { value: part.percent, status: "ok", ts: now, unit: "%" };
+    const details = {};
+    if (part.used_gb != null) details.used_gb = part.used_gb;
+    if (part.total_gb != null) details.total_gb = part.total_gb;
+    if (part.free_gb != null) details.free_gb = part.free_gb;
+    latest[id] = {
+      value: part.percent,
+      status: "ok",
+      ts: now,
+      unit: "%",
+      ...(Object.keys(details).length ? { details } : {}),
+    };
   }
   return latest;
 }
@@ -389,6 +399,7 @@ async function relayoutCharts() {
         sensorId: id,
         value: latestSnapshot[id]?.value,
         status: latestSnapshot[id]?.status,
+        details: latestSnapshot[id]?.details,
       }));
       updateBarChart(chart, chartDom, readings, sensorMeta);
     } else if (panel.type === "gauge") {
@@ -722,7 +733,7 @@ function renderSystemInfo(info) {
 
     <div class="sys-section">
       ${labelWithIcon(SECTION_ICONS.network, t.network)}
-      <div class="sys-list">${renderNetwork(info.network)}</div>
+      <div class="sys-list sys-list-cols-3">${renderNetwork(info.network)}</div>
     </div>
   `;
 }
@@ -810,6 +821,7 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
       sensorId: id,
       value: latest[id]?.value,
       status: latest[id]?.status,
+      details: latest[id]?.details,
     }));
     if (chart && !recreate) {
       updateBarChart(chart, chartDom, readings, sensorMeta);
@@ -869,7 +881,13 @@ function queueLivePanelRefresh(latest) {
     liveRefreshQueued = null;
     if (!data) return;
     for (const panel of dashboardPanels) {
-      if (panel.type === "gauge" || panel.type === "bar" || panel.type === "status" || panel.type === "raid") {
+      if (
+        panel.type === "line" ||
+        panel.type === "gauge" ||
+        panel.type === "bar" ||
+        panel.type === "status" ||
+        panel.type === "raid"
+      ) {
         await refreshPanel(panel, data);
       }
     }

@@ -5,12 +5,18 @@
 
 ## [Unreleased]
 
+## [1.0.68] — 2026-10-05
+
 ### Добавлено
 
-- Документация: `docs/README.md`, обновлён `docs/taskmcp-project-context.md`; правила Cursor `project.mdc`, `taskmcp.mdc`, **`packaging.mdc`** (deb/Windows/Android/Docker); `scripts/sync-taskmcp-context.sh`
+- Документация: `docs/README.md`, обновлён `docs/taskmcp-project-context.md`; правила Cursor `project.mdc`, `taskmcp.mdc`, `packaging.mdc`, **`debian-agent-install.mdc`** (debconf/conffiles/postinst); `scripts/sync-taskmcp-context.sh`
+- Метрики дисков: `details` с `used_gb` / `total_gb` / `free_gb` для `disk_auto_*` (агент и hub enrich)
 
 ### Исправлено
 
+- Web: сетевой график — скорость в **Мбит/с** (как speedtest), интервал опроса 2 с, line-панели обновляются по WebSocket во время нагрузки
+- Web: системный блок — сеть в 3 колонки, разделы в 2 колонки
+- Web: тултип «Занятость дисков» — занято и общий объём в ГБ, не только проценты
 - Web dashboard: сетка панелей при нечётном числе виджетов (например 7 с RAID); учёт `span` из `dashboard.yaml`
 - `docker-compose.standalone.yml` и `scripts/create-release.sh` — Go / `v1.0.N` вместо Python / `v0.0.N`
 - `scripts/build-deb.sh` — зависимости как в CI (Go deb, без Python)

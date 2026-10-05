@@ -39,8 +39,8 @@ sensors:
     enabled: true
     params:
       direction: recv
-    interval_sec: 5
-    unit: "МБ/с"
+    interval_sec: 2
+    unit: "Мбит/с"
 
   - id: net_tx
     name: Сеть — исходящий трафик
@@ -48,8 +48,8 @@ sensors:
     enabled: true
     params:
       direction: sent
-    interval_sec: 5
-    unit: "МБ/с"
+    interval_sec: 2
+    unit: "Мбит/с"
 
   - id: cpu_temp
     name: Температура CPU

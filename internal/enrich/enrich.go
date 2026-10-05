@@ -16,6 +16,23 @@ var defaultSensors = map[string]protocol.SensorMeta{
 	},
 }
 
+func diskPartitionDetails(part map[string]interface{}) map[string]interface{} {
+	details := map[string]interface{}{}
+	if v, ok := toFloat(part["used_gb"]); ok {
+		details["used_gb"] = v
+	}
+	if v, ok := toFloat(part["total_gb"]); ok {
+		details["total_gb"] = v
+	}
+	if v, ok := toFloat(part["free_gb"]); ok {
+		details["free_gb"] = v
+	}
+	if len(details) == 0 {
+		return nil
+	}
+	return details
+}
+
 func diskPartitions(system map[string]interface{}) []map[string]interface{} {
 	for _, key := range []string{"disks", "partitions", "storage"} {
 		if value, ok := system[key].([]interface{}); ok && len(value) > 0 {
@@ -66,7 +83,11 @@ func ReadingFromSystem(system map[string]interface{}, sensorID string, ts float6
 				continue
 			}
 			if v, ok := toFloat(part["percent"]); ok {
-				return map[string]interface{}{"value": v, "status": "ok", "ts": ts, "unit": "%"}
+				reading := map[string]interface{}{"value": v, "status": "ok", "ts": ts, "unit": "%"}
+				if d := diskPartitionDetails(part); d != nil {
+					reading["details"] = d
+				}
+				return reading
 			}
 		}
 	}
@@ -133,7 +154,17 @@ func EnrichAgentReport(report *protocol.AgentReport) *protocol.AgentReport {
 			mount = v
 		}
 		sensorID := diskdiscovery.MountToSensorID(mount)
-		setMetric(sensorID, part["percent"])
+		v, ok := toFloat(part["percent"])
+		if !ok {
+			continue
+		}
+		metricsMap[sensorID] = protocol.MetricPoint{
+			SensorID: sensorID,
+			TS:       now,
+			Value:    &v,
+			Status:   "ok",
+			Details:  diskPartitionDetails(part),
+		}
 	}
 	sensors := report.Sensors
 	knownIDs := map[string]bool{}

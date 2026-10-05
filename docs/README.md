@@ -8,4 +8,4 @@
 
 Пользовательская документация: корневой [README.md](../README.md), [CHANGELOG.md](../CHANGELOG.md), [android/README.md](../android/README.md).
 
-Правила Cursor: [`.cursor/rules/`](../.cursor/rules/) — `project.mdc`, `packaging.mdc` (deb, Windows, Android, Docker), `releases.mdc`, `taskmcp.mdc`, `prod-infrastructure.mdc`, `git-commits.mdc`.
+Правила Cursor: [`.cursor/rules/`](../.cursor/rules/) — `project.mdc`, `packaging.mdc`, **`debian-agent-install.mdc`** (debconf, conffiles, postinst), `releases.mdc`, `taskmcp.mdc`, `prod-infrastructure.mdc`, `git-commits.mdc`.

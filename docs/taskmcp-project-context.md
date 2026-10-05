@@ -103,7 +103,7 @@ scripts/                     release, deb, notify-taskmcp-release.sh
 | Web UI | `web/js/dashboard.js`, `hosts.js`, `settings.js`, `web/css/style.css` |
 | Android | `android/app/src/main/kotlin/ru/ferrumnst/sysmon/` |
 | Hub image | `Dockerfile`, `docker-compose.yml` |
-| Agent packaging | `debian/`, `packaging/windows/` |
+| Agent packaging | `debian/`, `packaging/windows/`; deb install — `.cursor/rules/debian-agent-install.mdc` |
 | Релиз | `internal/version/version.go`, `debian/changelog`, `android/gradle.properties`, `CHANGELOG.md`, тег `v1.0.N`, CI `.github/workflows/ci.yml` |
 
 ### Типы датчиков (примеры)

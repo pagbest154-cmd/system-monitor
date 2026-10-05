@@ -1,3 +1,9 @@
+system-monitor-agent (1.0.68-1) unstable; urgency=medium
+
+  * Release 1.0.68: network graph Mbps + live line charts; disk bar tooltip volumes; UI layout.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Mon, 05 Oct 2026 23:25:00 +0700
+
 system-monitor-agent (1.0.67-1) unstable; urgency=medium
 
   * Release 1.0.67: mdadm alerts/devices, deb conffiles (SYSMON-25), RAID UI presets.

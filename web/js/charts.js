@@ -183,6 +183,34 @@ export function updateLineChart(chart, dom, seriesData, sensorMeta) {
   chart.setOption(buildLineOptions(dom, seriesData, sensorMeta), false);
 }
 
+function formatDiskBarTooltip(readings, sensorMeta, dataIndex, percent) {
+  const reading = readings[dataIndex];
+  if (!reading) return "";
+  const name = sensorMeta[reading.sensorId]?.name || reading.sensorId;
+  const lines = [name, `${percent}%`];
+  const details = reading.details || {};
+  const used = details.used_gb;
+  const total = details.total_gb;
+  if (used != null && total != null) {
+    lines.push(`${used} ГБ ${i18n.systemInfo.of} ${total} ГБ`);
+  }
+  return lines.join("<br/>");
+}
+
+function buildBarTooltip(readings, sensorMeta) {
+  return {
+    trigger: "axis",
+    axisPointer: { type: "shadow" },
+    formatter(params) {
+      const items = Array.isArray(params) ? params : [params];
+      if (!items.length) return "";
+      const idx = items[0].dataIndex;
+      const value = items[0].value;
+      return formatDiskBarTooltip(readings, sensorMeta, idx, value);
+    },
+  };
+}
+
 function buildBarOptions(dom, readings, sensorMeta) {
   const width = chartWidth(dom);
   const mode = layoutMode(width);
@@ -190,11 +218,12 @@ function buildBarOptions(dom, readings, sensorMeta) {
   const values = readings.map((r) => r.value ?? 0);
   const colors = readings.map((r) => statusColor(r.status));
   const useHorizontal = mode === "compact" || (mode === "medium" && categories.length > 2);
+  const tooltip = buildBarTooltip(readings, sensorMeta);
 
   if (useHorizontal) {
     return {
       ...CHART_TRANSITION,
-      tooltip: { trigger: "axis" },
+      tooltip,
       grid: { left: 8, right: 24, top: 8, bottom: 8, containLabel: true },
       xAxis: {
         type: "value",
@@ -233,7 +262,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
 
   return {
     ...CHART_TRANSITION,
-    tooltip: { trigger: "axis" },
+    tooltip,
     grid: { left: 40, right: 8, top: 12, bottom: mode === "compact" ? 48 : 32 },
     xAxis: {
       type: "category",
