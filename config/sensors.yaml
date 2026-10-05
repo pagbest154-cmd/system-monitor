@@ -1,6 +1,7 @@
 settings:
   retention_days: 31
   default_interval_sec: 5
+  auto_discover_mdadm: true
 
 sensors:
   - id: cpu_percent
@@ -105,3 +106,14 @@ sensors:
       port: 1883
     interval_sec: 10
     unit: "°C"
+
+  # RAID (Linux): автообнаружение через settings.auto_discover_mdadm.
+  # Пример ручного датчика:
+  # - id: mdadm_md0
+  #   name: RAID md0
+  #   type: system.mdadm_status
+  #   enabled: true
+  #   platforms: [linux]
+  #   params:
+  #     device: md0
+  #   interval_sec: 30

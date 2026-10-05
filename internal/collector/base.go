@@ -9,6 +9,7 @@ type SensorReading struct {
 	Value    *float64
 	Status   string
 	Error    string
+	Details  map[string]interface{}
 }
 
 func (r SensorReading) ToMap() map[string]interface{} {
@@ -21,6 +22,9 @@ func (r SensorReading) ToMap() map[string]interface{} {
 	}
 	if r.Error != "" {
 		m["error"] = r.Error
+	}
+	if len(r.Details) > 0 {
+		m["details"] = r.Details
 	}
 	return m
 }

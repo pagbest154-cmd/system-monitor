@@ -6,6 +6,7 @@ import (
 
 	"github.com/pagbest154-cmd/system-monitor/internal/config"
 	"github.com/pagbest154-cmd/system-monitor/internal/diskdiscovery"
+	"github.com/pagbest154-cmd/system-monitor/internal/mdadmdiscovery"
 	"github.com/pagbest154-cmd/system-monitor/internal/storage"
 	"github.com/shirou/gopsutil/v4/cpu"
 )
@@ -73,6 +74,18 @@ func (c *Collector) ReloadConfig(cfg *config.SensorsFile) {
 		for _, item := range diskdiscovery.DiscoverDiskSensors() {
 			path, _ := item.Params["path"].(string)
 			if configuredPaths[path] {
+				continue
+			}
+			sensor, err := CreateSensor(item)
+			if err != nil {
+				continue
+			}
+			sensors[item.ID] = sensor
+		}
+	}
+	if c.cfg.Settings.AutoDiscoverMdadm {
+		for _, item := range mdadmdiscovery.DiscoverMdadmSensors() {
+			if sensors[item.ID] != nil {
 				continue
 			}
 			sensor, err := CreateSensor(item)
@@ -183,12 +196,28 @@ func (c *Collector) GetSensorConfigs() []config.SensorConfig {
 			}
 		}
 	}
-	for _, item := range diskdiscovery.DiscoverDiskSensors() {
-		path, _ := item.Params["path"].(string)
-		if configuredPaths[path] {
-			continue
+	if c.cfg.Settings.AutoDiscoverDisks {
+		for _, item := range diskdiscovery.DiscoverDiskSensors() {
+			path, _ := item.Params["path"].(string)
+			if configuredPaths[path] {
+				continue
+			}
+			configs = append(configs, item)
 		}
-		configs = append(configs, item)
+	}
+	configuredMdadm := map[string]bool{}
+	for _, cfg := range configs {
+		if cfg.Type == "system.mdadm_status" {
+			configuredMdadm[cfg.ID] = true
+		}
+	}
+	if c.cfg.Settings.AutoDiscoverMdadm {
+		for _, item := range mdadmdiscovery.DiscoverMdadmSensors() {
+			if configuredMdadm[item.ID] {
+				continue
+			}
+			configs = append(configs, item)
+		}
 	}
 	return configs
 }
@@ -198,6 +227,7 @@ func (c *Collector) GetSettings() map[string]interface{} {
 		"retention_days":       c.cfg.Settings.RetentionDays,
 		"default_interval_sec": c.cfg.Settings.DefaultIntervalSec,
 		"auto_discover_disks":  c.cfg.Settings.AutoDiscoverDisks,
+		"auto_discover_mdadm":  c.cfg.Settings.AutoDiscoverMdadm,
 	}
 }
 

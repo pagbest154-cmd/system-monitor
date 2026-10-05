@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [1.0.66] — 2026-10-05
+
+### Добавлено
+
+- Agent / standalone (Linux): датчик `system.mdadm_status` — состояние RAID из `/proc/mdstat`, автообнаружение `settings.auto_discover_mdadm`
+- Hub / agent: поле `details` в метриках push и live WebSocket (RAID level, state, check progress, устройства)
+- Web и Android: панель dashboard `type: raid`, пресет сенсора `auto_mdadm`
+
 ## [1.0.65] — 2026-10-01
 
 ### Добавлено

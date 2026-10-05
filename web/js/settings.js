@@ -33,6 +33,7 @@ const HUB_PANEL_SENSOR_OPTIONS = [
   { id: "cpu_temp", name: "Температура CPU" },
   { id: "gpu_temp", name: "Температура GPU" },
   { id: "auto_disks", name: "Все диски (auto)" },
+  { id: "auto_mdadm", name: "Все RAID (auto)" },
 ];
 
 const DEFAULT_PARAMS = {
@@ -171,6 +172,7 @@ function renderPanelsTable() {
             <option value="line" ${panel.type === "line" ? "selected" : ""}>График</option>
             <option value="bar" ${panel.type === "bar" ? "selected" : ""}>Столбцы</option>
             <option value="status" ${panel.type === "status" ? "selected" : ""}>Статус</option>
+            <option value="raid" ${panel.type === "raid" ? "selected" : ""}>RAID</option>
           </select>
         </div>
       </td>

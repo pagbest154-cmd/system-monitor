@@ -50,3 +50,10 @@ panels:
     sensors:
       - ram_used
     row: 6
+
+  - id: raid_status
+    title: Состояние RAID
+    type: raid
+    sensors:
+      - auto_mdadm
+    row: 7

@@ -92,6 +92,7 @@ data class MetricReading(
     val value: Double? = null,
     val status: String? = null,
     val ts: Double? = null,
+    val details: JsonElement? = null,
 )
 
 @Serializable

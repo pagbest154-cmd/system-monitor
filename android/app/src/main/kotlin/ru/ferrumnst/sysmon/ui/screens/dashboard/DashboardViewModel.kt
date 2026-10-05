@@ -265,7 +265,7 @@ class DashboardViewModel(
                 val sensorHistories = mutableMapOf<String, List<MetricReading>>()
                 val sensorIds = resolvePanelSensorIds(panel, state.sensors, state.liveReadings)
                 sensorIds.forEach { sensorId ->
-                    if (sensorId == "auto_disks") return@forEach
+                    if (sensorId == "auto_disks" || sensorId == "auto_mdadm") return@forEach
                     val live = state.liveReadings[sensorId]
                         ?: state.sensors.find { it.id == sensorId }?.current
                     val apiPoints = runCatching {

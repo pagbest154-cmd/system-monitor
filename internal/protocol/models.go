@@ -15,10 +15,11 @@ func StripAgentPrefix(agentID, fullID string) string {
 }
 
 type MetricPoint struct {
-	SensorID string   `json:"sensor_id"`
-	TS       float64  `json:"ts"`
-	Value    *float64 `json:"value"`
-	Status   string   `json:"status"`
+	SensorID string                 `json:"sensor_id"`
+	TS       float64                `json:"ts"`
+	Value    *float64               `json:"value"`
+	Status   string                 `json:"status"`
+	Details  map[string]interface{} `json:"details,omitempty"`
 }
 
 type SensorMeta struct {

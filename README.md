@@ -445,6 +445,7 @@ panels:
 | `system.temperature` | Температура CPU |
 | `system.load_average` | Load average (1 min) |
 | `system.process_cpu_percent` | CPU % процессов (`params.name`) |
+| `system.mdadm_status` | RAID mdadm (Linux, `/proc/mdstat`; `settings.auto_discover_mdadm`, id `mdadm_mdN`) |
 | `gpio.dht22` | DHT22 на Raspberry Pi (`params.pin`) |
 | `remote.http_json` | HTTP API (`params.url`, `params.json_path`) |
 | `remote.mqtt` | MQTT-топик (`params.topic`, `params.broker`) |

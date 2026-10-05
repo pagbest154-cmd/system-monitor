@@ -94,12 +94,7 @@ func IngestAgentReport(report *protocol.AgentReport, store *storage.MetricStore,
 				continue
 			}
 			fullID := protocol.PrefixedSensorID(report.AgentID, point.SensorID)
-			latest[fullID] = map[string]interface{}{
-				"sensor_id": fullID,
-				"value":     point.Value,
-				"status":    point.Status,
-				"ts":        point.TS,
-			}
+			latest[fullID] = protocol.LatestReadingMap(fullID, point)
 		}
 		if len(latest) > 0 {
 			liveHub.ScheduleBroadcast(map[string]interface{}{

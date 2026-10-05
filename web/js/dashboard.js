@@ -10,6 +10,7 @@ import {
   updateBarChart,
   createStatusCard,
   updateStatusCard,
+  updateRaidPanel,
 } from "./charts.js";
 import {
   icon,
@@ -32,6 +33,7 @@ let dashboardPanels = [];
 
 const PERIOD_STORAGE_KEY = "system-monitor:global-period";
 const AUTO_DISK_SENSOR = "auto_disks";
+const AUTO_MDADM_SENSOR = "auto_mdadm";
 
 const TEMP_SENSOR_IDS = new Set(["cpu_temp", "gpu_temp"]);
 
@@ -42,6 +44,7 @@ const DEFAULT_PANEL_SENSORS = {
   temp_chart: ["cpu_temp", "gpu_temp"],
   cpu_gauge: ["cpu_percent"],
   ram_gauge: ["ram_used"],
+  raid_status: [AUTO_MDADM_SENSOR],
 };
 
 let expandedPanelId = null;
@@ -283,7 +286,7 @@ function disposeChart(id) {
   }
 }
 
-const PANEL_TYPE_ORDER = { line: 0, bar: 1, gauge: 2, status: 3 };
+const PANEL_TYPE_ORDER = { line: 0, bar: 1, gauge: 2, status: 3, raid: 4 };
 
 function sortPanelsForDisplay(panels) {
   return [...panels].sort((a, b) => {
@@ -717,6 +720,11 @@ function resolvePanelSensors(panel) {
     if (!ids.length) {
       ids = Object.keys(latestSnapshot).filter((id) => id.startsWith("disk_auto_"));
     }
+  } else if (configured.includes(AUTO_MDADM_SENSOR)) {
+    ids = Object.keys(sensorMeta).filter((id) => id.startsWith("mdadm_"));
+    if (!ids.length) {
+      ids = Object.keys(latestSnapshot).filter((id) => id.startsWith("mdadm_"));
+    }
   } else {
     ids = configured;
   }
@@ -798,6 +806,11 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
     return;
   }
 
+  if (panel.type === "raid") {
+    updateRaidPanel(chartDom, sensorIds, latest, sensorMeta);
+    return;
+  }
+
   if (panel.type === "line") {
     const history = await loadHistory(sensorIds, globalPeriod, latest);
     if (isTemperaturePanel(panel) && !temperatureDataAvailable(sensorIds, latest, history)) {
@@ -836,7 +849,7 @@ function queueLivePanelRefresh(latest) {
     liveRefreshQueued = null;
     if (!data) return;
     for (const panel of dashboardPanels) {
-      if (panel.type === "gauge" || panel.type === "bar" || panel.type === "status") {
+      if (panel.type === "gauge" || panel.type === "bar" || panel.type === "status" || panel.type === "raid") {
         await refreshPanel(panel, data);
       }
     }

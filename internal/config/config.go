@@ -30,10 +30,11 @@ type SettingsConfig struct {
 	RetentionDays      int  `yaml:"retention_days" json:"retention_days"`
 	DefaultIntervalSec int  `yaml:"default_interval_sec" json:"default_interval_sec"`
 	AutoDiscoverDisks  bool `yaml:"auto_discover_disks" json:"auto_discover_disks"`
+	AutoDiscoverMdadm  bool `yaml:"auto_discover_mdadm" json:"auto_discover_mdadm"`
 }
 
 func defaultSettings() SettingsConfig {
-	return SettingsConfig{RetentionDays: 7, DefaultIntervalSec: 5, AutoDiscoverDisks: true}
+	return SettingsConfig{RetentionDays: 7, DefaultIntervalSec: 5, AutoDiscoverDisks: true, AutoDiscoverMdadm: true}
 }
 
 type SensorConfig struct {

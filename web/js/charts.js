@@ -298,3 +298,52 @@ export function updateStatusCard(dom, reading) {
   dom.dataset.statusKey = key;
   createStatusCard(dom, reading);
 }
+
+function raidStateLabel(state) {
+  const labels = i18n.raid?.stateLabels || {};
+  return labels[state] || state || "—";
+}
+
+function formatRaidCard(reading, meta) {
+  const details = reading?.details || {};
+  const device = details.device || meta?.name || reading?.sensor_id || "—";
+  const level = details.raid_level || "—";
+  const state = raidStateLabel(details.state);
+  const active = details.active_devices ?? "—";
+  const failed = details.failed_devices ?? 0;
+  const check = details.check_progress;
+  const status = reading?.status || "unknown";
+  let checkLine = "";
+  if (check != null && check !== "" && !Number.isNaN(Number(check))) {
+    checkLine = `<div class="raid-row">${i18n.raid.check}: <strong>${Number(check).toFixed(1)}%</strong></div>`;
+  }
+  return `
+    <div class="raid-card" style="border-color:${statusColor(status)}">
+      <div class="raid-card-title">${device}</div>
+      <div class="raid-row">${i18n.raid.level}: <strong>${level}</strong></div>
+      <div class="raid-row">${i18n.raid.state}: <strong>${state}</strong></div>
+      <div class="raid-row">${i18n.raid.devices}: <strong>${active}</strong> · ${i18n.raid.failed}: <strong>${failed}</strong></div>
+      ${checkLine}
+      <div class="raid-badge">${statusBadge(status, i18n.status[status] || status)}</div>
+    </div>
+  `;
+}
+
+export function updateRaidPanel(dom, sensorIds, latest, sensorMeta) {
+  const cards = sensorIds
+    .map((id) => {
+      const reading = latest[id];
+      const meta = sensorMeta[id];
+      if (!reading && !meta) return "";
+      return formatRaidCard(reading || meta?.current, meta);
+    })
+    .filter(Boolean);
+  const html =
+    cards.length > 0
+      ? `<div class="raid-grid">${cards.join("")}</div>`
+      : `<p class="sys-empty panel-empty">${i18n.raid.empty}</p>`;
+  const key = sensorIds.join(",") + "|" + cards.length;
+  if (dom.dataset.raidKey === key) return;
+  dom.dataset.raidKey = key;
+  dom.innerHTML = html;
+}

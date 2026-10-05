@@ -303,16 +303,27 @@ func (r *Runner) pushOnce() (int, error) {
 		if v, ok := item["sensor_id"].(string); ok {
 			sid = v
 		}
-		metrics = append(metrics, protocol.MetricPoint{
+		point := protocol.MetricPoint{
 			SensorID: sid, TS: ts, Value: value, Status: status,
-		})
+		}
+		if details := metricDetails(item); len(details) > 0 {
+			point.Details = details
+		}
+		metrics = append(metrics, point)
 	}
 	sensors := make([]protocol.SensorMeta, 0)
 	for _, item := range r.collector.BuildSensorMeta() {
-		sensors = append(sensors, protocol.SensorMeta{
+		meta := protocol.SensorMeta{
 			ID: fmt.Sprint(item["id"]), Name: fmt.Sprint(item["name"]),
 			Type: fmt.Sprint(item["type"]), Unit: fmt.Sprint(item["unit"]), Enabled: true,
-		})
+		}
+		if v, ok := item["warn_above"].(float64); ok {
+			meta.WarnAbove = &v
+		}
+		if v, ok := item["critical_above"].(float64); ok {
+			meta.CriticalAbove = &v
+		}
+		sensors = append(sensors, meta)
 	}
 	hostname, _ := os.Hostname()
 	report := &protocol.AgentReport{
@@ -415,6 +426,17 @@ func (r *Runner) logSyncError(stage string, err error) {
 	}
 	r.lastSyncError = msg
 	AgentLogf("%s failed (attempt %d): %v", stage, r.syncErrorCount, err)
+}
+
+func metricDetails(item map[string]interface{}) map[string]interface{} {
+	if item == nil {
+		return nil
+	}
+	raw, ok := item["details"].(map[string]interface{})
+	if !ok || len(raw) == 0 {
+		return nil
+	}
+	return raw
 }
 
 func metricValue(item map[string]interface{}) *float64 {

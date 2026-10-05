@@ -11,6 +11,7 @@ private val DEFAULT_PANEL_SENSORS = mapOf(
     "temp_chart" to listOf("cpu_temp", "gpu_temp"),
     "cpu_gauge" to listOf("cpu_percent"),
     "ram_gauge" to listOf("ram_used"),
+    "raid_status" to listOf("auto_mdadm"),
 )
 
 fun resolvePanelSensorIds(panel: DashboardPanel): List<String> {
@@ -30,6 +31,11 @@ fun resolvePanelSensorIds(
             .filter { it.startsWith("disk_") || it.startsWith("disk_auto_") }
         if (diskIds.isNotEmpty()) return diskIds
         return liveReadings.keys.filter { it.startsWith("disk_") || it.startsWith("disk_auto_") }
+    }
+    if (configured.contains("auto_mdadm")) {
+        val raidIds = sensors.map { it.id }.filter { it.startsWith("mdadm_") }
+        if (raidIds.isNotEmpty()) return raidIds
+        return liveReadings.keys.filter { it.startsWith("mdadm_") }
     }
     return configured
 }

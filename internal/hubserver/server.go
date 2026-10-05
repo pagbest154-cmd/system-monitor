@@ -459,9 +459,7 @@ func (s *Server) handlePushMetrics(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		fullID := protocol.PrefixedSensorID(agentID, point.SensorID)
-		latest[fullID] = map[string]interface{}{
-			"sensor_id": fullID, "value": point.Value, "status": point.Status, "ts": point.TS,
-		}
+		latest[fullID] = protocol.LatestReadingMap(fullID, point)
 	}
 	s.Fleet.UpdateAgent(agentID, latest)
 	s.evaluatePushAlerts(agentID, enriched)

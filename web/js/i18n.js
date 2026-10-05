@@ -21,6 +21,20 @@ export const i18n = {
     error: "Ошибка",
     unknown: "Нет данных",
   },
+  raid: {
+    empty: "RAID-массивы не обнаружены",
+    level: "Уровень",
+    state: "Состояние",
+    devices: "Активные",
+    failed: "Сбойные",
+    check: "Проверка",
+    stateLabels: {
+      active: "Активен",
+      degraded: "Деградация",
+      clean: "Чистый",
+      inactive: "Неактивен",
+    },
+  },
   settingsPage: {
     title: "Настройки мониторинга",
     sensors: "Датчики",

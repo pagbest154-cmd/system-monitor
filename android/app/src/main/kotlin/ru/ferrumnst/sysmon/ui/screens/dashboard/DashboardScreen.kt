@@ -43,6 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.ferrumnst.sysmon.data.models.AgentSystemInfo
 import ru.ferrumnst.sysmon.data.models.DashboardPanel
@@ -67,6 +69,7 @@ import ru.ferrumnst.sysmon.ui.util.formatGbRange
 import ru.ferrumnst.sysmon.ui.util.formatTimestamp
 import ru.ferrumnst.sysmon.ui.util.formatValue
 import ru.ferrumnst.sysmon.ui.util.readingForSensor
+import ru.ferrumnst.sysmon.ui.components.RaidPanelCard
 import ru.ferrumnst.sysmon.ui.util.resolvePanelSensorIds
 
 private val periods = listOf(
@@ -200,7 +203,7 @@ fun DashboardScreen(
 
                     items(
                         state.panels.filter { panel ->
-                            (panel.type == "line" || panel.type == "bar") &&
+                            (panel.type == "line" || panel.type == "bar" || panel.type == "raid") &&
                                 !isQuickStatsDuplicatePanel(panel, state.sensors, state.liveReadings)
                         },
                     ) { panel ->
@@ -444,6 +447,16 @@ private fun PanelCard(
                 }
             }
         }
+        "raid" -> {
+            val sensorIds = resolvePanelSensorIds(panel, sensors, liveReadings)
+            RaidPanelCard(
+                title = panel.title,
+                sensorIds = sensorIds,
+                sensors = sensors,
+                liveReadings = liveReadings,
+                modifier = modifier,
+            )
+        }
     }
 }
 
@@ -467,11 +480,17 @@ private fun SensorsList(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(sensor.name, style = MaterialTheme.typography.bodyMedium)
-                    val subtitle = when (sensor.id) {
-                        "ram_used" -> formatGbRange(
+                    val subtitle = when {
+                        sensor.id == "ram_used" -> formatGbRange(
                             systemInfo?.memory?.usedGb,
                             systemInfo?.memory?.totalGb,
                         )
+                        sensor.type == "system.mdadm_status" -> {
+                            val d = reading?.details
+                            val level = d?.jsonObject?.get("raid_level")?.jsonPrimitive?.content
+                            val state = d?.jsonObject?.get("state")?.jsonPrimitive?.content
+                            listOfNotNull(level, state).joinToString(" · ").ifBlank { sensor.type }
+                        }
                         else -> sensor.type ?: sensor.id
                     }
                     Text(

@@ -96,6 +96,7 @@ const PANEL_ICONS = {
   line: "chartLine",
   bar: "chartBar",
   status: "activity",
+  raid: "hardDrive",
 };
 
 const MEDIA_ICONS = {
