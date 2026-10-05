@@ -372,12 +372,16 @@ function renderAgentsTable() {
 }
 
 function readAgentsFromTable() {
-  return [...document.querySelectorAll("#agents-table tbody tr")].map((row) => ({
-    id: row.querySelector(".agent-id")?.value.trim(),
-    name: row.querySelector(".agent-name")?.value.trim(),
-    token: row.querySelector(".agent-token")?.value.trim(),
-    overrides: [],
-  }));
+  return [...document.querySelectorAll("#agents-table tbody tr")].map((row) => {
+    const index = Number(row.dataset.index);
+    const existing = agents[index] || {};
+    return {
+      id: row.querySelector(".agent-id")?.value.trim(),
+      name: row.querySelector(".agent-name")?.value.trim(),
+      token: row.querySelector(".agent-token")?.value.trim(),
+      overrides: existing.overrides || [],
+    };
+  });
 }
 
 function normalizeDomainInput(value) {

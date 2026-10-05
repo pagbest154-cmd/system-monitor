@@ -261,6 +261,164 @@ function renderAlertEvents(events) {
     .join("");
 }
 
+function getNetworkInterfaceOverride(overrides = []) {
+  for (const sensorId of ["net_rx", "net_tx"]) {
+    const item = overrides.find((o) => o.sensor_id === sensorId);
+    const iface = item?.params?.interface;
+    if (iface != null && String(iface).trim() !== "") {
+      return String(iface).trim();
+    }
+  }
+  return "";
+}
+
+function applyNetworkInterfaceOverrides(overrides = [], iface) {
+  const kept = (overrides || []).filter((o) => o.sensor_id !== "net_rx" && o.sensor_id !== "net_tx");
+  const trimmed = String(iface || "").trim();
+  if (!trimmed) {
+    return kept;
+  }
+  kept.push({ sensor_id: "net_rx", params: { interface: trimmed } });
+  kept.push({ sensor_id: "net_tx", params: { interface: trimmed } });
+  return kept;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderNetworkInterfaceOptions(ifaces, selected) {
+  const names = [];
+  for (const iface of ifaces || []) {
+    const name = iface?.name;
+    if (name && !names.includes(name)) {
+      names.push(name);
+    }
+  }
+  names.sort((a, b) => a.localeCompare(b, "ru"));
+  if (selected && !names.includes(selected)) {
+    names.unshift(selected);
+  }
+  const options = [
+    `<option value=""${selected === "" ? " selected" : ""}>${i18n.hosts.networkAll}</option>`,
+    ...names.map(
+      (name) =>
+        `<option value="${escapeHtml(name)}"${name === selected ? " selected" : ""}>${escapeHtml(name)}</option>`
+    ),
+  ];
+  return options.join("");
+}
+
+async function openNetworkModal(agent) {
+  const existing = document.getElementById("host-network-modal");
+  if (existing) existing.remove();
+
+  const [agentsCfg, system] = await Promise.all([
+    fetchJson("/api/config/agents"),
+    fetchJson(`/api/system?agent=${encodeURIComponent(agent.id)}`).catch(() => null),
+  ]);
+
+  const configAgents = agentsCfg.agents || [];
+  const entry = configAgents.find((a) => a.id === agent.id);
+  const currentIface = getNetworkInterfaceOverride(entry?.overrides || []);
+  const ifaces = system?.network || [];
+
+  const modal = document.createElement("div");
+  modal.id = "host-network-modal";
+  modal.className = "host-alerts-modal";
+  modal.innerHTML = `
+    <div class="host-alerts-backdrop" data-close="1"></div>
+    <div class="host-alerts-panel" role="dialog" aria-labelledby="host-network-title">
+      <header class="host-alerts-header">
+        <h2 id="host-network-title">${i18n.hosts.networkTitle}</h2>
+        <p class="host-alerts-subtitle">${escapeHtml(agent.name || agent.id)}</p>
+        <button type="button" class="host-alerts-close" data-close="1" aria-label="${i18n.hosts.alertsClose}">×</button>
+      </header>
+      <div class="host-alerts-body">
+        ${
+          !entry
+            ? `<p class="alert-error">${i18n.hosts.networkNotInConfig}</p>`
+            : `
+        <label class="alert-field">
+          <span>${i18n.hosts.networkInterface}</span>
+          <select id="host-network-interface">${renderNetworkInterfaceOptions(ifaces, currentIface)}</select>
+        </label>
+        ${
+          !ifaces.length
+            ? `<p class="alert-hint">${i18n.hosts.networkNoInterfaces}</p>`
+            : ""
+        }
+        <label class="alert-field">
+          <span>${i18n.hosts.networkCustom}</span>
+          <input type="text" id="host-network-custom" value="${escapeHtml(currentIface)}" placeholder="eth0, Wi-Fi, …" />
+        </label>
+        <p class="alert-hint">${i18n.hosts.networkHint}</p>
+        `
+        }
+        <p class="alert-error hidden" id="host-network-error"></p>
+      </div>
+      <footer class="host-alerts-footer">
+        <button type="button" class="btn btn-secondary" data-close="1">${i18n.hosts.alertsCancel}</button>
+        <button type="button" class="btn btn-primary" id="host-network-save" ${entry ? "" : "disabled"}>${i18n.hosts.alertsSave}</button>
+      </footer>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelectorAll("[data-close]").forEach((el) => {
+    el.addEventListener("click", () => modal.remove());
+  });
+
+  const selectEl = modal.querySelector("#host-network-interface");
+  const customEl = modal.querySelector("#host-network-custom");
+  if (selectEl && customEl) {
+    selectEl.addEventListener("change", () => {
+      customEl.value = selectEl.value || "";
+    });
+    customEl.addEventListener("input", () => {
+      const v = customEl.value.trim();
+      if (!v) {
+        selectEl.value = "";
+        return;
+      }
+      const match = [...selectEl.options].find((o) => o.value === v);
+      if (match) selectEl.value = v;
+    });
+  }
+
+  modal.querySelector("#host-network-save")?.addEventListener("click", async () => {
+    const errorEl = modal.querySelector("#host-network-error");
+    errorEl.classList.add("hidden");
+    if (!entry) return;
+
+    const iface =
+      customEl?.value.trim() || selectEl?.value.trim() || "";
+    const updatedAgents = configAgents.map((a) => {
+      if (a.id !== agent.id) return a;
+      return {
+        ...a,
+        overrides: applyNetworkInterfaceOverrides(a.overrides, iface),
+      };
+    });
+
+    try {
+      await fetchJson("/api/config/agents", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agents: updatedAgents }),
+      });
+      modal.remove();
+    } catch (err) {
+      errorEl.textContent = err.message || i18n.hosts.networkSaveFailed;
+      errorEl.classList.remove("hidden");
+    }
+  });
+}
+
 function refreshSensorRowsTable(modal, sensorRows) {
   const mode = modal.querySelector("#alerts-threshold-mode")?.value || "manual";
   const tbody = modal.querySelector("#alert-sensor-rows");
@@ -522,6 +680,9 @@ export async function initHostsPage() {
           <td>${agent.last_seen ? formatTime(agent.last_seen) : "—"}</td>
           <td>
             <div class="host-actions-cell">
+              <button type="button" class="host-network-btn" data-agent-id="${agent.id}" title="${i18n.hosts.networkTitle}">
+                ${icon("network", "icon-xs")}
+              </button>
               <button type="button" class="host-alerts-btn" data-agent-id="${agent.id}" title="${i18n.hosts.alertsTitle}">
                 ${icon("bell", "icon-xs")}
               </button>
@@ -553,6 +714,12 @@ export async function initHostsPage() {
     </table>
   `;
 
+  wrap.querySelectorAll(".host-network-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const agent = agents.find((item) => item.id === button.dataset.agentId);
+      if (agent) openNetworkModal(agent).catch((err) => console.error(err));
+    });
+  });
   wrap.querySelectorAll(".host-alerts-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const agent = agents.find((item) => item.id === button.dataset.agentId);

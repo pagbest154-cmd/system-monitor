@@ -407,6 +407,8 @@ private fun PanelCard(
                     history = histories[sensorId] ?: emptyList(),
                     live = live,
                     buffered = liveBuffers[sensorId] ?: emptyList(),
+                    sensorId = sensorId,
+                    sensorType = meta?.type,
                 )
                 if (points.isEmpty()) return@mapIndexedNotNull null
                 ChartSeries(

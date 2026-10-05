@@ -163,13 +163,10 @@ if [ "$1" = "configure" ]; then
 
     restart_agent() {
         reload_systemd
-        if systemctl is-active --quiet system-monitor-agent.service 2>/dev/null; then
-            systemctl try-restart system-monitor-agent.service >/dev/null 2>&1 \
-                || systemctl restart system-monitor-agent.service >/dev/null 2>&1 \
-                || true
-        else
-            systemctl start system-monitor-agent.service >/dev/null 2>&1 || true
-        fi
+        systemctl enable system-monitor-agent.service >/dev/null 2>&1 || true
+        systemctl restart system-monitor-agent.service >/dev/null 2>&1 \
+            || systemctl start system-monitor-agent.service >/dev/null 2>&1 \
+            || true
         if ! systemctl is-active --quiet system-monitor-agent.service 2>/dev/null; then
             reload_systemd
             systemctl restart system-monitor-agent.service >/dev/null 2>&1 \

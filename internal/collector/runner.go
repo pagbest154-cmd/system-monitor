@@ -140,7 +140,7 @@ func (c *Collector) run() {
 					_ = c.store.Insert(sensorID, reading.Value, reading.Status, now)
 				}
 				payload := reading.ToMap()
-				payload["name"] = cfg.Name
+				payload["name"] = SensorDisplayName(cfg)
 				payload["unit"] = cfg.Unit
 				payload["type"] = cfg.Type
 				payload["ts"] = now

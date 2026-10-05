@@ -33,6 +33,7 @@ import ru.ferrumnst.sysmon.ui.components.SysMonBottomTabs
 import ru.ferrumnst.sysmon.ui.navigation.Routes
 import ru.ferrumnst.sysmon.ui.screens.dashboard.DashboardScreen
 import ru.ferrumnst.sysmon.ui.screens.hosts.HostAlertsScreen
+import ru.ferrumnst.sysmon.ui.screens.hosts.HostNetworkScreen
 import ru.ferrumnst.sysmon.ui.screens.hosts.HostsScreen
 import ru.ferrumnst.sysmon.ui.screens.hubunavailable.HubUnavailableScreen
 import ru.ferrumnst.sysmon.ui.screens.login.LoginScreen
@@ -172,6 +173,9 @@ private fun MainScreen(
                     onOpenAlerts = { agentId, agentName ->
                         navController.navigate(Routes.hostAlerts(agentId, agentName))
                     },
+                    onOpenNetwork = { agentId, agentName ->
+                        navController.navigate(Routes.hostNetwork(agentId, agentName))
+                    },
                 )
             }
             composable(
@@ -191,6 +195,23 @@ private fun MainScreen(
                     onBack = { navController.popBackStack() },
                 )
             }
+            composable(
+                route = Routes.HostNetwork,
+                arguments = listOf(
+                    navArgument("agentId") { type = NavType.StringType },
+                    navArgument("agentName") { type = NavType.StringType },
+                ),
+            ) { entry ->
+                val agentId = entry.arguments?.getString("agentId") ?: return@composable
+                val agentName = Uri.decode(entry.arguments?.getString("agentName").orEmpty())
+                    .ifBlank { agentId }
+                HostNetworkScreen(
+                    repository = repository,
+                    agentId = agentId,
+                    agentName = agentName,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable(Routes.Settings) {
                 SettingsScreen(
                     repository = repository,
@@ -202,7 +223,8 @@ private fun MainScreen(
             }
         }
 
-        val showBottomBar = !currentRoute.startsWith("host_alerts")
+        val showBottomBar = !currentRoute.startsWith("host_alerts") &&
+            !currentRoute.startsWith("host_network")
         if (showBottomBar) {
             SysMonBottomBar(
                 tabs = tabs,

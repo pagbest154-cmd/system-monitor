@@ -131,7 +131,14 @@ agents:
   - id: homepc
     name: Домашний ПК
     token: "длинный-секретный-токен"
+    overrides:
+      - sensor_id: net_rx
+        params: { interface: "Wi-Fi" }
+      - sensor_id: net_tx
+        params: { interface: "Wi-Fi" }
 ```
+
+Имя интерфейса — как в блоке **«Сеть»** на дашборде (`eth0`, `wlan0`, `Ethernet`, `Wi-Fi`). Без `interface` считается сумма по всем NIC. Overrides подхватывает агент с hub при sync конфига; локально то же можно задать в `/etc/system-monitor/agent_sensors.yaml`.
 
 2. Установите агент на машине с **тем же** Hub URL, Agent ID и token.
 3. На панели hub в выпадающем списке **Хост** выберите агента. Если агентов ещё нет — на панели будет сообщение «Нет зарегистрированных хостов».

@@ -132,11 +132,20 @@ fun MultiLineMetricChart(
                 .height(height.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val axisUnit = plotted.firstOrNull()?.unit?.takeIf { it.isNotBlank() }
             Column(
-                modifier = Modifier.width(40.dp),
+                modifier = Modifier.width(52.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.End,
             ) {
+                axisUnit?.let { unit ->
+                    Text(
+                        text = unit,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
                 Text(
                     text = formatAxisValue(maxValue),
                     style = MaterialTheme.typography.labelSmall,

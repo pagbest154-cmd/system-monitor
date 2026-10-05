@@ -273,12 +273,30 @@ async function loadSensorData() {
   };
 }
 
+const MAX_NETWORK_CHART_MBPS = 100_000;
+
+function isNetworkThroughputSensor(sensorId) {
+  const meta = sensorMeta[sensorId];
+  if (meta?.type === "system.network_bytes") return true;
+  return sensorId === "net_rx" || sensorId === "net_tx";
+}
+
+function filterHistoryPoints(sensorId, points) {
+  return points.filter((point) => {
+    if (point.value == null || Number.isNaN(point.value)) return false;
+    if (isNetworkThroughputSensor(sensorId) && Math.abs(point.value) > MAX_NETWORK_CHART_MBPS) {
+      return false;
+    }
+    return true;
+  });
+}
+
 async function loadHistory(sensorIds, period, latest = latestSnapshot) {
   const results = [];
   for (const sensorId of sensorIds) {
     const agentPart = selectedAgent ? `&agent=${encodeURIComponent(selectedAgent)}` : "";
     const data = await fetchJson(`/api/metrics/${encodeURIComponent(sensorId)}?period=${period}${agentPart}`);
-    let points = (data.points || []).filter((point) => point.value != null && !Number.isNaN(point.value));
+    let points = filterHistoryPoints(sensorId, data.points || []);
     const reading = latest[sensorId];
     if (!points.length && hasReadingValue(reading)) {
       points = [{ ts: reading.ts || Date.now() / 1000, value: reading.value, status: reading.status || "ok" }];

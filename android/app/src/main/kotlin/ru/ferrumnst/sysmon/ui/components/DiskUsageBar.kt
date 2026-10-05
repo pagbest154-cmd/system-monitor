@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import ru.ferrumnst.sysmon.data.models.MetricReading
 import ru.ferrumnst.sysmon.data.models.SensorInfo
 import ru.ferrumnst.sysmon.ui.theme.SysMonColors
+import ru.ferrumnst.sysmon.ui.util.diskVolumeSubtitle
 
 @Composable
 fun DiskUsageBar(
@@ -26,7 +27,9 @@ fun DiskUsageBar(
     reading: MetricReading?,
     modifier: Modifier = Modifier,
 ) {
-    val value = reading?.value ?: sensor.current?.value
+    val effectiveReading = reading ?: sensor.current
+    val value = effectiveReading?.value
+    val volumeLine = effectiveReading?.diskVolumeSubtitle()
     val progress by animateFloatAsState(
         targetValue = ((value ?: 0.0) / 100.0).coerceIn(0.0, 1.0).toFloat(),
         label = "diskProgress",
@@ -65,5 +68,12 @@ fun DiskUsageBar(
             color = color,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
+        volumeLine?.let { line ->
+            Text(
+                text = line,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

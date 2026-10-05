@@ -129,6 +129,14 @@ function buildLineTooltip(seriesData, sensorMeta) {
   };
 }
 
+function formatLineYAxisValue(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  if (Math.abs(n) >= 100) return String(Math.round(n));
+  if (Math.abs(n) >= 10) return n.toFixed(0);
+  return n.toFixed(1);
+}
+
 function buildLineOptions(dom, seriesData, sensorMeta) {
   const width = chartWidth(dom);
   const mode = layoutMode(width);
@@ -147,10 +155,11 @@ function buildLineOptions(dom, seriesData, sensorMeta) {
       itemHeight: mode === "compact" ? 8 : 10,
     },
     grid: {
-      left: mode === "compact" ? 36 : 48,
+      left: mode === "compact" ? 8 : 12,
       right: 8,
       top: mode === "compact" ? 12 : 36,
       bottom: mode === "compact" ? 36 : 28,
+      containLabel: true,
     },
     xAxis: {
       type: "time",
@@ -162,10 +171,14 @@ function buildLineOptions(dom, seriesData, sensorMeta) {
     },
     yAxis: {
       type: "value",
+      name: yUnit || "",
+      nameLocation: "end",
+      nameGap: 6,
+      nameTextStyle: { color: "#8b9cb3", fontSize: mode === "compact" ? 9 : 10 },
       axisLabel: {
         color: "#8b9cb3",
         fontSize: mode === "compact" ? 9 : 11,
-        formatter: yUnit ? (value) => formatValue(value, yUnit) : undefined,
+        formatter: (value) => formatLineYAxisValue(value),
       },
       splitLine: { lineStyle: { color: "#2d3a4f" } },
     },

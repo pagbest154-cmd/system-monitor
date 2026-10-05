@@ -156,6 +156,22 @@ data class SystemSwapInfo(
 )
 
 @Serializable
+data class NetworkInterfaceInfo(
+    val name: String? = null,
+    @SerialName("is_up") val isUp: Boolean? = null,
+)
+
+@Serializable
+data class SystemPartitionInfo(
+    val mountpoint: String? = null,
+    val device: String? = null,
+    val fstype: String? = null,
+    @SerialName("used_gb") val usedGb: Double? = null,
+    @SerialName("total_gb") val totalGb: Double? = null,
+    val percent: Double? = null,
+)
+
+@Serializable
 data class AgentSystemInfo(
     val hostname: String? = null,
     val os: String? = null,
@@ -163,6 +179,9 @@ data class AgentSystemInfo(
     val memory: SystemMemoryInfo? = null,
     val swap: SystemSwapInfo? = null,
     val gpus: List<GpuInfo> = emptyList(),
+    val network: List<NetworkInterfaceInfo> = emptyList(),
+    val partitions: List<SystemPartitionInfo> = emptyList(),
+    val disks: List<SystemPartitionInfo> = emptyList(),
 )
 
 @Serializable
@@ -215,10 +234,17 @@ data class AgentsConfigResponse(
 )
 
 @Serializable
+data class SensorOverrideEntry(
+    @SerialName("sensor_id") val sensorId: String,
+    val params: Map<String, String>? = null,
+)
+
+@Serializable
 data class AgentConfigEntry(
     val id: String,
     val name: String = "",
     val token: String = "",
+    val overrides: List<SensorOverrideEntry> = emptyList(),
 )
 
 @Serializable

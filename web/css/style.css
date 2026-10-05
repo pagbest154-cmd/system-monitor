@@ -1691,6 +1691,7 @@ input[type="checkbox"]:disabled {
 }
 
 .host-alerts-btn,
+.host-network-btn,
 .host-delete-btn {
   display: inline-flex;
   align-items: center;
@@ -1703,11 +1704,13 @@ input[type="checkbox"]:disabled {
   cursor: pointer;
 }
 
-.host-alerts-btn {
+.host-alerts-btn,
+.host-network-btn {
   color: var(--accent);
 }
 
-.host-alerts-btn:hover {
+.host-alerts-btn:hover,
+.host-network-btn:hover {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 

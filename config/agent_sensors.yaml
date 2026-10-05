@@ -28,6 +28,7 @@ sensors:
     enabled: true
     params:
       direction: recv
+      # interface: eth0
     interval_sec: 2
     unit: "Мбит/с"
 
@@ -37,6 +38,7 @@ sensors:
     enabled: true
     params:
       direction: sent
+      # interface: eth0
     interval_sec: 2
     unit: "Мбит/с"
 

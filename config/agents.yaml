@@ -1,5 +1,23 @@
+# overrides.params.interface — имя NIC для net_rx/net_tx (см. блок «Сеть» в системной информации).
+# Linux: eth0, wlan0 · Windows: Ethernet, Wi-Fi. Пусто = сумма по всем интерфейсам.
 agents:
   - id: local-agent
     name: Локальный агент
     token: "change-me"
     overrides: []
+  # - id: homepc
+  #   name: Домашний ПК
+  #   token: "…"
+  #   overrides:
+  #     - sensor_id: net_rx
+  #       params: { interface: "Wi-Fi" }
+  #     - sensor_id: net_tx
+  #       params: { interface: "Wi-Fi" }
+  # - id: vps
+  #   name: VPS
+  #   token: "…"
+  #   overrides:
+  #     - sensor_id: net_rx
+  #       params: { interface: eth0 }
+  #     - sensor_id: net_tx
+  #       params: { interface: eth0 }

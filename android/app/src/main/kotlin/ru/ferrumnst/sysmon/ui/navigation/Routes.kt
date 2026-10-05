@@ -9,8 +9,12 @@ object Routes {
     const val Dashboard = "dashboard"
     const val Hosts = "hosts"
     const val HostAlerts = "host_alerts/{agentId}/{agentName}"
+    const val HostNetwork = "host_network/{agentId}/{agentName}"
     const val Settings = "settings"
 
     fun hostAlerts(agentId: String, agentName: String) =
         "host_alerts/${Uri.encode(agentId)}/${Uri.encode(agentName)}"
+
+    fun hostNetwork(agentId: String, agentName: String) =
+        "host_network/${Uri.encode(agentId)}/${Uri.encode(agentName)}"
 }

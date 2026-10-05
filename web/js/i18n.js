@@ -203,6 +203,17 @@ export const i18n = {
     alertsCancel: "Отмена",
     alertsSave: "Сохранить",
     alertsSaveFailed: "Не удалось сохранить настройки",
+    networkTitle: "Сетевой трафик на графике",
+    networkInterface: "Интерфейс",
+    networkAll: "Все интерфейсы (сумма)",
+    networkHint:
+      "Имя как в блоке «Сеть» на дашборде. Применяется к датчикам net_rx и net_tx; агент подхватит после sync конфига с hub.",
+    networkCustom: "Другое имя (вручную)",
+    networkNotInConfig:
+      "Хост не найден в agents.yaml на hub. Добавьте его в Настройки → Агенты.",
+    networkNoInterfaces: "Список интерфейсов пока недоступен — введите имя вручную или откройте позже.",
+    networkSaveFailed: "Не удалось сохранить настройки сети",
+    networkSaved: "Сохранено. Агент обновит конфиг в течение минуты.",
   },
 };
 

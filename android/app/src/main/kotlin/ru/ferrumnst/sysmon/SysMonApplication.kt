@@ -7,6 +7,8 @@ import ru.ferrumnst.sysmon.data.session.OfflineCacheStore
 import ru.ferrumnst.sysmon.data.session.SessionStore
 import ru.ferrumnst.sysmon.data.websocket.LiveWebSocketClient
 import ru.ferrumnst.sysmon.notifications.NotificationHelper
+import ru.ferrumnst.sysmon.notifications.NtfySubscriptionManager
+import ru.ferrumnst.sysmon.notifications.NtfySubscriptionStore
 import ru.ferrumnst.sysmon.update.AppUpdateManager
 import ru.ferrumnst.sysmon.update.AppUpdateWorker
 import ru.ferrumnst.sysmon.widget.WidgetUpdateWorker
@@ -40,6 +42,10 @@ class SysMonApplication : Application() {
         appScope.launch {
             WidgetUpdateWorker.refreshNow(this@SysMonApplication)
             appUpdateManager.checkForUpdate()
+            val subs = NtfySubscriptionStore(this@SysMonApplication).getAll()
+            if (subs.isNotEmpty()) {
+                NtfySubscriptionManager.refreshService(this@SysMonApplication)
+            }
         }
     }
 }

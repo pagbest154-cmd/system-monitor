@@ -2,7 +2,11 @@ package ru.ferrumnst.sysmon.notifications
 
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
+import android.util.Log
+import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,10 +42,24 @@ class NtfyListenerService : Service() {
             }
             else -> {
                 // Must run before any async work — startForegroundService() deadline is ~10s on Android 8+.
-                startForeground(
-                    FOREGROUND_NOTIFICATION_ID,
-                    NotificationHelper.buildListenerNotification(this),
-                )
+                // targetSdk 34+ requires foreground service type (manifest: dataSync).
+                try {
+                    val notification = NotificationHelper.buildListenerNotification(this)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        ServiceCompat.startForeground(
+                            this,
+                            FOREGROUND_NOTIFICATION_ID,
+                            notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+                        )
+                    } else {
+                        startForeground(FOREGROUND_NOTIFICATION_ID, notification)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "startForeground failed", e)
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
                 syncSubscriptions()
             }
         }
@@ -133,6 +151,7 @@ class NtfyListenerService : Service() {
         const val ACTION_SYNC = "ru.ferrumnst.sysmon.ntfy.SYNC"
         const val ACTION_STOP = "ru.ferrumnst.sysmon.ntfy.STOP"
         private const val FOREGROUND_NOTIFICATION_ID = 1001
+        private const val TAG = "NtfyListenerService"
     }
 }
 

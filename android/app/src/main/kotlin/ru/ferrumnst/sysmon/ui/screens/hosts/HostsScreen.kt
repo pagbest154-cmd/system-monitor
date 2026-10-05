@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -65,6 +66,7 @@ import ru.ferrumnst.sysmon.ui.util.versionAndOsText
 fun HostsScreen(
     repository: HubRepository,
     onOpenAlerts: (agentId: String, agentName: String) -> Unit = { _, _ -> },
+    onOpenNetwork: (agentId: String, agentName: String) -> Unit = { _, _ -> },
 ) {
     val vm: HostsViewModel = viewModel(factory = HostsViewModel.Factory(repository))
     val state by vm.uiState.collectAsState()
@@ -180,6 +182,9 @@ fun HostsScreen(
                             onOpenAlerts = {
                                 onOpenAlerts(agent.id, agent.name ?: agent.id)
                             },
+                            onOpenNetwork = {
+                                onOpenNetwork(agent.id, agent.name ?: agent.id)
+                            },
                             onDelete = { agentToDelete = agent },
                             onShowUpdate = { showUpdateHints = true },
                         )
@@ -238,6 +243,7 @@ private fun HostCard(
     isDeleting: Boolean,
     onSelect: () -> Unit,
     onOpenAlerts: () -> Unit,
+    onOpenNetwork: () -> Unit,
     onDelete: () -> Unit,
     onShowUpdate: () -> Unit,
 ) {
@@ -317,6 +323,13 @@ private fun HostCard(
                                 tint = SysMonColors.Warn,
                             )
                         }
+                    }
+                    IconButton(onClick = onOpenNetwork) {
+                        Icon(
+                            Icons.Default.Lan,
+                            contentDescription = "Сетевой интерфейс",
+                            tint = SysMonColors.Accent,
+                        )
                     }
                     IconButton(onClick = onOpenAlerts) {
                         Icon(
