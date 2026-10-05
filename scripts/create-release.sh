@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tag="${1:?Usage: $0 <tag>   e.g. v0.0.3}"
+tag="${1:?Usage: $0 <tag>   e.g. v1.0.67}"
 force=false
 
 if [[ "${2:-}" == "--force" ]]; then
@@ -21,19 +21,27 @@ if [[ "$branch" != "main" ]]; then
   echo "warning: not on main (current: $branch)" >&2
 fi
 
+version_go="$(grep -oP 'Version = "\K[^"]+' internal/version/version.go 2>/dev/null || true)"
+tag_version="${tag#v}"
+expected=""
+if [[ -n "$version_go" ]]; then
+  expected="v${version_go}"
+fi
+
 count="$(git rev-list --count HEAD)"
-expected="v0.0.${count}"
+bump_expected="v1.0.${count}"
 
 echo "Release tag: $tag"
-echo "Expected:    $expected (0.0.N = commit count)"
+if [[ -n "$expected" ]]; then
+  echo "version.go:  $expected"
+  if [[ "$tag" != "$expected" ]]; then
+    echo "warning: tag $tag does not match internal/version/version.go ($expected)" >&2
+  fi
+fi
+echo "bump-version: $bump_expected (1.0.N = commit count; optional)"
 echo "Commit:      $(git rev-parse --short HEAD)"
-echo "pyproject:   $(grep -m1 '^version' pyproject.toml)"
 echo "debian:      $(head -1 debian/changelog)"
 echo
-
-if [[ "$tag" != "$expected" ]]; then
-  echo "warning: tag $tag does not match commit count ($expected)" >&2
-fi
 
 git fetch origin main 2>/dev/null || true
 local_main="$(git rev-parse main)"
@@ -58,10 +66,11 @@ fi
 cat <<EOF
 
 Tag $tag pushed. GitHub Actions will:
-  - build and push ghcr.io/pagbest154-cmd/system-monitor:$tag
+  - build and push ghcr.io/pagbest154-cmd/system-monitor:${tag_version}
   - build system-monitor-agent_*.deb
   - create GitHub Release
   - publish APT repo to GitHub Pages
+  - Android APK, Windows installer (per detect-release-changes)
 
 Track: https://github.com/pagbest154-cmd/system-monitor/actions
 EOF

@@ -62,7 +62,8 @@ func GetSystemInfo() map[string]interface{} {
 		"os_version":     runtime.Version(),
 		"platform":       runtime.GOOS,
 		"architecture":   runtime.GOARCH,
-		"python_version": runtime.Version(),
+		"go_version":     runtime.Version(),
+		"python_version": runtime.Version(), // legacy key; same as go_version (Go hub/agent)
 		"cpu":            cpuSection,
 		"memory": map[string]interface{}{
 			"total_gb":     bytesToGB(vm.Total),

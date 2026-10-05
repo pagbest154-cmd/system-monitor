@@ -303,23 +303,28 @@ function getMaxGridCols() {
   return 4;
 }
 
+function normalizePanelSpan(span) {
+  const value = Number(span) || 1;
+  if (value >= 4) return 4;
+  if (value >= 2) return 2;
+  return 1;
+}
+
 function optimalGridCols(count) {
   if (count <= 1) return 1;
 
   const maxCols = getMaxGridCols();
-  const upper = Math.max(maxCols, count <= 6 ? count : maxCols);
+  const upper = Math.min(maxCols, count);
   let best = 1;
   let bestScore = Infinity;
 
   for (let cols = 1; cols <= upper; cols++) {
-    if (count % cols !== 0) continue;
-    if (cols > maxCols && count / cols > 1) continue;
-
-    const rows = count / cols;
+    const rows = Math.ceil(count / cols);
     const score =
       Math.abs(cols - rows) +
       (cols === 1 && rows > 3 ? 2 : 0) +
-      (cols > maxCols ? 0.5 : 0);
+      (cols === 1 && maxCols > 1 ? 1 : 0) +
+      (count % cols !== 0 ? 0.1 : 0);
 
     if (score < bestScore || (score === bestScore && cols > best)) {
       bestScore = score;
@@ -330,11 +335,25 @@ function optimalGridCols(count) {
   return best;
 }
 
+function applyPanelSpans(gridCols) {
+  for (const panel of dashboardPanels) {
+    const panelEl = document.getElementById(`panel-${panel.id}`);
+    if (!panelEl || panelEl.classList.contains("expanded")) continue;
+    const span = Math.min(normalizePanelSpan(panel.span), gridCols);
+    if (span > 1) {
+      panelEl.style.gridColumn = `span ${span}`;
+    } else {
+      panelEl.style.gridColumn = "";
+    }
+  }
+}
+
 function applyGridLayout() {
   const grid = document.getElementById("dashboard-grid");
   if (!grid) return;
   const cols = optimalGridCols(dashboardPanels.length);
   grid.style.setProperty("--grid-cols", String(cols));
+  applyPanelSpans(cols);
 }
 
 function removeExpandedPlaceholder() {
@@ -396,6 +415,7 @@ function collapsePanel() {
   if (backdrop) backdrop.hidden = true;
   expandedPanelId = null;
   document.body.style.overflow = "";
+  applyGridLayout();
   scheduleChartRelayout();
 }
 
@@ -680,7 +700,7 @@ function renderSystemInfo(info) {
       <div class="sys-card">
         ${labelWithIcon(SECTION_ICONS.uptime, t.uptime)}
         <div class="sys-value">${formatUptime(info.uptime_sec)}</div>
-        <div class="sys-sub">Python ${info.python_version || ""}</div>
+        <div class="sys-sub">Go ${info.python_version || info.go_version || ""}</div>
       </div>
       ${renderBattery(info.battery)}
     </div>
@@ -887,7 +907,6 @@ async function renderDashboard(latest = {}) {
   removeExpandedPlaceholder();
   expandedPanelId = null;
   grid.innerHTML = "";
-  applyGridLayout();
 
   for (const panel of dashboardPanels) {
     const panelEl = document.createElement("section");
@@ -920,6 +939,8 @@ async function renderDashboard(latest = {}) {
 
     await renderPanel(panel, latest);
   }
+
+  applyGridLayout();
 }
 
 function resolveSelectedAgent(agents, preferred) {

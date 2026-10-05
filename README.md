@@ -13,6 +13,7 @@
 Live-обновления по WebSocket, история в SQLite.
 
 [Установка](#установка) ·
+[Документация](docs/README.md) ·
 [Android (SysMon)](#android-sysmon) ·
 [Возможности](#возможности) ·
 [Скриншот](#интерфейс) ·
@@ -116,7 +117,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Конкретная версия: `VERSION=0.0.20 docker compose pull && docker compose up -d`  
+Конкретная версия: `VERSION=1.0.67 docker compose pull && docker compose up -d`  
 В футере веб-интерфейса — установленная версия и статус обновления с GitHub.
 
 > На каждом релизе собираются **агенты** (`.deb`, `.exe`), **Android APK** (`sysmon-{version}.apk`) и при изменениях hub-кода — Docker-образ. Смотрите блок «Сборка релиза» в [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
@@ -204,7 +205,7 @@ sudo apt install system-monitor-agent
 
 После нового релиза агента сначала снова выполните `sudo apt update` — иначе apt может пытаться скачать старый `.deb` (404).
 
-Автономный бинарник — **Python на машине не нужен**.  
+Автономный **Go**-бинарник — зависимостей runtime на целевой системе нет.  
 При первой установке debconf спросит **Hub URL**, **Agent ID** и **token**.  
 На hub добавьте агента в [`config/agents.yaml`](config/agents.yaml) с тем же token.
 
@@ -372,11 +373,11 @@ Standalone без fleet: `go run ./cmd/system-monitor --mode standalone --host 0
 |---------|----------------|
 | Графики пустые на hub | Есть ли **зарегистрированные хосты** и выбран ли один в шапке |
 | То же после обновления hub | `docker compose pull && up -d`, затем **Ctrl+F5** в браузере |
-| `Нет данных` на gauge при онлайн-агенте | Обновите hub до **0.0.20+** (исправлен пустой `sensors` в `dashboard.yaml`) |
-| Агент онлайн, API пустой | `GET /api/sensors?agent=<id>` — есть ли `current` с `value` |
+| `Нет данных` на gauge при онлайн-агенте | Hub **1.0.x**; в `dashboard.yaml` у панели должны быть `sensors` или пресеты; **Ctrl+F5** |
+| Агент онлайн, API пустой | `GET /api/sensors?agent=<id>` — есть ли `current` с `value` и при необходимости `details` |
 | История пустая | `GET /api/metrics/cpu_percent?agent=<id>&period=1h` — копятся ли `points` |
-| Windows: ошибка PyInstaller PKG archive | Установите агент **0.0.17+** (сломанные сборки 0.0.14–0.0.16) |
-| Linux: `pydantic_core._pydantic_core` missing (status 1) | Обновите deb до **0.0.25+** (автономный бинарник) |
+| После `apt upgrade` agent не стартует | `journalctl -u system-monitor-agent -f`; конфиг в `/etc/system-monitor/` (conffiles) |
+| Windows: служба агента падает | Лог `%ProgramData%\system-monitor\agent.log`; переустановить installer с [Releases](https://github.com/pagbest154-cmd/system-monitor/releases) |
 | Linux: служба не стартует после обновления | `journalctl -u system-monitor-agent -f` |
 | Служба не стартует после обновления | Логи: `%ProgramData%\system-monitor\agent.log` |
 | SysMon: «Приложение не установлено» при OTA | Разная подпись APK — удалите приложение, установите APK из [Releases](https://github.com/pagbest154-cmd/system-monitor/releases) |

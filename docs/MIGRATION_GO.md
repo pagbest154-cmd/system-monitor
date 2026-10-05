@@ -23,3 +23,5 @@ git push origin v1.0.0
 | Linux agent | Переустановить `.deb` или `apt install --only-upgrade system-monitor-agent` |
 | Windows agent | Установить новый `system-monitor-agent_*_setup.exe` |
 | `metrics.db` | Совместим без миграции схемы |
+
+Актуальный стек и контекст для разработки: [taskmcp-project-context.md](taskmcp-project-context.md), правила в [`.cursor/rules/`](../.cursor/rules/).

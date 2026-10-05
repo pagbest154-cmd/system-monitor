@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### Добавлено
+
+- Документация: `docs/README.md`, обновлён `docs/taskmcp-project-context.md`; правила Cursor `project.mdc`, `taskmcp.mdc`, **`packaging.mdc`** (deb/Windows/Android/Docker); `scripts/sync-taskmcp-context.sh`
+
+### Исправлено
+
+- Web dashboard: сетка панелей при нечётном числе виджетов (например 7 с RAID); учёт `span` из `dashboard.yaml`
+- `docker-compose.standalone.yml` и `scripts/create-release.sh` — Go / `v1.0.N` вместо Python / `v0.0.N`
+- `scripts/build-deb.sh` — зависимости как в CI (Go deb, без Python)
+- Системный блок UI: подпись «Go» вместо «Python» (`go_version` в `/api/system`)
+
 ## [1.0.67] — 2026-10-05
 
 ### Добавлено
