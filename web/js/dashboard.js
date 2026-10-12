@@ -450,7 +450,9 @@ async function relayoutCharts() {
       const history = await loadHistory(sensorIds, globalPeriod, latestSnapshot);
       updateLineChart(chart, chartDom, history, sensorMeta);
     } else if (panel.type === "bar") {
-      const sensorIds = resolvePanelSensors(panel);
+      const sensorIds = resolvePanelSensors(panel).filter(
+        (id) => !id.startsWith("mdadm_") && id !== "auto_mdadm",
+      );
       const readings = sensorIds.map((id) => ({
         sensorId: id,
         value: latestSnapshot[id]?.value,
@@ -917,7 +919,10 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
   }
 
   if (panel.type === "bar") {
-    const readings = sensorIds.map((id) => ({
+    const barSensorIds = sensorIds.filter(
+      (id) => !id.startsWith("mdadm_") && id !== "auto_mdadm",
+    );
+    const readings = barSensorIds.map((id) => ({
       sensorId: id,
       value: latest[id]?.value,
       status: latest[id]?.status,

@@ -648,6 +648,8 @@ main {
   flex: 1;
   min-height: 160px;
   width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 .panel-chart .panel-empty {

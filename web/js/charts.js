@@ -210,6 +210,28 @@ function formatDiskBarTooltip(readings, sensorMeta, dataIndex, percent) {
   return lines.join("<br/>");
 }
 
+function isDiskUsageReading(reading, sensorMeta) {
+  const id = String(reading?.sensorId || "");
+  const meta = sensorMeta[reading?.sensorId];
+  return id.startsWith("disk_auto_") || meta?.type === "system.disk_usage" || meta?.unit === "%";
+}
+
+function normalizeBarPercentValue(reading, sensorMeta) {
+  const raw = reading?.value;
+  if (raw == null || Number.isNaN(raw)) return 0;
+  const v = Number(raw);
+  if (!Number.isFinite(v)) return 0;
+  if (!isDiskUsageReading(reading, sensorMeta)) return v;
+  if (v > 1000) return 0;
+  return Math.min(100, Math.max(0, v));
+}
+
+function barChartMinHeight(readings, sensorMeta) {
+  const diskCount = readings.filter((r) => isDiskUsageReading(r, sensorMeta)).length;
+  if (diskCount < 4) return null;
+  return Math.min(520, Math.max(200, diskCount * 24 + 40));
+}
+
 function buildBarTooltip(readings, sensorMeta) {
   return {
     trigger: "axis",
@@ -228,7 +250,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
   const width = chartWidth(dom);
   const mode = layoutMode(width);
   const categories = readings.map((r) => sensorMeta[r.sensorId]?.name || r.sensorId);
-  const values = readings.map((r) => r.value ?? 0);
+  const values = readings.map((r) => normalizeBarPercentValue(r, sensorMeta));
   const colors = readings.map((r) => statusColor(r.status));
   const manyDisks =
     categories.length > 3 &&
@@ -246,6 +268,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
       grid: { left: 8, right: 24, top: 8, bottom: 8, containLabel: true },
       xAxis: {
         type: "value",
+        min: 0,
         max: 100,
         axisLabel: { color: "#8b9cb3", fontSize: 9, formatter: "{value}%" },
         splitLine: { lineStyle: { color: "#2d3a4f" } },
@@ -263,6 +286,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
       series: [
         {
           type: "bar",
+          clip: true,
           data: values.map((value, idx) => ({
             value,
             itemStyle: { color: colors[idx] },
@@ -270,7 +294,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
           label: {
             show: width >= 300,
             position: "right",
-            formatter: ({ value }) => `${value}%`,
+            formatter: ({ value }) => `${Math.round(value * 10) / 10}%`,
             color: "#e8edf4",
             fontSize: 9,
           },
@@ -295,6 +319,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
     },
     yAxis: {
       type: "value",
+      min: 0,
       max: 100,
       axisLabel: { color: "#8b9cb3", formatter: "{value} %" },
       splitLine: { lineStyle: { color: "#2d3a4f" } },
@@ -302,6 +327,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
     series: [
       {
         type: "bar",
+        clip: true,
         data: values.map((value, idx) => ({
           value,
           itemStyle: { color: colors[idx] },
@@ -318,14 +344,27 @@ function buildBarOptions(dom, readings, sensorMeta) {
   };
 }
 
+function applyBarChartHeight(dom, readings, sensorMeta) {
+  const minH = barChartMinHeight(readings, sensorMeta);
+  if (minH != null) {
+    dom.style.minHeight = `${minH}px`;
+  } else {
+    dom.style.minHeight = "";
+  }
+}
+
 export function createBarChart(dom, readings, sensorMeta) {
   const chart = echarts.init(dom, null, { locale: "RU" });
+  applyBarChartHeight(dom, readings, sensorMeta);
   chart.setOption(buildBarOptions(dom, readings, sensorMeta));
+  chart.resize();
   return chart;
 }
 
 export function updateBarChart(chart, dom, readings, sensorMeta) {
+  applyBarChartHeight(dom, readings, sensorMeta);
   chart.setOption(buildBarOptions(dom, readings, sensorMeta), false);
+  chart.resize();
 }
 
 export function createStatusCard(dom, reading) {
