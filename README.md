@@ -14,6 +14,7 @@ Live-обновления по WebSocket, история в SQLite.
 
 [Установка](#установка) ·
 [Документация](docs/README.md) ·
+[Участие](docs/contributing.md) ·
 [Android (SysMon)](#android-sysmon) ·
 [Возможности](#возможности) ·
 [Скриншот](#интерфейс) ·
