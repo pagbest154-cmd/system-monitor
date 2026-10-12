@@ -11,6 +11,7 @@ panels:
       - ram_used
     period: 1h
     row: 1
+    col: 1
 
   - id: disk_bars
     title: Занятость дисков
@@ -18,6 +19,7 @@ panels:
     sensors:
       - auto_disks
     row: 2
+    col: 1
 
   - id: net_chart
     title: Сетевой трафик
@@ -27,6 +29,7 @@ panels:
       - net_tx
     period: 1h
     row: 3
+    col: 1
 
   - id: temp_chart
     title: Температура
@@ -36,10 +39,12 @@ panels:
       - gpu_temp
     period: 6h
     row: 4
+    col: 1
 
   - id: raid_status
     title: Состояние RAID
     type: raid
     sensors:
       - auto_mdadm
-    row: 7
+    row: 5
+    col: 1

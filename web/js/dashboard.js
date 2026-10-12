@@ -356,13 +356,21 @@ function disposeChart(id) {
   }
 }
 
-const PANEL_TYPE_ORDER = { line: 0, bar: 1, gauge: 2, status: 3, raid: 4 };
+function panelGridRow(panel) {
+  return Math.max(1, Number(panel.row) || 1);
+}
+
+function panelGridCol(panel) {
+  return Math.max(1, Number(panel.col) || 1);
+}
 
 function sortPanelsForDisplay(panels) {
   return [...panels].sort((a, b) => {
-    const typeDiff = (PANEL_TYPE_ORDER[a.type] ?? 9) - (PANEL_TYPE_ORDER[b.type] ?? 9);
-    if (typeDiff !== 0) return typeDiff;
-    return (a.row || 0) - (b.row || 0);
+    const rowDiff = panelGridRow(a) - panelGridRow(b);
+    if (rowDiff !== 0) return rowDiff;
+    const colDiff = panelGridCol(a) - panelGridCol(b);
+    if (colDiff !== 0) return colDiff;
+    return String(a.title || a.id || "").localeCompare(String(b.title || b.id || ""), "ru");
   });
 }
 
@@ -380,58 +388,38 @@ function normalizePanelSpan(span) {
   return 1;
 }
 
-function optimalGridCols(count) {
-  if (count <= 1) return 1;
-
+function computeGridCols() {
   const maxCols = getMaxGridCols();
-  const upper = Math.min(maxCols, count);
-  let best = 1;
-  let bestScore = Infinity;
-
-  for (let cols = 1; cols <= upper; cols++) {
-    const rows = Math.ceil(count / cols);
-    const score =
-      Math.abs(cols - rows) +
-      (cols === 1 && rows > 3 ? 2 : 0) +
-      (cols === 1 && maxCols > 1 ? 1 : 0) +
-      (count % cols !== 0 ? 0.1 : 0);
-
-    if (score < bestScore || (score === bestScore && cols > best)) {
-      bestScore = score;
-      best = cols;
-    }
-  }
-
-  return best;
-}
-
-function panelFlexBasis(gridCols, span) {
-  if (gridCols <= 1) return "100%";
-  const gaps = gridCols - 1;
-  if (span <= 1) {
-    return `calc((100% - ${gaps} * 1rem) / ${gridCols})`;
-  }
-  return `calc((100% - ${gaps} * 1rem) / ${gridCols} * ${span} + ${span - 1} * 1rem)`;
-}
-
-function applyPanelSpans(gridCols) {
+  let needed = 1;
   for (const panel of dashboardPanels) {
-    const panelEl = document.getElementById(`panel-${panel.id}`);
-    if (!panelEl || panelEl.classList.contains("expanded")) continue;
-    const span = Math.min(normalizePanelSpan(panel.span), gridCols);
-    const basis = panelFlexBasis(gridCols, span);
-    panelEl.style.gridColumn = "";
-    panelEl.style.flex = `${span} 1 ${basis}`;
-    panelEl.style.maxWidth = gridCols <= 1 ? "100%" : "";
+    const col = panelGridCol(panel);
+    const span = normalizePanelSpan(panel.span);
+    needed = Math.max(needed, col + span - 1);
   }
+  return Math.min(maxCols, needed);
 }
 
 function applyGridLayout() {
   const grid = document.getElementById("dashboard-grid");
   if (!grid) return;
-  const cols = optimalGridCols(dashboardPanels.length);
-  grid.style.setProperty("--grid-cols", String(cols));
-  applyPanelSpans(cols);
+  const gridCols = computeGridCols();
+  grid.style.setProperty("--grid-cols", String(gridCols));
+
+  for (const panel of dashboardPanels) {
+    const panelEl = document.getElementById(`panel-${panel.id}`);
+    if (!panelEl || panelEl.classList.contains("expanded")) continue;
+    const row = panelGridRow(panel);
+    let col = panelGridCol(panel);
+    let span = normalizePanelSpan(panel.span);
+    if (col + span - 1 > gridCols) {
+      col = Math.max(1, gridCols - span + 1);
+    }
+    span = Math.min(span, gridCols - col + 1);
+    panelEl.style.gridRow = String(row);
+    panelEl.style.gridColumn = `${col} / span ${span}`;
+    panelEl.style.flex = "";
+    panelEl.style.maxWidth = "";
+  }
 }
 
 function removeExpandedPlaceholder() {

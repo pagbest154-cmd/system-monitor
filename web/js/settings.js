@@ -636,6 +636,9 @@ export async function initSettings() {
     document.getElementById("refresh-sec").value =
       dashboardData.dashboard?.refresh_sec || 3;
 
+    const panelsHint = document.getElementById("panels-layout-hint");
+    if (panelsHint) panelsHint.textContent = t.panelsLayoutHint;
+
     renderSensorsTable();
     renderPanelsTable();
 
