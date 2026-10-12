@@ -184,7 +184,15 @@ jobs:
   build-deb:
     needs: detect-changes
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -216,14 +224,52 @@ jobs:
           dpkg-buildpackage -us -uc -b -d
           mkdir -p dist
           shopt -s nullglob
-          deb=(../system-monitor-agent_*_amd64.deb)
+          deb=(../system-monitor-agent_*_${{ matrix.arch }}.deb)
           if [ ${#deb[@]} -eq 0 ]; then deb=(../system-monitor-agent_*.deb); fi
+          if [ ${#deb[@]} -eq 0 ]; then
+            echo "No .deb for ${{ matrix.arch }}" >&2
+            exit 1
+          fi
           mv "${deb[@]}" dist/
           mv ../system-monitor-agent_*.changes dist/ 2>/dev/null || true
           mv ../system-monitor-agent_*.buildinfo dist/ 2>/dev/null || true
 
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: deb-${{ matrix.arch }}
+          path: dist/
+
+  assemble-deb:
+    needs: [detect-changes, build-deb]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download deb packages
+        uses: actions/download-artifact@v7
+        with:
+          pattern: deb-*
+          path: dist/debs
+          merge-multiple: true
+
+      - name: Install apt repo tools
+        run: sudo apt-get update && sudo apt-get install -y apt-utils gzip
+
       - name: Build APT repository
-        run: ./scripts/publish-apt-repo.sh dist/system-monitor-agent_*.deb dist/apt-repo
+        run: |
+          chmod +x scripts/publish-apt-repo.sh
+          shopt -s nullglob
+          mkdir -p dist
+          debs=(dist/debs/system-monitor-agent_*.deb)
+          if [ ${#debs[@]} -eq 0 ]; then
+            echo "No deb artifacts" >&2
+            exit 1
+          fi
+          ./scripts/publish-apt-repo.sh "${debs[@]}" dist/apt-repo
+          cp "${debs[@]}" dist/
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
@@ -232,12 +278,12 @@ jobs:
           path: dist/
 
   release:
-    needs: [detect-changes, build-docker, build-deb, build-windows, build-android]
+    needs: [detect-changes, build-docker, assemble-deb, build-windows, build-android]
     if: >-
       github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
       always() && !cancelled() &&
       (needs.build-docker.result == 'success' || needs.build-docker.result == 'skipped') &&
-      (needs.build-deb.result == 'success' || needs.build-deb.result == 'skipped') &&
+      (needs.assemble-deb.result == 'success' || needs.assemble-deb.result == 'skipped') &&
       (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
       (needs.build-android.result == 'success' || needs.build-android.result == 'skipped')
     runs-on: ubuntu-24.04
@@ -274,7 +320,7 @@ jobs:
         env:
           VERSION: ${{ needs.detect-changes.outputs.version }}
           HUB_BUILT: ${{ needs.detect-changes.outputs.hub == 'true' && needs.build-docker.result == 'success' }}
-          DEB_BUILT: ${{ needs.build-deb.result == 'success' }}
+          DEB_BUILT: ${{ needs.assemble-deb.result == 'success' }}
           WINDOWS_BUILT: ${{ needs.build-windows.result == 'success' }}
           ANDROID_BUILT: ${{ needs.build-android.result == 'success' }}
         run: |
@@ -314,8 +360,12 @@ jobs:
             if [ "$DEB_BUILT" = "true" ]; then
               echo
               echo "### Agent (.deb, Linux)"
+              echo "APT (amd64 / arm64): \`deb [trusted=yes] https://pagbest154-cmd.github.io/system-monitor/apt stable main\`"
               echo '```bash'
+              echo "sudo apt update && sudo apt install system-monitor-agent"
+              echo "# или локально:"
               echo "sudo apt install ./system-monitor-agent_${VERSION}-1_amd64.deb"
+              echo "sudo apt install ./system-monitor-agent_${VERSION}-1_arm64.deb"
               echo '```'
             fi
             if [ "$WINDOWS_BUILT" = "true" ]; then
@@ -357,8 +407,8 @@ jobs:
             || echo "TaskMCP notify failed (release already published)"
 
   publish-apt-pages:
-    needs: [release, build-deb]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.build-deb.result == 'success'
+    needs: [release, assemble-deb]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.assemble-deb.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -381,16 +431,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y apt-utils gzip
 
       - name: Prepare apt repo for Pages
-        env:
-          APT_REPO_MERGE: "1"
-          APT_REPO_MERGE_URL: https://pagbest154-cmd.github.io/system-monitor/apt
         run: |
-          chmod +x scripts/publish-apt-repo.sh
-          shopt -s nullglob
-          deb=(dist/system-monitor-agent_*.deb)
-          ./scripts/publish-apt-repo.sh "${deb[0]}" dist/apt-repo-pages
           mkdir -p _site/apt
-          cp -a dist/apt-repo-pages/. _site/apt/
+          if [ -d dist/apt-repo ]; then
+            cp -a dist/apt-repo/. _site/apt/
+          else
+            echo "dist/apt-repo missing" >&2
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

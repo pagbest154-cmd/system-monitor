@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Добавлено
+
+- CI / APT: сборка agent `.deb` для **arm64** (runner `ubuntu-24.04-arm`) и **amd64**; один APT-репозиторий с `binary-amd64` и `binary-arm64`
+- `debian/rules`: `GOARCH` из `dpkg-architecture` (нативная сборка под архитектуру)
+
 ## [1.0.71] — 2026-10-13
 
 ### Добавлено
