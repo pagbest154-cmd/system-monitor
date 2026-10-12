@@ -12,14 +12,7 @@ panels:
     period: 1h
     row: 1
     col: 1
-
-  - id: disk_bars
-    title: Занятость дисков
-    type: bar
-    sensors:
-      - auto_disks
-    row: 2
-    col: 1
+    span: 1
 
   - id: net_chart
     title: Сетевой трафик
@@ -28,8 +21,9 @@ panels:
       - net_rx
       - net_tx
     period: 1h
-    row: 3
-    col: 1
+    row: 1
+    col: 2
+    span: 1
 
   - id: temp_chart
     title: Температура
@@ -38,13 +32,24 @@ panels:
       - cpu_temp
       - gpu_temp
     period: 6h
-    row: 4
+    row: 1
+    col: 3
+    span: 1
+
+  - id: disk_bars
+    title: Занятость дисков
+    type: bar
+    sensors:
+      - auto_disks
+    row: 2
     col: 1
+    span: 4
 
   - id: raid_status
     title: Состояние RAID
     type: raid
     sensors:
       - auto_mdadm
-    row: 5
+    row: 3
     col: 1
+    span: 2

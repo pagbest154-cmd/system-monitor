@@ -230,7 +230,13 @@ function buildBarOptions(dom, readings, sensorMeta) {
   const categories = readings.map((r) => sensorMeta[r.sensorId]?.name || r.sensorId);
   const values = readings.map((r) => r.value ?? 0);
   const colors = readings.map((r) => statusColor(r.status));
-  const useHorizontal = mode === "compact" || (mode === "medium" && categories.length > 2);
+  const manyDisks =
+    categories.length > 3 &&
+    readings.some((r) => String(r.sensorId || "").startsWith("disk_auto_"));
+  const useHorizontal =
+    mode === "compact" ||
+    (mode === "medium" && categories.length > 2) ||
+    manyDisks;
   const tooltip = buildBarTooltip(readings, sensorMeta);
 
   if (useHorizontal) {
