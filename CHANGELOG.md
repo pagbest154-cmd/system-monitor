@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Добавлено
+
+- CI: Docker-образ hub в GHCR — multi-arch (`linux/amd64`, `linux/arm64`) на один тег
+
 ## [1.0.70] — 2026-10-12
 
 ### Добавлено
