@@ -293,7 +293,7 @@ function buildBarOptions(dom, readings, sensorMeta) {
           })),
           label: {
             show: width >= 300,
-            position: "right",
+            position: "insideRight",
             formatter: ({ value }) => `${Math.round(value * 10) / 10}%`,
             color: "#e8edf4",
             fontSize: 9,

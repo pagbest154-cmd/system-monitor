@@ -377,7 +377,7 @@ function sortPanelsForDisplay(panels) {
 function getMaxGridCols() {
   const width = window.innerWidth;
   if (width <= 767) return 1;
-  if (width <= 1399) return 2;
+  if (width <= 1023) return 2;
   return 4;
 }
 
@@ -392,11 +392,27 @@ function computeGridCols() {
   const maxCols = getMaxGridCols();
   let needed = 1;
   for (const panel of dashboardPanels) {
-    const col = panelGridCol(panel);
     const span = normalizePanelSpan(panel.span);
-    needed = Math.max(needed, col + span - 1);
+    needed = Math.max(needed, span);
   }
-  return Math.min(maxCols, needed);
+  for (const panels of groupPanelsByRow().values()) {
+    let spanSum = 0;
+    for (const panel of panels) {
+      spanSum += normalizePanelSpan(panel.span);
+    }
+    needed = Math.max(needed, Math.min(spanSum, maxCols));
+  }
+  return Math.min(maxCols, Math.max(1, needed));
+}
+
+function groupPanelsByRow() {
+  const map = new Map();
+  for (const panel of dashboardPanels) {
+    const row = panelGridRow(panel);
+    if (!map.has(row)) map.set(row, []);
+    map.get(row).push(panel);
+  }
+  return map;
 }
 
 function applyGridLayout() {
@@ -405,20 +421,47 @@ function applyGridLayout() {
   const gridCols = computeGridCols();
   grid.style.setProperty("--grid-cols", String(gridCols));
 
-  for (const panel of dashboardPanels) {
-    const panelEl = document.getElementById(`panel-${panel.id}`);
-    if (!panelEl || panelEl.classList.contains("expanded")) continue;
-    const row = panelGridRow(panel);
-    let col = panelGridCol(panel);
-    let span = normalizePanelSpan(panel.span);
-    if (col + span - 1 > gridCols) {
-      col = Math.max(1, gridCols - span + 1);
+  const byRow = groupPanelsByRow();
+  const sortedRows = [...byRow.keys()].sort((a, b) => a - b);
+  let rowOffset = 0;
+
+  for (const configRow of sortedRows) {
+    const panels = byRow.get(configRow).sort((a, b) => panelGridCol(a) - panelGridCol(b));
+    let placeRow = configRow + rowOffset;
+    let cursor = 1;
+
+    for (const panel of panels) {
+      const panelEl = document.getElementById(`panel-${panel.id}`);
+      if (!panelEl || panelEl.classList.contains("expanded")) continue;
+
+      let span = Math.min(normalizePanelSpan(panel.span), gridCols);
+      let col = Math.max(cursor, panelGridCol(panel));
+
+      if (col + span - 1 > gridCols) {
+        if (cursor > 1) {
+          rowOffset += 1;
+          placeRow = configRow + rowOffset;
+          cursor = 1;
+          col = 1;
+        } else {
+          col = 1;
+          span = Math.min(span, gridCols);
+        }
+      }
+
+      if (col < cursor) {
+        col = cursor;
+      }
+      if (col + span - 1 > gridCols) {
+        span = Math.max(1, gridCols - col + 1);
+      }
+
+      panelEl.style.gridRow = String(placeRow);
+      panelEl.style.gridColumn = `${col} / span ${span}`;
+      panelEl.style.flex = "";
+      panelEl.style.maxWidth = "";
+      cursor = col + span;
     }
-    span = Math.min(span, gridCols - col + 1);
-    panelEl.style.gridRow = String(row);
-    panelEl.style.gridColumn = `${col} / span ${span}`;
-    panelEl.style.flex = "";
-    panelEl.style.maxWidth = "";
   }
 }
 
