@@ -43,12 +43,12 @@
 |---|---|
 | Репозиторий | https://github.com/pagbest154-cmd/system-monitor |
 | Локально | `d:\BEST154\simv1` |
-| Версия | **1.0.N** (тег `v1.0.N`; см. `internal/version/version.go`, `CHANGELOG.md`) |
+| Версия | **1.0.72** (тег `v1.0.72`; далее `1.0.N` — `internal/version/version.go`, `CHANGELOG.md`) |
 | Архив Python | теги `v0.0.*` (до миграции на Go) |
 | Лицензия | MIT |
 | Hub Docker | `ghcr.io/pagbest154-cmd/system-monitor:${VERSION}` |
-| Prod hub | https://mon.ferrumnst.ru · VPS `72.56.95.92`, `/opt/system-monitor` |
-| APT agent | `https://pagbest154-cmd.github.io/system-monitor/apt stable main` |
+| Prod hub | https://mon.ferrumnst.ru · VPS `72.56.95.92`, `/opt/system-monitor`, образ `ghcr.io/.../system-monitor:1.0.72` |
+| APT agent | `https://pagbest154-cmd.github.io/system-monitor/apt stable main` (amd64 + arm64) |
 
 ### Стек (текущий)
 
@@ -100,10 +100,10 @@ scripts/                     release, deb, notify-taskmcp-release.sh
 | Fleet ingest | `internal/fleet/fleet.go`, `internal/protocol/` |
 | Agent push | `internal/agent/runner.go`, `internal/agent/transport.go` |
 | YAML / enrich | `internal/config/config.go`, `config/*.yaml` |
-| Web UI | `web/js/dashboard.js`, `hosts.js`, `settings.js`, `web/css/style.css` |
+| Web UI | `web/js/dashboard.js`, `hosts.js`, `settings.js`, `web/css/style.css` (hub: статус хоста и «Обновлено» — `/api/agents` + WS) |
 | Android | `android/app/src/main/kotlin/ru/ferrumnst/sysmon/` |
 | Hub image | `Dockerfile`, `docker-compose.yml` |
-| Agent packaging | `debian/`, `packaging/windows/`; deb install — `.cursor/rules/debian-agent-install.mdc` |
+| Agent packaging | `debian/` (amd64/arm64 CI), `packaging/windows/` (`update-staging` cleanup); deb — `.cursor/rules/debian-agent-install.mdc` |
 | Релиз | `internal/version/version.go`, `debian/changelog`, `android/gradle.properties`, `CHANGELOG.md`, тег `v1.0.N`, CI `.github/workflows/ci.yml` |
 
 ### Типы датчиков (примеры)
@@ -152,8 +152,8 @@ go run ./cmd/system-monitor-agent --config config/agent.yaml
 
 ### Деплой
 
-- **Hub:** `VERSION=x.y.z docker compose pull && docker compose up -d` в `/opt/system-monitor`; volumes `./config`, `hub-data`
-- **Agent:** `apt install system-monitor-agent= x.y.z-1` + `systemctl restart system-monitor-agent`; conffiles сохраняют `agent.yaml`
+- **Hub:** `VERSION=1.0.72 docker compose pull hub && VERSION=1.0.72 docker compose up -d hub` в `/opt/system-monitor`; volumes `./config`, `hub-data`
+- **Agent (prod VPS и fleet):** `apt update && apt install --only-upgrade system-monitor-agent`; conffiles сохраняют `agent.yaml`
 - **Prod UI hotfix (без релиза):** `docker cp` в `/app/web/...` (теряется при recreate контейнера)
 
 ---

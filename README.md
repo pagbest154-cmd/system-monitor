@@ -117,8 +117,10 @@ docker compose pull
 docker compose up -d
 ```
 
-Конкретная версия: `VERSION=1.0.67 docker compose pull && docker compose up -d`  
+Конкретная версия: `VERSION=1.0.72 docker compose pull hub && VERSION=1.0.72 docker compose up -d hub`  
 В футере веб-интерфейса — установленная версия и статус обновления с GitHub.
+
+Образ hub в GHCR — **multi-arch** (`linux/amd64`, `linux/arm64`); на VPS достаточно `docker compose pull` на нужной платформе.
 
 > На каждом релизе собираются **агенты** (`.deb`, `.exe`), **Android APK** (`sysmon-{version}.apk`) и при изменениях hub-кода — Docker-образ. Смотрите блок «Сборка релиза» в [Releases](https://github.com/pagbest154-cmd/system-monitor/releases).
 
@@ -143,6 +145,8 @@ agents:
 2. Установите агент на машине с **тем же** Hub URL, Agent ID и token.
 3. На панели hub в выпадающем списке **Хост** выберите агента. Если агентов ещё нет — на панели будет сообщение «Нет зарегистрированных хостов».
 4. Агентов можно добавлять и в **Настройки → Агенты** в веб-интерфейсе hub.
+
+Статус **Онлайн** на дашборде и время **Обновлено** синхронизируются с реестром агентов (`/api/agents`, TTL 180 с) и live WebSocket; страница **Хосты** использует тот же API.
 
 Конфиг hub монтируется с хоста: `./config/` (в т.ч. `agents.yaml`, `dashboard.yaml`, `alerts.yaml`).
 
@@ -201,7 +205,7 @@ alerts:
 
 ### Agent — slim-пакет на машинах
 
-**Linux (APT-репозиторий):**
+**Linux (APT-репозиторий, amd64 и arm64):**
 
 ```bash
 echo "deb [trusted=yes] https://pagbest154-cmd.github.io/system-monitor/apt stable main" \
@@ -209,6 +213,8 @@ echo "deb [trusted=yes] https://pagbest154-cmd.github.io/system-monitor/apt stab
 sudo apt update
 sudo apt install system-monitor-agent
 ```
+
+Обновление до последнего релиза: `sudo apt update && sudo apt install --only-upgrade system-monitor-agent`.
 
 После нового релиза агента сначала снова выполните `sudo apt update` — иначе apt может пытаться скачать старый `.deb` (404).
 
@@ -252,6 +258,8 @@ sudo dpkg-reconfigure system-monitor-agent
 2. Запустите установщик — укажите **Hub URL**, **Agent ID** и **token** (как debconf на Linux).
 3. Агент регистрируется как служба Windows `system-monitor-agent` и стартует автоматически.
 4. После установки появляется **иконка в трее** (зелёная — подключён, красная — ошибка).
+
+При автообновлении установщики в `%ProgramData%\system-monitor\update-staging\` удаляются после успешной установки (старые `.exe` не копятся).
 
 | Компонент | Способ | Путь конфигурации |
 |-----------|--------|-------------------|
