@@ -1,3 +1,9 @@
+system-monitor-agent (1.0.71-1) unstable; urgency=medium
+
+  * Release 1.0.71: hub Docker multi-arch; web settings dashboard sensor chips fix.
+
+ -- pagbest154-cmd <pagbest154-cmd@users.noreply.github.com>  Tue, 13 Oct 2026 00:25:00 +0700
+
 system-monitor-agent (1.0.70-1) unstable; urgency=medium
 
   * Release 1.0.70: dashboard panel visibility, host online badge, flex grid layout (web/Android).

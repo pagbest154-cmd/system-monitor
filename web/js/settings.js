@@ -36,6 +36,22 @@ const HUB_PANEL_SENSOR_OPTIONS = [
   { id: "auto_mdadm", name: "Все RAID (auto)" },
 ];
 
+/** Как в dashboard.js: пустой sensors в YAML/БД — на панели всё равно эти id */
+const DEFAULT_PANEL_SENSORS = {
+  system_chart: ["cpu_percent", "ram_used"],
+  disk_bars: ["auto_disks"],
+  net_chart: ["net_rx", "net_tx"],
+  temp_chart: ["cpu_temp", "gpu_temp"],
+  cpu_gauge: ["cpu_percent"],
+  ram_gauge: ["ram_used"],
+  raid_status: ["auto_mdadm"],
+};
+
+function effectivePanelSensors(panel) {
+  if (panel.sensors?.length) return panel.sensors;
+  return DEFAULT_PANEL_SENSORS[panel.id] || [];
+}
+
 const DEFAULT_PARAMS = {
   "system.disk_usage": { path: "C:\\" },
   "system.network_bytes": { direction: "recv" },
@@ -209,7 +225,7 @@ function renderPanelsTable() {
         <div class="panel-sensors-line">
           <span class="panel-sensors-label">${t.sensors}</span>
           <div class="sensor-chips" data-field="sensors">
-            ${sensorChipOptions(panel.sensors)}
+            ${sensorChipOptions(effectivePanelSensors(panel))}
           </div>
         </div>
       </td>
