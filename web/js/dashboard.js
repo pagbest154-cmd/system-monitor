@@ -30,12 +30,14 @@ let liveSocket = null;
 let globalPeriod = "1h";
 let latestSnapshot = {};
 let dashboardPanels = [];
+let allDashboardPanels = [];
 
 const PERIOD_STORAGE_KEY = "system-monitor:global-period";
 const AUTO_DISK_SENSOR = "auto_disks";
 const AUTO_MDADM_SENSOR = "auto_mdadm";
 
 const TEMP_SENSOR_IDS = new Set(["cpu_temp", "gpu_temp"]);
+const QUICK_STAT_SENSORS = new Set(["cpu_percent", "ram_used"]);
 
 const DEFAULT_PANEL_SENSORS = {
   system_chart: ["cpu_percent", "ram_used"],
@@ -59,6 +61,7 @@ const LIVE_PANEL_REFRESH_MS = 1500;
 const CONNECTION_OFFLINE_MS = 180_000;
 let lastLiveAt = 0;
 let connectionStatusTimer = null;
+let hubAgentsCache = [];
 
 function normalizeSnapshot(data, agentId) {
   if (!data) return {};
@@ -100,7 +103,9 @@ function savePeriod(period) {
 
 function markLiveActivity() {
   lastLiveAt = Date.now();
-  refreshConnectionStatus();
+  if (appMode !== "hub") {
+    refreshHostStatusBadge();
+  }
 }
 
 function scheduleConnectionStatusCheck() {
@@ -109,8 +114,8 @@ function scheduleConnectionStatusCheck() {
   }
   connectionStatusTimer = setTimeout(() => {
     connectionStatusTimer = null;
-    refreshConnectionStatus();
-    if (isConnectionOnline()) {
+    refreshHostStatusBadge();
+    if (appMode !== "hub" && isConnectionOnline()) {
       scheduleConnectionStatusCheck();
     }
   }, 1000);
@@ -121,9 +126,46 @@ function isConnectionOnline() {
   return Date.now() - lastLiveAt < CONNECTION_OFFLINE_MS;
 }
 
-function refreshConnectionStatus() {
+function applyHubAgents(agents) {
+  hubAgentsCache = agents || [];
+  refreshHostStatusBadge();
+}
+
+function isHubAgentOnline(agent) {
+  if (!agent) return false;
+  return agent.status === "online";
+}
+
+async function refreshHubAgentsStatus() {
+  if (appMode !== "hub") return;
+  try {
+    const data = await fetchJson("/api/agents");
+    applyHubAgents(data.agents || []);
+  } catch (err) {
+    console.warn("Не удалось обновить статус агентов", err);
+  }
+}
+
+function refreshHostStatusBadge() {
   const el = document.getElementById("connection-status");
   if (!el) return;
+
+  if (appMode === "hub") {
+    if (!selectedAgent) {
+      el.innerHTML = `${icon("wifi", "icon-sm")}<span>—</span>`;
+      return;
+    }
+    const agent = hubAgentsCache.find((a) => a.id === selectedAgent);
+    if (!agent) {
+      el.innerHTML = `${icon("wifi", "icon-sm")}<span>Подключение...</span>`;
+      return;
+    }
+    const online = isHubAgentOnline(agent);
+    const status = online ? "online" : "offline";
+    el.innerHTML = statusBadge(status, online ? i18n.live : i18n.offline);
+    return;
+  }
+
   if (!lastLiveAt) {
     el.innerHTML = `${icon("wifi", "icon-sm")}<span>Подключение...</span>`;
     return;
@@ -363,16 +405,24 @@ function optimalGridCols(count) {
   return best;
 }
 
+function panelFlexBasis(gridCols, span) {
+  if (gridCols <= 1) return "100%";
+  const gaps = gridCols - 1;
+  if (span <= 1) {
+    return `calc((100% - ${gaps} * 1rem) / ${gridCols})`;
+  }
+  return `calc((100% - ${gaps} * 1rem) / ${gridCols} * ${span} + ${span - 1} * 1rem)`;
+}
+
 function applyPanelSpans(gridCols) {
   for (const panel of dashboardPanels) {
     const panelEl = document.getElementById(`panel-${panel.id}`);
     if (!panelEl || panelEl.classList.contains("expanded")) continue;
     const span = Math.min(normalizePanelSpan(panel.span), gridCols);
-    if (span > 1) {
-      panelEl.style.gridColumn = `span ${span}`;
-    } else {
-      panelEl.style.gridColumn = "";
-    }
+    const basis = panelFlexBasis(gridCols, span);
+    panelEl.style.gridColumn = "";
+    panelEl.style.flex = `${span} 1 ${basis}`;
+    panelEl.style.maxWidth = gridCols <= 1 ? "100%" : "";
   }
 }
 
@@ -783,6 +833,50 @@ function resolvePanelSensors(panel) {
   return ids.filter((id) => sensorMeta[id]);
 }
 
+function isRedundantQuickStatPanel(panel) {
+  const configured = panelSensorIds(panel);
+  if (!configured.length) return false;
+  if (panel.type === "gauge" && configured.every((id) => QUICK_STAT_SENSORS.has(id))) {
+    return true;
+  }
+  return false;
+}
+
+function sensorHasData(sensorId, latest) {
+  return Boolean(sensorMeta[sensorId]) || hasReadingValue(latest[sensorId]);
+}
+
+function panelShouldDisplay(panel, latest) {
+  if (isRedundantQuickStatPanel(panel)) return false;
+
+  const sensorIds = resolvePanelSensors(panel);
+  if (panel.type === "raid" || panelSensorIds(panel).includes(AUTO_MDADM_SENSOR)) {
+    return sensorIds.length > 0;
+  }
+  if (panel.type === "bar" || panelSensorIds(panel).includes(AUTO_DISK_SENSOR)) {
+    return sensorIds.length > 0;
+  }
+  if (isTemperaturePanel(panel)) {
+    const ids = panelSensorIds(panel);
+    return ids.some((id) => sensorHasData(id, latest));
+  }
+  if (sensorIds.length === 0) return false;
+  return sensorIds.some((id) => sensorHasData(id, latest));
+}
+
+function filterPanelsForDisplay(panels, latest) {
+  return panels.filter((panel) => panelShouldDisplay(panel, latest));
+}
+
+async function syncDashboardVisibility(latest = latestSnapshot) {
+  if (!allDashboardPanels.length) return;
+  const next = filterPanelsForDisplay(allDashboardPanels, latest);
+  const same =
+    next.length === dashboardPanels.length && next.every((p, i) => p.id === dashboardPanels[i]?.id);
+  if (same) return;
+  await renderDashboard(latest);
+}
+
 function isTemperaturePanel(panel) {
   if (panel.id === "temp_chart") return true;
   const ids = panelSensorIds(panel);
@@ -864,7 +958,6 @@ async function refreshPanel(panel, latest, { recreate = false } = {}) {
   if (panel.type === "line") {
     const history = await loadHistory(sensorIds, globalPeriod, latest);
     if (isTemperaturePanel(panel) && !temperatureDataAvailable(sensorIds, latest, history)) {
-      showPanelUnavailable(panel.id, chartDom, i18n.tempUnavailable);
       return;
     }
     clearPanelUnavailable(chartDom);
@@ -908,6 +1001,7 @@ function queueLivePanelRefresh(latest) {
       ) {
         await refreshPanel(panel, data);
       }
+      await syncDashboardVisibility(data);
     }
   }, LIVE_PANEL_REFRESH_MS);
 }
@@ -934,7 +1028,8 @@ async function renderDashboard(latest = {}) {
     }
   }
 
-  dashboardPanels = sortPanelsForDisplay(dashboard.panels || []);
+  allDashboardPanels = sortPanelsForDisplay(dashboard.panels || []);
+  dashboardPanels = filterPanelsForDisplay(allDashboardPanels, latest);
   const grid = document.getElementById("dashboard-grid");
   resizeObservers.forEach((observer) => observer.disconnect());
   resizeObservers.clear();
@@ -993,6 +1088,7 @@ function showDashboardNoAgents() {
   charts.forEach((chart) => chart.dispose());
   charts.clear();
   dashboardPanels = [];
+  allDashboardPanels = [];
   latestSnapshot = {};
   if (grid) {
     grid.innerHTML = `<p class="sys-empty dashboard-no-hosts">${i18n.hosts.dashboardNoHosts}</p>`;
@@ -1087,6 +1183,7 @@ async function initHostSelector() {
 
   const data = await fetchJson("/api/agents");
   const agents = data.agents || [];
+  applyHubAgents(agents);
 
   const preferred = fromUrl || getSavedAgent();
   selectedAgent = resolveSelectedAgent(agents, preferred);
@@ -1116,6 +1213,7 @@ async function initHostSelector() {
   select.addEventListener("change", async () => {
     selectedAgent = select.value;
     saveAgent(selectedAgent);
+    refreshHostStatusBadge();
     const { latest } = await loadSensorData();
     latestSnapshot = latest;
     await renderDashboard(latest);
@@ -1146,6 +1244,7 @@ export async function initDashboard() {
 
   await renderDashboard(latest);
   connectLive();
+  refreshHostStatusBadge();
 
   window.addEventListener("resize", () => {
     applyGridLayout();
@@ -1160,4 +1259,5 @@ export async function initDashboard() {
   const refreshSec = (await fetchJson("/api/dashboard")).dashboard?.refresh_sec || 30;
   setInterval(() => refreshAllLineCharts(latestSnapshot), refreshSec * 1000);
   setInterval(refreshSystemInfo, refreshSec * 1000);
+  setInterval(refreshHubAgentsStatus, refreshSec * 1000);
 }

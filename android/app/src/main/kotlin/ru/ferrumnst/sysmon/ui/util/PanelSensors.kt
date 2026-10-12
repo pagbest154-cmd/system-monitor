@@ -47,3 +47,52 @@ fun readingForSensor(
 ): MetricReading? {
     return liveReadings[sensorId] ?: sensors.find { it.id == sensorId }?.current
 }
+
+private val QUICK_STAT_SENSORS = setOf("cpu_percent", "ram_used")
+private val TEMP_SENSOR_IDS = setOf("cpu_temp", "gpu_temp")
+
+fun isRedundantQuickStatPanel(
+    panel: DashboardPanel,
+    sensors: List<SensorInfo>,
+    liveReadings: Map<String, MetricReading>,
+): Boolean {
+    val configured = resolvePanelSensorIds(panel)
+    if (configured.isEmpty()) return false
+    if (panel.type.equals("gauge", ignoreCase = true) &&
+        configured.all { it in QUICK_STAT_SENSORS }
+    ) {
+        return true
+    }
+    return false
+}
+
+fun panelShouldDisplay(
+    panel: DashboardPanel,
+    sensors: List<SensorInfo>,
+    liveReadings: Map<String, MetricReading>,
+    histories: Map<String, List<MetricReading>> = emptyMap(),
+): Boolean {
+    if (isRedundantQuickStatPanel(panel, sensors, liveReadings)) return false
+
+    val sensorIds = resolvePanelSensorIds(panel, sensors, liveReadings)
+    when (panel.type.lowercase()) {
+        "raid", "bar" -> return sensorIds.isNotEmpty()
+        "gauge" -> {
+            val id = sensorIds.firstOrNull() ?: return false
+            return sensors.any { it.id == id } || readingForSensor(id, liveReadings, sensors)?.value != null
+        }
+        "line" -> {
+            if (panel.id == "temp_chart" || sensorIds.all { it in TEMP_SENSOR_IDS }) {
+                return sensorIds.any { id ->
+                    sensors.any { it.id == id } ||
+                        !histories[id].isNullOrEmpty() ||
+                        readingForSensor(id, liveReadings, sensors)?.value != null
+                }
+            }
+            return sensorIds.isNotEmpty() && sensorIds.any { id ->
+                sensors.any { it.id == id } || readingForSensor(id, liveReadings, sensors)?.value != null
+            }
+        }
+        else -> return sensorIds.isNotEmpty()
+    }
+}

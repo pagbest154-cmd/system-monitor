@@ -37,20 +37,6 @@ panels:
     period: 6h
     row: 4
 
-  - id: cpu_gauge
-    title: Процессор
-    type: gauge
-    sensors:
-      - cpu_percent
-    row: 5
-
-  - id: ram_gauge
-    title: Память
-    type: gauge
-    sensors:
-      - ram_used
-    row: 6
-
   - id: raid_status
     title: Состояние RAID
     type: raid

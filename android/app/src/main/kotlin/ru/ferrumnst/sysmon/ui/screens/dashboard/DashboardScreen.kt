@@ -70,6 +70,7 @@ import ru.ferrumnst.sysmon.ui.util.formatTimestamp
 import ru.ferrumnst.sysmon.ui.util.formatValue
 import ru.ferrumnst.sysmon.ui.util.readingForSensor
 import ru.ferrumnst.sysmon.ui.components.RaidPanelCard
+import ru.ferrumnst.sysmon.ui.util.panelShouldDisplay
 import ru.ferrumnst.sysmon.ui.util.resolvePanelSensorIds
 
 private val periods = listOf(
@@ -177,8 +178,7 @@ fun DashboardScreen(
 
                     val gaugePanels = state.panels.filter { panel ->
                         panel.type == "gauge" &&
-                            resolvePanelSensorIds(panel, state.sensors, state.liveReadings)
-                                .none { it in quickStatSensors }
+                            panelShouldDisplay(panel, state.sensors, state.liveReadings)
                     }
                     if (gaugePanels.isNotEmpty()) {
                         item {
@@ -204,6 +204,12 @@ fun DashboardScreen(
                     items(
                         state.panels.filter { panel ->
                             (panel.type == "line" || panel.type == "bar" || panel.type == "raid") &&
+                                panelShouldDisplay(
+                                    panel,
+                                    state.sensors,
+                                    state.liveReadings,
+                                    state.panelHistories[panel.id]?.histories ?: emptyMap(),
+                                ) &&
                                 !isQuickStatsDuplicatePanel(panel, state.sensors, state.liveReadings)
                         },
                     ) { panel ->
@@ -400,6 +406,7 @@ private fun PanelCard(
         }
         "line" -> {
             val sensorIds = resolvePanelSensorIds(panel, sensors, liveReadings)
+            if (sensorIds.isEmpty()) return
             val chartSeries = sensorIds.mapIndexedNotNull { index, sensorId ->
                 val meta = sensors.find { it.id == sensorId }
                 val live = readingForSensor(sensorId, liveReadings, sensors)
@@ -418,6 +425,7 @@ private fun PanelCard(
                     unit = meta?.unit,
                 )
             }
+            if (chartSeries.isEmpty()) return
             DashboardCard(
                 title = panel.title,
                 subtitle = period,
@@ -431,26 +439,19 @@ private fun PanelCard(
             val panelSensors = sensorIds.mapNotNull { sensorId ->
                 sensors.find { it.id == sensorId }
             }
+            if (panelSensors.isEmpty()) return
             DashboardCard(title = panel.title, modifier = modifier) {
-                if (panelSensors.isEmpty()) {
-                    Text(
-                        text = "Нет данных",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
+                panelSensors.forEach { sensor ->
+                    DiskUsageBar(
+                        sensor = sensor,
+                        reading = liveReadings[sensor.id] ?: sensor.current,
                     )
-                } else {
-                    panelSensors.forEach { sensor ->
-                        DiskUsageBar(
-                            sensor = sensor,
-                            reading = liveReadings[sensor.id] ?: sensor.current,
-                        )
-                    }
                 }
             }
         }
         "raid" -> {
             val sensorIds = resolvePanelSensorIds(panel, sensors, liveReadings)
+            if (sensorIds.isEmpty()) return
             RaidPanelCard(
                 title = panel.title,
                 sensorIds = sensorIds,
