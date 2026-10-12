@@ -101,11 +101,32 @@ function savePeriod(period) {
   }
 }
 
-function markLiveActivity() {
-  lastLiveAt = Date.now();
-  if (appMode !== "hub") {
-    refreshHostStatusBadge();
+function markHubAgentLive(agentId) {
+  if (appMode !== "hub" || !agentId) return;
+  const now = Date.now() / 1000;
+  const idx = hubAgentsCache.findIndex((a) => a.id === agentId);
+  if (idx >= 0) {
+    hubAgentsCache[idx] = { ...hubAgentsCache[idx], status: "online", last_seen: now };
   }
+  refreshHostStatusBadge();
+}
+
+function markLiveActivity(agentId = "") {
+  lastLiveAt = Date.now();
+  if (appMode === "hub") {
+    markHubAgentLive(agentId || selectedAgent);
+    return;
+  }
+  refreshHostStatusBadge();
+}
+
+function latestMaxTimestamp(latest) {
+  return Object.values(latest || {}).reduce((acc, item) => Math.max(acc, item?.ts || 0), 0);
+}
+
+function applyLastUpdateFromLatest(latest) {
+  const maxTs = latestMaxTimestamp(latest);
+  if (maxTs) setLastUpdate(maxTs);
 }
 
 function scheduleConnectionStatusCheck() {
@@ -1147,7 +1168,7 @@ function connectLive() {
   liveSocket = new WebSocket(`${protocol}://${location.host}/ws/live${agentPart}`);
 
   liveSocket.onopen = () => {
-    markLiveActivity();
+    markLiveActivity(selectedAgent);
     scheduleConnectionStatusCheck();
   };
   liveSocket.onclose = (event) => {
@@ -1160,21 +1181,17 @@ function connectLive() {
   };
 
   liveSocket.onmessage = async (event) => {
-    markLiveActivity();
     const message = JSON.parse(event.data);
     if (message.type === "snapshot" || message.type === "update") {
       if (selectedAgent && message.agent_id && message.agent_id !== selectedAgent) {
         return;
       }
       const agentKey = selectedAgent || message.agent_id || "";
+      markLiveActivity(agentKey);
       const incoming = normalizeSnapshot(message.data || {}, agentKey);
       const latest = mergeLatestReadings(latestSnapshot, incoming);
       latestSnapshot = latest;
-      const maxTs = Object.values(latest).reduce(
-        (acc, item) => Math.max(acc, item.ts || 0),
-        0
-      );
-      if (maxTs) setLastUpdate(maxTs);
+      applyLastUpdateFromLatest(latest);
       queueLivePanelRefresh(latest);
     }
   };
@@ -1252,6 +1269,7 @@ async function initHostSelector() {
     refreshHostStatusBadge();
     const { latest } = await loadSensorData();
     latestSnapshot = latest;
+    applyLastUpdateFromLatest(latest);
     await renderDashboard(latest);
     await refreshSystemInfo();
     connectLive();
@@ -1277,10 +1295,14 @@ export async function initDashboard() {
 
   const { latest } = await loadSensorData();
   latestSnapshot = latest;
+  applyLastUpdateFromLatest(latest);
 
   await renderDashboard(latest);
   connectLive();
   refreshHostStatusBadge();
+  if (appMode === "hub") {
+    void refreshHubAgentsStatus();
+  }
 
   window.addEventListener("resize", () => {
     applyGridLayout();
@@ -1295,5 +1317,8 @@ export async function initDashboard() {
   const refreshSec = (await fetchJson("/api/dashboard")).dashboard?.refresh_sec || 30;
   setInterval(() => refreshAllLineCharts(latestSnapshot), refreshSec * 1000);
   setInterval(refreshSystemInfo, refreshSec * 1000);
-  setInterval(refreshHubAgentsStatus, refreshSec * 1000);
+  if (appMode === "hub") {
+    const hubStatusRefreshSec = Math.min(5, refreshSec);
+    setInterval(refreshHubAgentsStatus, hubStatusRefreshSec * 1000);
+  }
 }

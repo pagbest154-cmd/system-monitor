@@ -360,6 +360,7 @@ func (s *MetricStore) GetAgent(agentID string) (map[string]interface{}, error) {
 			return err
 		}
 		record = agentRowToDict(agentID, name, hostname, agentVersion, platform, status, lastSeen, systemJSON, sensorsJSON)
+		applyAgentReachability(record, float64(time.Now().UnixNano())/1e9)
 		return nil
 	})
 	if err != nil {
@@ -369,6 +370,16 @@ func (s *MetricStore) GetAgent(agentID string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return record, nil
+}
+
+func applyAgentReachability(item map[string]interface{}, now float64) {
+	lastSeen, ok := item["last_seen"].(float64)
+	if !ok || lastSeen == 0 {
+		return
+	}
+	if now-lastSeen > AgentOfflineSec {
+		item["status"] = "offline"
+	}
 }
 
 func (s *MetricStore) ListAgents() ([]map[string]interface{}, error) {
@@ -388,9 +399,7 @@ func (s *MetricStore) ListAgents() ([]map[string]interface{}, error) {
 				return err
 			}
 			item := agentRowToDict(agentID, name, hostname, agentVersion, platform, status, lastSeen, systemJSON, sensorsJSON)
-			if now-item["last_seen"].(float64) > AgentOfflineSec {
-				item["status"] = "offline"
-			}
+			applyAgentReachability(item, now)
 			agents = append(agents, item)
 		}
 		return rows.Err()

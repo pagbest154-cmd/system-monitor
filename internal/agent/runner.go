@@ -88,6 +88,7 @@ func (r *Runner) run() {
 		"metrics push endpoint %s/api/agents/%s/metrics",
 		strings.TrimRight(r.Config.HubURL, "/"), r.AgentID,
 	)
+	cleanupUpdateStagingOnStart()
 	r.ensureCollector()
 	if err := r.reloadCollector(); err != nil {
 		r.logSyncError("initial config sync", err)

@@ -5,10 +5,19 @@
 
 ## [Unreleased]
 
+## [1.0.72] — 2026-10-13
+
 ### Добавлено
 
 - CI / APT: сборка agent `.deb` для **arm64** (runner `ubuntu-24.04-arm`) и **amd64**; один APT-репозиторий с `binary-amd64` и `binary-arm64`
 - `debian/rules`: `GOARCH` из `dpkg-architecture` (нативная сборка под архитектуру)
+- Тесты Go: fleet ingest, hub `POST /api/agents/{id}/metrics`, agent HTTP transport, storage offline TTL
+
+### Исправлено
+
+- Hub dashboard: статус выбранного агента по live WebSocket и опрос `/api/agents` не реже 5 с; поле «Обновлено» при первой загрузке из REST
+- Storage: `GetAgent` применяет тот же offline TTL (180 с), что `ListAgents`
+- Windows agent: удаление старых установщиков в `update-staging` перед загрузкой и при старте службы после обновления
 
 ## [1.0.71] — 2026-10-13
 

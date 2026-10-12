@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pagbest154-cmd/system-monitor/internal/paths"
@@ -29,6 +30,9 @@ func ApplyUpdate(result release.ReleaseCheckResult) error {
 	}
 
 	installerPath := filepath.Join(stagingDir, AgentAssetName(result.LatestVersion))
+	if err := pruneStagedInstallers(stagingDir, installerPath); err != nil {
+		AgentLogf("update: staging prune before download: %v", err)
+	}
 	AgentLogf("update: downloading %s from %s", result.LatestVersion, *result.DownloadURL)
 	_ = os.Remove(installerPath)
 	if err := release.DownloadFile(*result.DownloadURL, installerPath, "system-monitor-agent"); err != nil {
@@ -64,6 +68,38 @@ func launchStagedInstaller(installerPath, version string) error {
 		"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCLOSEAPPLICATIONS /LOG=\"%s\"",
 		logPath,
 	), stagingDir)
+}
+
+func CleanupUpdateStaging() error {
+	stagingDir := filepath.Join(paths.ConfigDir, updateStagingDir)
+	return pruneStagedInstallers(stagingDir, "")
+}
+
+func pruneStagedInstallers(stagingDir, keepPath string) error {
+	entries, err := os.ReadDir(stagingDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := strings.ToLower(entry.Name())
+		if !strings.HasSuffix(name, ".exe") {
+			continue
+		}
+		path := filepath.Join(stagingDir, entry.Name())
+		if keepPath != "" && filepath.Clean(path) == filepath.Clean(keepPath) {
+			continue
+		}
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func writeUpdateJournal(stagingDir, line string) {
